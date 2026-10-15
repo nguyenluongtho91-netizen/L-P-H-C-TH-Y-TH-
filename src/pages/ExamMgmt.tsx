@@ -588,7 +588,7 @@ export default function ExamMgmt() {
     })
   }
 
-  let globalQuestionNumber = 1
+  // Question numbering resets per part
 
   return (
     <div className="space-y-6">
@@ -1027,8 +1027,8 @@ export default function ExamMgmt() {
                   <p className="text-sm opacity-90">{info.desc}</p>
                 </div>
 
-                {questionsInPart.map((q: any) => {
-                  const displayQNum = globalQuestionNumber++;
+                {questionsInPart.map((q: any, qIdx: number) => {
+                  const displayQNum = (q.number % 100) || (qIdx + 1);
                   const isEditingThis = editingQuestionId === q.number;
 
                   return (
@@ -1075,7 +1075,15 @@ export default function ExamMgmt() {
                       {!isEditingThis ? (
                         <div className="space-y-4">
                           <div className="pl-12">
-                            <MathText html={q.text} block className="text-gray-800 font-medium text-base leading-relaxed" />
+                            {(() => {
+                            const rawText = (q.text || '').trim();
+                            const formattedText = /^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i.test(rawText)
+                              ? rawText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, `<strong>Câu ${displayQNum}.</strong> `)
+                              : `<strong>Câu ${displayQNum}.</strong> ${rawText}`;
+                            return (
+                              <MathText html={formattedText} block className="text-gray-800 font-medium text-base leading-relaxed" />
+                            );
+                          })()}
                             {q.images?.filter((img: any) => !img.filename?.toLowerCase().endsWith('.wmf') && !img.id?.toLowerCase().endsWith('.wmf') && img.contentType !== 'image/x-wmf').map((img: any, idx: number) => (
                               <img 
                                 key={idx} 

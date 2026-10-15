@@ -162,8 +162,12 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
       {/* ── DANH SÁCH CÂU HỎI (CUỘN RIÊNG, KHÔNG BỊ CHE KHUẤT) ── */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-4xl mx-auto w-full space-y-3.5 sm:space-y-5 custom-scrollbar pb-24">
         {exam.questions.map((q: any, i: number) => {
-          const displayNum = i + 1;
+          const displayNum = (q.number % 100) || (i + 1);
           const uAns = answers[q.number];
+          const rawText = (q.text || '').trim();
+          const formattedText = /^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i.test(rawText)
+            ? rawText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, `<strong>Câu ${displayNum}.</strong> `)
+            : `<strong>Câu ${displayNum}.</strong> ${rawText}`;
           
           return (
             <div key={q.number} className="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
@@ -173,7 +177,7 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
                   {displayNum}
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5 text-xs sm:text-sm md:text-base text-gray-800 font-medium overflow-x-auto leading-relaxed">
-                  <MathText html={q.text} block />
+                  <MathText html={formattedText} block />
                 </div>
               </div>
 

@@ -856,6 +856,9 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
   ];
 
   const solutionPatterns = [
+    /[-_\s]*HẾT[-_\s]*/i,
+    /Thí\s*sinh\s*không\s*sử\s*dụng\s*tài\s*liệu/i,
+    /Giám\s*thị\s*không\s*giải\s*thích\s*gì\s*thêm/i,
     /HƯỚNG\s*DẪN\s*GIẢI/i,
     /HUONG\s*DAN\s*GIAI/i,
     /LỜI\s*GIẢI\s*CHI\s*TIẾT/i,
@@ -953,6 +956,7 @@ function parsePart1WithUnderline(
     const imageRIds = para.imageRIds;
 
     if (!text && imageRIds.length === 0) continue;
+    if (/[-_\s]*HẾT[-_\s]*/i.test(text) || /Thí\s*sinh\s*không\s*sử\s*dụng\s*tài\s*liệu/i.test(text)) break;
 
     // Skip section headers
     if (
@@ -999,7 +1003,7 @@ function parsePart1WithUnderline(
 
       collectingContent = true;
       inSolution = false;
-      contentBuffer = restText ? [restText] : [];
+      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
       solutionBuffer = [];
       currentQuestionUnderlinedLetters = [];
 
@@ -1135,6 +1139,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     const imageRIds = para.imageRIds;
 
     if (!text && imageRIds.length === 0) continue;
+    if (/[-_\s]*HẾT[-_\s]*/i.test(text) || /Thí\s*sinh\s*không\s*sử\s*dụng\s*tài\s*liệu/i.test(text)) break;
     if (
       /PHẦN\s*\d/i.test(text) ||
       /PHAN\s*\d/i.test(text) ||
@@ -1178,7 +1183,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
       collectingContent = true;
       inSolution = false;
-      contentBuffer = restText ? [restText] : [];
+      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
       solutionBuffer = [];
 
       currentQuestionTrueStatements = new Set();
@@ -1331,6 +1336,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     const imageRIds = para.imageRIds;
 
     if (!text && imageRIds.length === 0) continue;
+    if (/[-_\s]*HẾT[-_\s]*/i.test(text) || /Thí\s*sinh\s*không\s*sử\s*dụng\s*tài\s*liệu/i.test(text)) break;
     if (/PHẦN\s*\d/i.test(text) || /PHAN\s*\d/i.test(text)) continue;
 
     const qMatch = text.match(questionPattern);
@@ -1339,10 +1345,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       if (currentQ) {
         if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
-        if (!currentQ.correctAnswer) {
-          currentQ.type = 'writing';
-          currentQ.part = 4;
-        }
+// keep as short_answer in Part 3
         if (currentQ.text) questions.push(currentQ);
       }
 
@@ -1362,7 +1365,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       };
 
       collectingContent = true;
-      contentBuffer = restText ? [restText] : [];
+      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
       solutionBuffer = [];
 
       if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
