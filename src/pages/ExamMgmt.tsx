@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileUp, FileText, Trash2, RefreshCw, Eye, Edit2, Save, X, Settings, Download, BookOpen, Sparkles } from 'lucide-react'
+import { FileUp, FileText, Trash2, RefreshCw, Eye, Edit2, Save, X, Settings, Download, BookOpen, Sparkles, Folder, FolderOpen, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import { useExamStore } from '@/store/examStore'
 import { parseWordToExam } from '@/services/mathWordParserService'
 import { parseTexToExam } from '@/services/texParserService'
@@ -39,6 +39,44 @@ export default function ExamMgmt() {
   // State cho downloading file LaTeX
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [generatingSimilarId, setGeneratingSimilarId] = useState<string | null>(null)
+
+  // Bộ lọc Học kì (Học kì 1, Học kì 2, Tất cả)
+  const [semesterFilter, setSemesterFilter] = useState<'all' | 'hk1' | 'hk2'>('all')
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({
+    '6_hk1': true, '6_hk2': true, '6_other': true,
+    '7_hk1': true, '7_hk2': true, '7_other': true,
+    '8_hk1': true, '8_hk2': true, '8_other': true,
+    '9_hk1': true, '9_hk2': true, '9_other': true,
+    '10_hk1': true, '10_hk2': true, '10_other': true,
+    '11_hk1': true, '11_hk2': true, '11_other': true,
+    '12_hk1': true, '12_hk2': true, '12_other': true,
+  })
+
+  const toggleFolder = (key: string) => {
+    setOpenFolders(prev => ({
+      ...prev,
+      [key]: prev[key] === undefined ? false : !prev[key]
+    }))
+  }
+
+  const getExamSemester = (title: string): 'hk1' | 'hk2' | 'other' => {
+    const t = (title || '').toLowerCase()
+    if (/\b(gk1|ck1|hk1|gki|cki|hki|gk_1|ck_1|hk_1)\b/i.test(t) || 
+        t.includes('kì 1') || t.includes('kỳ 1') || t.includes('kì i') || t.includes('kỳ i') ||
+        t.includes('học kì 1') || t.includes('học kỳ 1') || t.includes('học kì i') || t.includes('học kỳ i') ||
+        t.includes('giữa kì 1') || t.includes('giữa kỳ 1') || t.includes('cuối kì 1') || t.includes('cuối kỳ 1') ||
+        t.includes('giữa kì i') || t.includes('giữa kỳ i') || t.includes('cuối kì i') || t.includes('cuối kỳ i')) {
+      return 'hk1'
+    }
+    if (/\b(gk2|ck2|hk2|gkii|ckii|hkii|gk_2|ck_2|hk_2)\b/i.test(t) || 
+        t.includes('kì 2') || t.includes('kỳ 2') || t.includes('kì ii') || t.includes('kỳ ii') ||
+        t.includes('học kì 2') || t.includes('học kỳ 2') || t.includes('học kì ii') || t.includes('học kỳ ii') ||
+        t.includes('giữa kì 2') || t.includes('giữa kỳ 2') || t.includes('cuối kì 2') || t.includes('cuối kỳ 2') ||
+        t.includes('giữa kì ii') || t.includes('giữa kỳ ii') || t.includes('cuối kì ii') || t.includes('cuối kỳ ii')) {
+      return 'hk2'
+    }
+    return 'other'
+  }
 
   const generateTexFromQuestions = (title: string, questions: any[]): string => {
     const part1 = (questions || []).filter(q => q.part === 1 || q.type === 'multiple_choice');
@@ -546,6 +584,45 @@ export default function ExamMgmt() {
         </div>
       </div>
 
+      {/* Bộ lọc Học kì 1 / Học kì 2 */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-150 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5 pl-1">
+            <Filter className="w-3.5 h-3.5 text-teal-600" /> Học kì:
+          </span>
+          <div className="inline-flex rounded-xl bg-gray-100 p-1 gap-1">
+            <button
+              onClick={() => setSemesterFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                semesterFilter === 'all' ? 'bg-white text-teal-700 shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>Tất cả học kì</span>
+            </button>
+            <button
+              onClick={() => setSemesterFilter('hk1')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                semesterFilter === 'hk1' ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>📁 Học kì 1</span>
+            </button>
+            <button
+              onClick={() => setSemesterFilter('hk2')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                semesterFilter === 'hk2' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <span>📁 Học kì 2</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="text-xs text-gray-400 font-medium italic hidden sm:block">
+          Hệ thống tự động gom đề vào thư mục: <strong>Học kì 1</strong> (GK1, CK1, HK1) & <strong>Học kì 2</strong> (GK2, CK2, HK2)
+        </div>
+      </div>
+
       {/* 4 Cột Khối Lớp */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {grades.map(grade => {
@@ -561,6 +638,125 @@ export default function ExamMgmt() {
             12: { border: 'border-rose-500', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-800' },
           }[grade as 6 | 7 | 8 | 9 | 10 | 11 | 12]
 
+          const renderCard = (exam: any) => (
+            <div 
+              key={exam.id} 
+              className="bg-white p-3 rounded-xl border border-gray-150 hover:border-teal-300 hover:shadow-md transition-all duration-200 group"
+            >
+              {editingExamId === exam.id ? (
+                <div className="flex gap-1 items-center mb-1">
+                  <input 
+                    type="text" 
+                    value={editingExamTitle} 
+                    onChange={(e) => setEditingExamTitle(e.target.value)} 
+                    className="w-full border border-teal-300 rounded px-2 py-1 text-xs font-bold text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-500 bg-teal-50/50"
+                    autoFocus
+                    disabled={savingRename}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        await handleRenameExam(exam.id)
+                      } else if (e.key === 'Escape') {
+                        setEditingExamId(null)
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => handleRenameExam(exam.id)}
+                    disabled={savingRename}
+                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded flex-shrink-0"
+                    title="Lưu"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setEditingExamId(null)}
+                    disabled={savingRename}
+                    className="p-1 text-gray-500 hover:bg-gray-50 rounded flex-shrink-0"
+                    title="Hủy"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-1 group/title mb-1">
+                  <h4 className="font-bold text-teal-800 text-sm leading-snug line-clamp-2" title={exam.title}>
+                    {exam.title}
+                  </h4>
+                  <button 
+                    onClick={() => { setEditingExamId(exam.id); setEditingExamTitle(exam.title); }}
+                    className="p-0.5 text-gray-400 hover:text-teal-600 rounded opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
+                    title="Đổi tên đề"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400 mb-2">
+                {fmt(new Date(exam.created_at), 'dd/MM/yyyy HH:mm')}
+              </p>
+              
+              <div className="flex justify-end gap-1.5 pt-1.5 border-t border-gray-50">
+                <button 
+                  onClick={() => handleViewPdf(exam)}
+                  disabled={compilingId === exam.id}
+                  className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                  title="Đọc PDF"
+                >
+                  {compilingId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => handleDownloadTex(exam.id, exam.title)}
+                  disabled={downloadingId === exam.id}
+                  className="p-1 text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                  title="Tải file LaTeX (.tex)"
+                >
+                  {downloadingId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => handleGenerateSimilarExam(exam)}
+                  disabled={generatingSimilarId === exam.id}
+                  className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                  title="Tạo đề tương tự (AI)"
+                >
+                  {generatingSimilarId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => handleOpenConfig(exam.id, exam.title)}
+                  className="p-1 text-orange-500 hover:bg-orange-50 rounded transition-colors"
+                  title="Cấu hình điểm"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handlePreview(exam.id, exam.title)}
+                  disabled={previewing === exam.id}
+                  className="p-1 text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                  title="Xem trước & Chỉnh sửa"
+                >
+                  {previewing === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => handleDelete(exam.id, exam.title)}
+                  className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                  title="Xóa đề thi"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )
+
+          // Nhóm các đề theo học kì
+          const hk1List = list.filter(e => getExamSemester(e.title) === 'hk1')
+          const hk2List = list.filter(e => getExamSemester(e.title) === 'hk2')
+          const otherList = list.filter(e => getExamSemester(e.title) === 'other')
+
+          const semesterSections = [
+            { id: 'hk1', label: 'Học kì 1', list: hk1List, badge: 'bg-amber-100 text-amber-800 border-amber-200', iconColor: 'text-amber-500', headerBg: 'bg-amber-50/70 border-amber-200 hover:bg-amber-100/60' },
+            { id: 'hk2', label: 'Học kì 2', list: hk2List, badge: 'bg-blue-100 text-blue-800 border-blue-200', iconColor: 'text-blue-500', headerBg: 'bg-blue-50/70 border-blue-200 hover:bg-blue-100/60' },
+            ...(otherList.length > 0 ? [{ id: 'other', label: 'Khác / Chuyên đề', list: otherList, badge: 'bg-gray-100 text-gray-700 border-gray-200', iconColor: 'text-gray-500', headerBg: 'bg-gray-50 border-gray-200 hover:bg-gray-100' }] : [])
+          ].filter(sec => semesterFilter === 'all' || semesterFilter === sec.id)
+
           return (
             <div key={grade} className={`flex flex-col rounded-2xl border-t-4 ${theme.border} bg-white shadow-sm overflow-hidden min-h-[400px]`}>
               {/* Header của cột */}
@@ -571,7 +767,7 @@ export default function ExamMgmt() {
                 </span>
               </div>
 
-              {/* Danh sách đề thi */}
+              {/* Danh sách đề thi phân theo Thư mục Học kì */}
               <div className="p-3 flex-1 space-y-3 overflow-y-auto max-h-[600px] custom-scrollbar bg-slate-50/30">
                 {loading && list.length === 0 && exams.length === 0 ? (
                   <div className="flex justify-center items-center h-32">
@@ -582,113 +778,48 @@ export default function ExamMgmt() {
                     Chưa có đề thi
                   </div>
                 ) : (
-                  list.map(exam => (
-                    <div 
-                      key={exam.id} 
-                      className="bg-white p-3 rounded-xl border border-gray-150 hover:border-teal-300 hover:shadow-md transition-all duration-200 group"
-                    >
-                      {editingExamId === exam.id ? (
-                        <div className="flex gap-1 items-center mb-1">
-                          <input 
-                            type="text" 
-                            value={editingExamTitle} 
-                            onChange={(e) => setEditingExamTitle(e.target.value)} 
-                            className="w-full border border-teal-300 rounded px-2 py-1 text-xs font-bold text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-500 bg-teal-50/50"
-                            autoFocus
-                            disabled={savingRename}
-                            onKeyDown={async (e) => {
-                              if (e.key === 'Enter') {
-                                await handleRenameExam(exam.id)
-                              } else if (e.key === 'Escape') {
-                                setEditingExamId(null)
-                              }
-                            }}
-                          />
-                          <button 
-                            onClick={() => handleRenameExam(exam.id)}
-                            disabled={savingRename}
-                            className="p-1 text-emerald-600 hover:bg-emerald-50 rounded flex-shrink-0"
-                            title="Lưu"
-                          >
-                            <Save className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => setEditingExamId(null)}
-                            disabled={savingRename}
-                            className="p-1 text-gray-500 hover:bg-gray-50 rounded flex-shrink-0"
-                            title="Hủy"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                  semesterSections.map(sec => {
+                    const folderKey = `${grade}_${sec.id}`
+                    const isOpen = openFolders[folderKey] ?? true
+
+                    return (
+                      <div key={sec.id} className="rounded-xl border border-gray-200 bg-white/80 overflow-hidden shadow-xs">
+                        {/* Header Thư mục Học kì */}
+                        <div
+                          onClick={() => toggleFolder(folderKey)}
+                          className={`flex items-center justify-between p-2.5 cursor-pointer select-none transition border-b ${sec.headerBg} ${isOpen ? 'border-gray-200' : 'border-transparent'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isOpen ? (
+                              <FolderOpen className={`w-4 h-4 ${sec.iconColor}`} />
+                            ) : (
+                              <Folder className={`w-4 h-4 ${sec.iconColor}`} />
+                            )}
+                            <span className="text-xs font-extrabold text-gray-800">{sec.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${sec.badge}`}>
+                              {sec.list.length} đề
+                            </span>
+                            {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="flex items-start justify-between gap-1 group/title mb-1">
-                          <h4 className="font-bold text-teal-800 text-sm leading-snug line-clamp-2" title={exam.title}>
-                            {exam.title}
-                          </h4>
-                          <button 
-                            onClick={() => { setEditingExamId(exam.id); setEditingExamTitle(exam.title); }}
-                            className="p-0.5 text-gray-400 hover:text-teal-600 rounded opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
-                            title="Đổi tên đề"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-[11px] text-gray-400 mb-2">
-                        {fmt(new Date(exam.created_at), 'dd/MM/yyyy HH:mm')}
-                      </p>
-                      
-                      <div className="flex justify-end gap-1.5 pt-1.5 border-t border-gray-50">
-                        <button 
-                          onClick={() => handleViewPdf(exam)}
-                          disabled={compilingId === exam.id}
-                          className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-colors"
-                          title="Đọc PDF"
-                        >
-                          {compilingId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadTex(exam.id, exam.title)}
-                          disabled={downloadingId === exam.id}
-                          className="p-1 text-teal-600 hover:bg-teal-50 rounded transition-colors"
-                          title="Tải file LaTeX (.tex)"
-                        >
-                          {downloadingId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                        </button>
-                        <button 
-                          onClick={() => handleGenerateSimilarExam(exam)}
-                          disabled={generatingSimilarId === exam.id}
-                          className="p-1 text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                          title="Tạo đề tương tự (AI)"
-                        >
-                          {generatingSimilarId === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        </button>
-                        <button 
-                          onClick={() => handleOpenConfig(exam.id, exam.title)}
-                          className="p-1 text-orange-500 hover:bg-orange-50 rounded transition-colors"
-                          title="Cấu hình điểm"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handlePreview(exam.id, exam.title)}
-                          disabled={previewing === exam.id}
-                          className="p-1 text-blue-500 hover:bg-blue-50 rounded transition-colors"
-                          title="Xem trước & Chỉnh sửa"
-                        >
-                          {previewing === exam.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(exam.id, exam.title)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                          title="Xóa đề thi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                        {/* Danh sách đề bên trong Thư mục */}
+                        {isOpen && (
+                          <div className="p-2 space-y-2.5 bg-gray-50/40">
+                            {sec.list.length === 0 ? (
+                              <div className="text-center py-3 text-gray-400 text-[11px] italic">
+                                Chưa có đề cho {sec.label}
+                              </div>
+                            ) : (
+                              sec.list.map(exam => renderCard(exam))
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
