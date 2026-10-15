@@ -2,8 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import MathText from '@/components/MathText';
-import { parseTFAnswer, serializeTFAnswer } from './ExamRoom';
-import { Check as CheckIcon, X as XIcon, Clock, ChevronLeft, Send } from 'lucide-react';
+import { Check as CheckIcon, X as XIcon, Clock, ChevronLeft, Send, RotateCw, Smartphone } from 'lucide-react';
 
 interface LessonExamRoomProps {
   examId: string;
@@ -18,6 +17,32 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(45 * 60); // Mặc định 45 phút
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  // Xoay ngang / dọc màn hình
+  const toggleOrientation = async () => {
+    try {
+      if (!isLandscape) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen().catch(() => {});
+        }
+        if (window.screen?.orientation?.lock) {
+          await window.screen.orientation.lock('landscape').catch(() => {});
+        }
+        setIsLandscape(true);
+      } else {
+        if (window.screen?.orientation?.unlock) {
+          window.screen.orientation.unlock();
+        }
+        if (document.exitFullscreen && document.fullscreenElement) {
+          await document.exitFullscreen().catch(() => {});
+        }
+        setIsLandscape(false);
+      }
+    } catch {
+      setIsLandscape(prev => !prev);
+    }
+  };
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -107,6 +132,16 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
               {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </span>
           </div>
+
+          {/* Nút xoay ngang màn hình */}
+          <button
+            onClick={toggleOrientation}
+            title={isLandscape ? "Chuyển về màn hình dọc" : "Xoay ngang màn hình để nhìn rộng đề thi"}
+            className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
+          >
+            <RotateCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isLandscape ? 'rotate-90 text-amber-300' : ''}`} />
+            <span>{isLandscape ? 'Dọc' : 'Ngang'}</span>
+          </button>
 
           <button 
             onClick={onExit} 

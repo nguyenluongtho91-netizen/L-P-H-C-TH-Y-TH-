@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Lock, CheckCircle, PlayCircle, ChevronLeft, Menu, X, BookOpen, FileText } from 'lucide-react'
+import { Lock, CheckCircle, PlayCircle, ChevronLeft, Menu, X, BookOpen, FileText, RotateCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import LessonExamRoom from '@/components/LessonExamRoom'
 import InteractiveVideoPlayer from '@/components/InteractiveVideoPlayer'
@@ -33,6 +33,31 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
   const [exams, setExams] = useState<any[]>([])
   const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(false)
+
+  const toggleOrientation = async () => {
+    try {
+      if (!isLandscape) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen().catch(() => {});
+        }
+        if (window.screen?.orientation?.lock) {
+          await window.screen.orientation.lock('landscape').catch(() => {});
+        }
+        setIsLandscape(true);
+      } else {
+        if (window.screen?.orientation?.unlock) {
+          window.screen.orientation.unlock();
+        }
+        if (document.exitFullscreen && document.fullscreenElement) {
+          await document.exitFullscreen().catch(() => {});
+        }
+        setIsLandscape(false);
+      }
+    } catch {
+      setIsLandscape(prev => !prev);
+    }
+  }
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('current_student')
@@ -133,14 +158,24 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
   return (
     <div className="flex flex-col md:flex-row h-screen bg-white overflow-hidden">
       {/* ── THANH TIÊU ĐỀ MOBILE (CHỈ HIỆN TRÊN ĐIỆN THOẠI) ── */}
-      <div className="md:hidden flex items-center justify-between px-3 py-2.5 bg-teal-700 text-white shadow-md z-30 shrink-0">
+      <div className="md:hidden flex items-center justify-between px-3 py-2 bg-teal-700 text-white shadow-md z-30 shrink-0 gap-2">
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-bold bg-teal-800 hover:bg-teal-900 active:scale-95 px-3 py-1.5 rounded-lg border border-teal-500 shadow-sm transition"
+          className="flex items-center gap-1.5 text-xs font-bold bg-teal-800 hover:bg-teal-900 active:scale-95 px-2.5 py-1.5 rounded-lg border border-teal-500 shadow-sm transition shrink-0"
         >
-          <Menu className="w-4 h-4" /> Đề cương bài học
+          <Menu className="w-4 h-4" /> Đề cương
         </button>
-        <span className="text-xs font-bold truncate max-w-[190px]">{course?.title || 'Khóa học trực tuyến'}</span>
+
+        <span className="text-xs font-bold truncate flex-1 text-center">{course?.title || 'Khóa học trực tuyến'}</span>
+
+        <button
+          onClick={toggleOrientation}
+          title={isLandscape ? "Chuyển về màn hình dọc" : "Xoay ngang màn hình"}
+          className="flex items-center gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 px-2.5 py-1.5 rounded-lg border border-emerald-400 shadow-sm transition shrink-0"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${isLandscape ? 'rotate-90 text-amber-300' : ''}`} />
+          <span>{isLandscape ? 'Dọc' : 'Xoay'}</span>
+        </button>
       </div>
 
       {/* ── BACKDROP MỜ KHI MỞ MENU TRÊN ĐIỆN THOẠI ── */}
