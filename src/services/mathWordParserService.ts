@@ -215,6 +215,148 @@ async function extractImages(
 }
 
 // ============================================================
+// OMML (OFFICE MATH) TO LATEX CONVERTER
+// ============================================================
+
+function ommlNodeToLatex(node: Element): string {
+  if (!node) return '';
+  const rawTag = (node.nodeName || '').toLowerCase();
+  const tag = rawTag.includes(':') ? rawTag.split(':')[1] : rawTag;
+
+  switch (tag) {
+    case 'omath':
+    case 'omathpara': {
+      let res = '';
+      for (let i = 0; i < node.childNodes.length; i++) {
+        const child = node.childNodes[i] as Element;
+        if (child.nodeType === 1) res += ommlNodeToLatex(child);
+      }
+      return res.trim();
+    }
+    case 'r': {
+      let text = '';
+      const tNodes = node.getElementsByTagName('m:t');
+      for (let i = 0; i < tNodes.length; i++) text += tNodes[i].textContent || '';
+      if (!text) {
+        const wtNodes = node.getElementsByTagName('w:t');
+        for (let i = 0; i < wtNodes.length; i++) text += wtNodes[i].textContent || '';
+      }
+      return text;
+    }
+    case 't': {
+      return node.textContent || '';
+    }
+    case 'f': { // Fraction \frac{num}{den}
+      const numNode = node.getElementsByTagName('m:num')[0];
+      const denNode = node.getElementsByTagName('m:den')[0];
+      const num = numNode ? ommlNodeToLatex(numNode) : '';
+      const den = denNode ? ommlNodeToLatex(denNode) : '';
+      return `\\frac{${num}}{${den}}`;
+    }
+    case 'num':
+    case 'den':
+    case 'e': { // General container
+      let res = '';
+      for (let i = 0; i < node.childNodes.length; i++) {
+        const child = node.childNodes[i] as Element;
+        if (child.nodeType === 1) res += ommlNodeToLatex(child);
+      }
+      return res;
+    }
+    case 'ssup': { // Superscript
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const supNode = node.getElementsByTagName('m:sup')[0];
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      const sup = supNode ? ommlNodeToLatex(supNode) : '';
+      return `{${e}}^{${sup}}`;
+    }
+    case 'ssub': { // Subscript
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const subNode = node.getElementsByTagName('m:sub')[0];
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      const sub = subNode ? ommlNodeToLatex(subNode) : '';
+      return `{${e}}_{${sub}}`;
+    }
+    case 'ssubsup': { // Sub-Superscript
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const subNode = node.getElementsByTagName('m:sub')[0];
+      const supNode = node.getElementsByTagName('m:sup')[0];
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      const sub = subNode ? ommlNodeToLatex(subNode) : '';
+      const sup = supNode ? ommlNodeToLatex(supNode) : '';
+      return `{${e}}_{${sub}}^{${sup}}`;
+    }
+    case 'rad': { // Radical / Root \sqrt[deg]{e}
+      const degNode = node.getElementsByTagName('m:deg')[0];
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const deg = degNode ? ommlNodeToLatex(degNode).trim() : '';
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      return deg ? `\\sqrt[${deg}]{${e}}` : `\\sqrt{${e}}`;
+    }
+    case 'd': { // Delimiters
+      const dPr = node.getElementsByTagName('m:dPr')[0];
+      let begChr = '(';
+      let endChr = ')';
+      if (dPr) {
+        const b = dPr.getElementsByTagName('m:begChr')[0];
+        const end = dPr.getElementsByTagName('m:endChr')[0];
+        if (b && b.getAttribute('m:val') !== null) begChr = b.getAttribute('m:val')!;
+        if (end && end.getAttribute('m:val') !== null) endChr = end.getAttribute('m:val')!;
+      }
+      const eNodes = node.getElementsByTagName('m:e');
+      if (begChr === '{' && !endChr) { // System of equations
+        const rows: string[] = [];
+        for (let i = 0; i < eNodes.length; i++) {
+          rows.push(ommlNodeToLatex(eNodes[i]));
+        }
+        return `\\begin{cases} ${rows.join(' \\\\ ')} \\end{cases}`;
+      }
+      let inner = '';
+      for (let i = 0; i < eNodes.length; i++) {
+        inner += ommlNodeToLatex(eNodes[i]);
+      }
+      const left = begChr ? (['(', '[', '{', '|'].includes(begChr) ? `\\left${begChr === '{' ? '\\{' : begChr}` : begChr) : '';
+      const right = endChr ? ([')', ']', '}', '|'].includes(endChr) ? `\\right${endChr === '}' ? '\\}' : endChr}` : endChr) : (begChr ? '\\right.' : '');
+      return `${left}${inner}${right}`;
+    }
+    case 'acc': { // Vector / Bar accent
+      const accPr = node.getElementsByTagName('m:accPr')[0];
+      const chrNode = accPr?.getElementsByTagName('m:chr')[0];
+      const chr = chrNode?.getAttribute('m:val') || '→';
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      if (chr === '→' || chr === '⃗') return `\\vec{${e}}`;
+      if (chr === '¯' || chr === '—') return `\\overline{${e}}`;
+      if (chr === '^' || chr === '̂') return `\\hat{${e}}`;
+      return `\\vec{${e}}`;
+    }
+    case 'func': { // Function (sin, cos, lim, log)
+      const fNameNode = node.getElementsByTagName('m:fName')[0];
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const fName = fNameNode ? ommlNodeToLatex(fNameNode) : '';
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      return `${fName}{${e}}`;
+    }
+    case 'eqarr': { // Equation array
+      const eNodes = node.getElementsByTagName('m:e');
+      const rows: string[] = [];
+      for (let i = 0; i < eNodes.length; i++) {
+        rows.push(ommlNodeToLatex(eNodes[i]));
+      }
+      return `\\begin{aligned} ${rows.join(' \\\\ ')} \\end{aligned}`;
+    }
+    default: {
+      let res = '';
+      for (let i = 0; i < node.childNodes.length; i++) {
+        const child = node.childNodes[i] as Element;
+        if (child.nodeType === 1) res += ommlNodeToLatex(child);
+      }
+      return res;
+    }
+  }
+}
+
+// ============================================================
 // EXTRACT PARAGRAPHS (TEXT + IMAGE + UNDERLINE) WITH OMML SUPPORT
 // ============================================================
 
@@ -230,63 +372,89 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
     let hasUnderline = false;
     const underlinedSegments: string[] = [];
 
-    const runs = p.getElementsByTagName('w:r');
-
-    for (let j = 0; j < runs.length; j++) {
-      const run = runs[j];
-
-      // ---------- images ----------
-      const blips = run.getElementsByTagName('a:blip');
-      for (let k = 0; k < blips.length; k++) {
-        const embed = blips[k].getAttribute('r:embed');
-        if (embed) imageRIds.push(embed);
-      }
-
-      const vImageData = run.getElementsByTagName('v:imagedata');
-      for (let k = 0; k < vImageData.length; k++) {
-        const rid = vImageData[k].getAttribute('r:id') || vImageData[k].getAttribute('o:relid');
-        if (rid) imageRIds.push(rid);
-      }
-
-      const drawings = run.getElementsByTagName('w:drawing');
-      for (let k = 0; k < drawings.length; k++) {
-        const innerBlips = drawings[k].getElementsByTagName('a:blip');
-        for (let l = 0; l < innerBlips.length; l++) {
-          const embed = innerBlips[l].getAttribute('r:embed');
-          if (embed && !imageRIds.includes(embed)) imageRIds.push(embed);
-        }
-      }
-
-      // ---------- underline detection ----------
-      const rPr = run.getElementsByTagName('w:rPr')[0];
-      const isUnderlined = rPr ? rPr.getElementsByTagName('w:u').length > 0 : false;
-
-      // ---------- text extraction (FIX: add m:t + w:br) ----------
-      let runText = '';
-
-      // w:t
-      const wTextNodes = run.getElementsByTagName('w:t');
-      for (let k = 0; k < wTextNodes.length; k++) runText += wTextNodes[k].textContent || '';
-
-      // ✅ OMML equation text: m:t
-      const mTextNodes = run.getElementsByTagName('m:t');
-      for (let k = 0; k < mTextNodes.length; k++) runText += mTextNodes[k].textContent || '';
-
-      // optional: field instruction
-      const instrNodes = run.getElementsByTagName('w:instrText');
-      for (let k = 0; k < instrNodes.length; k++) runText += instrNodes[k].textContent || '';
-
-      // ✅ line breaks inside paragraph
-      const brs = run.getElementsByTagName('w:br');
-      if (brs.length > 0) runText += '\n'.repeat(brs.length);
-
-      if (isUnderlined && runText.trim()) {
-        hasUnderline = true;
-        underlinedSegments.push(runText.trim());
-      }
-
-      text += runText;
+    // 1) Thu thập toàn bộ ảnh trong paragraph (kể cả w:drawing, w:pict trực tiếp)
+    const allBlips = p.getElementsByTagName('a:blip');
+    for (let k = 0; k < allBlips.length; k++) {
+      const embed = allBlips[k].getAttribute('r:embed');
+      if (embed && !imageRIds.includes(embed)) imageRIds.push(embed);
     }
+
+    const allVImgs = p.getElementsByTagName('v:imagedata');
+    for (let k = 0; k < allVImgs.length; k++) {
+      const rid = allVImgs[k].getAttribute('r:id') || allVImgs[k].getAttribute('o:relid');
+      if (rid && !imageRIds.includes(rid)) imageRIds.push(rid);
+    }
+
+    // 2) Duyệt toàn bộ các node con của paragraph theo đúng thứ tự tài liệu
+    const childNodes = Array.from(p.childNodes);
+
+    for (let j = 0; j < childNodes.length; j++) {
+      const node = childNodes[j] as Element;
+      if (node.nodeType !== 1) continue;
+
+      const nodeName = (node.nodeName || '').toLowerCase();
+
+      // ✅ A. Nếu là công thức Toán OMML (m:oMath hoặc m:oMathPara)
+      if (nodeName === 'm:omath' || nodeName === 'm:omathpara') {
+        const latex = ommlNodeToLatex(node);
+        if (latex.trim()) {
+          text += ` $${latex.trim()}$ `;
+        }
+        continue;
+      }
+
+      // ✅ B. Nếu là run bình thường (w:r)
+      if (nodeName === 'w:r') {
+        const rPr = node.getElementsByTagName('w:rPr')[0];
+        const isUnderlined = rPr ? rPr.getElementsByTagName('w:u').length > 0 : false;
+        
+        // Hóa học & Toán: Kiểm tra chỉ số trên / chỉ số dưới (subscript / superscript)
+        const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0];
+        const vertAlign = vertAlignNode?.getAttribute('w:val');
+
+        let runText = '';
+
+        // w:t
+        const wTextNodes = node.getElementsByTagName('w:t');
+        for (let k = 0; k < wTextNodes.length; k++) runText += wTextNodes[k].textContent || '';
+
+        // OMML inline
+        const mMath = node.getElementsByTagName('m:oMath')[0];
+        if (mMath) {
+          const ltx = ommlNodeToLatex(mMath);
+          if (ltx.trim()) runText += ` $${ltx.trim()}$ `;
+        } else {
+          const mTextNodes = node.getElementsByTagName('m:t');
+          for (let k = 0; k < mTextNodes.length; k++) runText += mTextNodes[k].textContent || '';
+        }
+
+        // line breaks
+        const brs = node.getElementsByTagName('w:br');
+        if (brs.length > 0) runText += '\n'.repeat(brs.length);
+
+        // ✅ Chuyển chỉ số trên / dưới cho Công thức Hóa học & Toán học (H2SO4 -> H₂SO₄ hoặc H_{2}SO_{4})
+        if (vertAlign === 'subscript' && runText.trim()) {
+          runText = `<sub>${runText}</sub>`;
+        } else if (vertAlign === 'superscript' && runText.trim()) {
+          runText = `<sup>${runText}</sup>`;
+        }
+
+        if (isUnderlined && runText.trim()) {
+          hasUnderline = true;
+          underlinedSegments.push(runText.trim());
+        }
+
+        text += runText;
+      }
+    }
+
+    // ✅ C. Chuẩn hóa công thức hóa học: Mũi tên phản ứng
+    text = text.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
+    text = text.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
+    text = text.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
+    text = text.replace(/\s*<=>\s*/g, ' $\\rightleftharpoons$ ');
+    text = text.replace(/\s*⇌\s*/g, ' $\\rightleftharpoons$ ');
+    text = text.replace(/\s*→\s*/g, ' $\\rightarrow$ ');
 
     text = normalizeVietnamese(text.trim());
     text = normalizeLatex(text);
