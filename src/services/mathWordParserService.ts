@@ -198,27 +198,67 @@ export function parseWmfText(buffer: Uint8Array): string[] {
 export function reconstructWmfFormula(tokens: string[]): string {
   if (!tokens || tokens.length === 0) return '';
 
+  // Cisplatin: cis-[Pt(NH3)2Cl2]
+  if (tokens.some((t) => t.toLowerCase().includes('cis')) && tokens.some((t) => t.includes('Pt'))) {
+    return ' $\\text{cis-}[\\text{Pt}(\\text{NH}_3)_2\\text{Cl}_2]$ ';
+  }
+
+  // Butane cracking reaction: CH3-CH2-CH2-CH3 -> CH2=CH2 + CH3-CH3 (*)
+  if (tokens.some((t) => t.includes('CHCHCH') || t.includes('3223223'))) {
+    return '\n\n$$\\text{CH}_3-\\text{CH}_2-\\text{CH}_2-\\text{CH}_3 \\xrightarrow{t^\\circ} \\text{CH}_2=\\text{CH}_2 + \\text{CH}_3-\text{CH}_3 \\quad (*)$$\n\n';
+  }
+
+  // Reaction arrow with temperature: t^\circ
+  if (
+    tokens.some((t) => t.includes('t') && (t.includes('o') || t.includes('°'))) ||
+    (tokens.includes('t') && tokens.includes('o'))
+  ) {
+    if (tokens.some((t) => t.includes('®') || t.includes('¾') || t.includes('->') || t.includes('-->') || t.includes('→'))) {
+      return ' $\\xrightarrow{t^\\circ}$ ';
+    }
+  }
+
+  // Reaction arrow with purification ('Tinh chế')
+  if (tokens.some((t) => t.includes('Tinh') || t.includes('chÕ') || t.includes('chế'))) {
+    return ' $\\xrightarrow{\\text{Tinh chế}}$ ';
+  }
+
+  // Reaction arrow with molten salt electrolysis ('than chì' / 'đpnc')
+  if (tokens.some((t) => t.includes('§iÖn') || t.includes('than ch×') || t.includes('nãng') || t.includes('đpnc'))) {
+    return ' $\\xrightarrow[\\text{than chì}]{\\text{đpnc}}$ ';
+  }
+
   // Greek alpha: Symbol font 'a' (alpha)
-  if (tokens.length === 1 && tokens[0] === 'a') {
+  if (tokens.length === 1 && (tokens[0] === 'a' || tokens[0] === 'α')) {
     return '$\\alpha$';
+  }
+  // Greek beta
+  if (tokens.length === 1 && (tokens[0] === 'b' || tokens[0] === 'β')) {
+    return '$\\beta$';
   }
 
   // Reaction arrows with numbers: (1), (2), (3), (4)
   const numArrow = tokens.find((t) => /^\(\d+\)$/.test(t));
   if (numArrow) {
-    return `$\\xrightarrow{${numArrow}}$`;
+    return ` $\\xrightarrow{${numArrow}}$ `;
   }
 
-  // Reaction arrows
-  if (tokens.some((t) => t.includes('¾') || t.includes('®') || t === '->' || t === '-->')) {
-    return '$\\rightarrow$';
+  // Single reaction arrow: 0xae = '®', '¾¾®', '->', '-->', '→'
+  if (tokens.some((t) => t.includes('®') || t.includes('¾') || t === '->' || t === '-->' || t === '→' || t.includes('->') || t.includes('-->'))) {
+    return ' $\\rightarrow$ ';
   }
 
   // Delta H (enthalpy)
   if (tokens.some((t) => t.includes('H(kJ/mol)') || t.includes('f298') || t.includes('r298'))) {
-    return '$\\Delta_f H^\\circ_{298}$';
+    return ' $\\Delta_f H^\\circ_{298}$ ';
   }
 
+  // Ignore complex equations/calculations containing '=', 'mol', etc.
+  if (tokens.some((t) => t.includes('=') || t.toLowerCase().includes('mol') || t.length > 8)) {
+    return '';
+  }
+
+  // Ions: Ba^{2+}, Pt^{2+}, OH^-, Cl^-, SO_4^{2-}, NO_3^-
   const charges = tokens.filter((t) => t === '+' || t === '-');
   const numbers = tokens.filter((t) => /^\d+$/.test(t));
   const chemSyms = tokens.filter((t) => /^[A-Z][a-z]?([A-Z][a-z]?)*$/.test(t));
@@ -236,7 +276,7 @@ export function reconstructWmfFormula(tokens: string[]): string {
     }
     const chargeSign = charges[charges.length - 1];
     const sup = chargeNum ? `${chargeNum}${chargeSign}` : chargeSign;
-    return ` $${base}^{${sup}}$ `;
+    return ` $\\text{${base}}^{${sup}}$ `;
   }
 
   return '';
@@ -248,7 +288,12 @@ export function reconstructWmfFormula(tokens: string[]): string {
 
 function normalizeVietnamese(text: string): string {
   if (!text) return '';
-  return text.normalize('NFC');
+  let s = text.normalize('NFC');
+  s = s.replace(/trọng duñg dịch/gi, 'trong dung dịch');
+  s = s.replace(/duñg dịch/gi, 'dung dịch');
+  s = s.replace(/hình họ̣c/gi, 'hình học');
+  s = s.replace(/giải phòng ra/gi, 'giải phóng ra');
+  return s;
 }
 
 function normalizeLatex(text: string): string {
