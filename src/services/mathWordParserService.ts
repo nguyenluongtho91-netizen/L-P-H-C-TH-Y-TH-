@@ -1113,7 +1113,15 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     const imageRIds = para.imageRIds;
 
     if (!text && imageRIds.length === 0) continue;
-    if (/PHẦN\s*\d/i.test(text) || /PHAN\s*\d/i.test(text)) continue;
+    if (
+      /PHẦN\s*\d/i.test(text) ||
+      /PHAN\s*\d/i.test(text) ||
+      /Thí\s*sinh\s*trả\s*lời/i.test(text) ||
+      /chọn\s*đúng\s*hoặc\s*sai/i.test(text) ||
+      /ở\s*mỗi\s*câu/i.test(text)
+    ) {
+      continue;
+    }
 
     const qMatch = text.match(questionPattern);
     if (qMatch) {
