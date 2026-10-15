@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import MathText from '@/components/MathText';
 import { parseTFAnswer, serializeTFAnswer } from './ExamRoom';
-import { Check as CheckIcon, X as XIcon } from 'lucide-react';
+import { Check as CheckIcon, X as XIcon, Clock, ChevronLeft, Send } from 'lucide-react';
 
 interface LessonExamRoomProps {
   examId: string;
@@ -87,69 +87,112 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
   const answeredCount = Object.keys(answers).length;
   const totalQuestions = exam?.questions?.length || 0;
 
-  if (loading) return <div className="h-full flex items-center justify-center bg-gray-50">⏳ Đang tải bài tập...</div>;
-  if (!exam) return <div className="h-full flex items-center justify-center text-red-500 bg-gray-50">❌ Không tìm thấy dữ liệu bài tập</div>;
+  if (loading) return <div className="h-full flex items-center justify-center bg-gray-50 text-teal-700 font-bold p-6">⏳ Đang tải bài tập...</div>;
+  if (!exam) return <div className="h-full flex items-center justify-center text-red-500 bg-gray-50 font-bold p-6">❌ Không tìm thấy dữ liệu bài tập</div>;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* HEADER PHÒNG THI ẢO */}
-      <div className="bg-teal-700 text-white p-4 flex justify-between items-center shadow-md">
-        <div>
-          <h2 className="font-bold text-lg">{exam.title}</h2>
-          <p className="text-xs text-teal-100">Bài tập Luyện tập • Học sinh: {studentName}</p>
+    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
+      {/* ── HEADER PHÒNG THI ẢO (TỐI ƯU CỰC MƯỢT TRÊN ĐIỆN THOẠI) ── */}
+      <div className="bg-teal-700 text-white px-3 py-2 sm:px-6 sm:py-3.5 flex items-center justify-between gap-2 shadow-md shrink-0 z-30">
+        <div className="flex-1 min-w-0 pr-1 sm:pr-4">
+          <h2 className="font-extrabold text-xs sm:text-base md:text-lg truncate leading-tight">{exam.title}</h2>
+          <p className="text-[10px] sm:text-xs text-teal-200 truncate mt-0.5">Học sinh: <strong className="text-white">{studentName}</strong></p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-center bg-teal-800 px-4 py-1 rounded-lg border border-teal-600">
-            <p className="text-[10px] text-teal-200 uppercase">Còn lại</p>
-            <p className="font-mono font-bold text-xl">
+
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Đồng hồ đếm ngược */}
+          <div className="text-center bg-teal-900/80 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg border border-teal-500 flex items-center gap-1">
+            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-300" />
+            <span className="font-mono font-black text-xs sm:text-base leading-none text-teal-100">
               {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-            </p>
+            </span>
           </div>
-          <button onClick={onExit} className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-xl font-bold transition shadow-md">
+
+          <button 
+            onClick={onExit} 
+            className="bg-gray-600 hover:bg-gray-700 active:scale-95 text-white px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold transition"
+          >
             Thoát
           </button>
-          <button onClick={() => setShowConfirm(true)} className="bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-xl font-bold transition shadow-lg">
-            Nộp bài
+
+          <button 
+            onClick={() => setShowConfirm(true)} 
+            className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3 py-1 sm:px-4 sm:py-1.5 rounded-lg text-xs sm:text-sm font-black transition shadow flex items-center gap-1"
+          >
+            <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Nộp bài
           </button>
         </div>
       </div>
 
-      {/* DANH SÁCH CÂU HỎI */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full space-y-6 custom-scrollbar">
+      {/* ── DANH SÁCH CÂU HỎI (CUỘN RIÊNG, KHÔNG BỊ CHE KHUẤT) ── */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 max-w-4xl mx-auto w-full space-y-3.5 sm:space-y-5 custom-scrollbar pb-24">
         {exam.questions.map((q: any, i: number) => {
           const displayNum = i + 1;
           const uAns = answers[q.number];
           
           return (
-            <div key={q.number} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-              <div className="flex gap-3 mb-4 border-b pb-3">
-                <div className="w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-bold">{displayNum}</div>
-                <div className="flex-1 pt-1"><MathText html={q.text} block /></div>
+            <div key={q.number} className="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
+              {/* Tiêu đề câu hỏi */}
+              <div className="flex items-start gap-2.5 sm:gap-3 mb-3 border-b pb-2.5">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-black text-xs sm:text-sm shrink-0 mt-0.5">
+                  {displayNum}
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5 text-xs sm:text-sm md:text-base text-gray-800 font-medium overflow-x-auto leading-relaxed">
+                  <MathText html={q.text} block />
+                </div>
               </div>
 
+              {/* DẠNG 1: Trắc nghiệm 4 lựa chọn (1 cột trên Mobile, 2 cột trên Tablet/Desktop) */}
               {q.type === 'multiple_choice' && (
-                <div className="grid grid-cols-2 gap-3 pl-11">
-                  {q.options?.map((opt: any) => (
-                    <label key={opt.letter} className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition ${uAns === opt.letter ? 'border-teal-500 bg-teal-50' : 'border-gray-100'}`}>
-                      <input type="radio" name={`q${q.number}`} value={opt.letter} checked={uAns === opt.letter} onChange={e => handleAnswer(q.number, e.target.value)} className="hidden" />
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${uAns === opt.letter ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{opt.letter}</span>
-                      <MathText html={opt.text} />
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 pl-0 sm:pl-9">
+                  {q.options?.map((opt: any) => {
+                    const isSelected = uAns === opt.letter;
+                    return (
+                      <label 
+                        key={opt.letter} 
+                        className={`flex items-start gap-2.5 p-2.5 sm:p-3 border-2 rounded-xl cursor-pointer transition select-none ${
+                          isSelected ? 'border-teal-500 bg-teal-50/80 shadow-sm' : 'border-gray-100 hover:border-teal-200 bg-white'
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name={`q${q.number}`} 
+                          value={opt.letter} 
+                          checked={isSelected} 
+                          onChange={e => handleAnswer(q.number, e.target.value)} 
+                          className="hidden" 
+                        />
+                        <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5 transition ${
+                          isSelected ? 'bg-teal-500 text-white shadow' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {opt.letter}
+                        </span>
+                        <div className="flex-1 overflow-x-auto min-w-0 text-xs sm:text-sm text-gray-800 leading-snug">
+                          <MathText html={opt.text} />
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Các câu Đúng / Sai */}
+              {/* DẠNG 2: Các câu Đúng / Sai chuẩn format 2025 */}
               {q.type === 'true_false' && (
-                <div className="pl-11">
+                <div className="pl-0 sm:pl-9 overflow-x-auto">
                   <TrueFalseGrid options={q.options || []} userAnswer={uAns} onChange={val => handleAnswer(q.number, val)} />
                 </div>
               )}
 
-              {/* Các câu Trả lời ngắn */}
+              {/* DẠNG 3: Các câu Trả lời ngắn / Điền số */}
               {q.type === 'short_answer' && (
-                <div className="pl-11">
-                  <input type="text" value={uAns || ''} onChange={e => handleAnswer(q.number, e.target.value)} placeholder="Nhập đáp án..." className="w-full max-w-sm p-3 border-2 border-gray-200 rounded-xl outline-none focus:border-teal-500" />
+                <div className="pl-0 sm:pl-9">
+                  <input 
+                    type="text" 
+                    value={uAns || ''} 
+                    onChange={e => handleAnswer(q.number, e.target.value)} 
+                    placeholder="Nhập đáp án của em..." 
+                    className="w-full max-w-md p-2.5 sm:p-3 text-xs sm:text-sm border-2 border-gray-200 rounded-xl outline-none focus:border-teal-500 transition" 
+                  />
                 </div>
               )}
             </div>
@@ -157,15 +200,27 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
         })}
       </div>
 
-      {/* CONFIRM MODAL */}
+      {/* ── MODAL XÁC NHẬN NỘP BÀI ── */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
-            <h3 className="text-xl font-bold mb-2">Xác nhận nộp bài?</h3>
-            <p className="text-gray-600 mb-6">Đã làm: {answeredCount}/{totalQuestions} câu</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowConfirm(false)} className="flex-1 py-3 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50">Làm tiếp</button>
-              <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700">Nộp luôn</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 max-w-sm w-full text-center shadow-2xl">
+            <h3 className="text-lg sm:text-xl font-extrabold mb-1.5 text-gray-900">Xác nhận nộp bài?</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mb-5">
+              Em đã hoàn thành <strong className="text-teal-600">{answeredCount}/{totalQuestions}</strong> câu hỏi.
+            </p>
+            <div className="flex gap-2.5">
+              <button 
+                onClick={() => setShowConfirm(false)} 
+                className="flex-1 py-2.5 rounded-xl border border-gray-300 font-bold text-gray-700 hover:bg-gray-50 text-xs sm:text-sm transition"
+              >
+                Làm tiếp
+              </button>
+              <button 
+                onClick={handleSubmit} 
+                className="flex-1 py-2.5 rounded-xl font-black text-white bg-teal-600 hover:bg-teal-700 text-xs sm:text-sm transition shadow-lg"
+              >
+                Nộp luôn
+              </button>
             </div>
           </div>
         </div>
@@ -174,7 +229,7 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
   )
 }
 
-// Bảng Đúng/Sai cực kỳ trực quan
+// Bảng Đúng/Sai tối ưu cho cả điện thoại màn hình hẹp
 const TrueFalseGrid: React.FC<any> = ({ options, userAnswer, onChange }) => {
   const tfMap = useMemo(() => parseTFAnswer(userAnswer), [userAnswer]);
   
@@ -185,12 +240,12 @@ const TrueFalseGrid: React.FC<any> = ({ options, userAnswer, onChange }) => {
   };
 
   return (
-    <div className="rounded-xl border-2 border-teal-600 overflow-hidden shadow-sm mt-3">
+    <div className="rounded-xl border-2 border-teal-600 overflow-hidden shadow-sm mt-2">
       {/* HEADER BẢNG */}
-      <div className="grid grid-cols-[1fr_70px_70px] sm:grid-cols-[1fr_90px_90px] bg-teal-600 text-xs font-black text-white uppercase divide-x-2 divide-teal-500 border-b-2 border-teal-600">
-        <div className="px-4 py-3 flex items-center bg-teal-600">Mệnh đề</div>
-        <div className="py-3 flex items-center justify-center gap-1 bg-teal-600"><CheckIcon className="w-4 h-4"/> Đúng</div>
-        <div className="py-3 flex items-center justify-center gap-1 bg-teal-600"><XIcon className="w-4 h-4"/> Sai</div>
+      <div className="grid grid-cols-[1fr_60px_60px] sm:grid-cols-[1fr_80px_80px] bg-teal-600 text-[11px] sm:text-xs font-black text-white uppercase divide-x-2 divide-teal-500 border-b-2 border-teal-600">
+        <div className="px-3 py-2 flex items-center bg-teal-600">Mệnh đề</div>
+        <div className="py-2 flex items-center justify-center gap-1 bg-teal-600"><CheckIcon className="w-3.5 h-3.5"/> Đúng</div>
+        <div className="py-2 flex items-center justify-center gap-1 bg-teal-600"><XIcon className="w-3.5 h-3.5"/> Sai</div>
       </div>
       
       {/* CÁC DÒNG MỆNH ĐỀ */}
@@ -200,29 +255,36 @@ const TrueFalseGrid: React.FC<any> = ({ options, userAnswer, onChange }) => {
           const cVal = tfMap[opt.letter.toLowerCase()];
           
           return (
-            <div key={opt.letter} className="grid grid-cols-[1fr_70px_70px] sm:grid-cols-[1fr_90px_90px] bg-white divide-x-2 divide-teal-100 hover:bg-teal-50/30 transition-colors">
-              
-              <div className="px-4 py-4 flex gap-3 items-start">
-                <span className="w-7 h-7 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-[13px] font-black shrink-0 shadow-sm border border-teal-100">
+            <div key={opt.letter} className="grid grid-cols-[1fr_60px_60px] sm:grid-cols-[1fr_80px_80px] bg-white divide-x-2 divide-teal-100 hover:bg-teal-50/30 transition-colors">
+              <div className="px-3 py-2.5 sm:px-4 sm:py-3 flex gap-2 items-start">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-xs font-black shrink-0 shadow-sm border border-teal-100 mt-0.5">
                   {displayLetter}
                 </span>
-                <MathText html={opt.text || ''} className="flex-1 text-[15px] pt-0.5 text-gray-800" />
+                <div className="flex-1 text-xs sm:text-sm text-gray-800 leading-snug overflow-x-auto">
+                  <MathText html={opt.text || ''} />
+                </div>
               </div>
 
               {/* NÚT ĐÚNG */}
               <button 
+                type="button"
                 onClick={() => handleSelect(opt.letter, 'T')} 
-                className={`flex items-center justify-center transition-all outline-none hover:bg-emerald-50 ${cVal === 'T' ? 'bg-emerald-500 text-white shadow-inner' : 'text-gray-300'}`}
+                className={`flex items-center justify-center transition-all outline-none active:scale-90 ${
+                  cVal === 'T' ? 'bg-emerald-500 text-white font-black shadow-inner' : 'text-gray-300 hover:bg-emerald-50'
+                }`}
               >
-                {cVal === 'T' ? <CheckIcon className="w-6 h-6 stroke-[3]" /> : ''}
+                {cVal === 'T' ? <CheckIcon className="w-5 h-5 stroke-[3]" /> : <span className="text-gray-300 text-xs">Đ</span>}
               </button>
 
               {/* NÚT SAI */}
               <button 
+                type="button"
                 onClick={() => handleSelect(opt.letter, 'F')} 
-                className={`flex items-center justify-center transition-all outline-none hover:bg-red-50 ${cVal === 'F' ? 'bg-red-500 text-white shadow-inner' : 'text-gray-300'}`}
+                className={`flex items-center justify-center transition-all outline-none active:scale-90 ${
+                  cVal === 'F' ? 'bg-red-500 text-white font-black shadow-inner' : 'text-gray-300 hover:bg-red-50'
+                }`}
               >
-                {cVal === 'F' ? <XIcon className="w-6 h-6 stroke-[3]" /> : ''}
+                {cVal === 'F' ? <XIcon className="w-5 h-5 stroke-[3]" /> : <span className="text-gray-300 text-xs">S</span>}
               </button>
             </div>
           );

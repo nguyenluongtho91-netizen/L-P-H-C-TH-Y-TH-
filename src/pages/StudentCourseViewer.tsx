@@ -1,10 +1,10 @@
 // @ts-nocheck
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Lock, CheckCircle, PlayCircle, ChevronLeft } from 'lucide-react'
+import { Lock, CheckCircle, PlayCircle, ChevronLeft, Menu, X, BookOpen, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import LessonExamRoom from '@/components/LessonExamRoom'
-import InteractiveVideoPlayer from '@/components/InteractiveVideoPlayer' // ✅ Import Player
+import InteractiveVideoPlayer from '@/components/InteractiveVideoPlayer'
 import toast from 'react-hot-toast'
 
 const sortLessons = (lessons: any[]) => {
@@ -32,6 +32,7 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
   const [studentName, setStudentName] = useState('Học sinh')
   const [exams, setExams] = useState<any[]>([])
   const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('current_student')
@@ -53,7 +54,6 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
       setProgress(progressData || [])
       setExams(examsData || [])
       
-      // Sắp xếp bài học theo thứ tự đánh số để chọn đúng bài học đầu tiên làm activeLesson
       if (courseData?.chapters && courseData.chapters.length > 0) {
         const sortedChapters = [...courseData.chapters].sort((a: any, b: any) => a.order_index - b.order_index)
         const firstChapter = sortedChapters[0]
@@ -65,11 +65,6 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
     }
     fetchData()
   }, [courseId, studentId])
-
-  useEffect(() => {
-    console.log('🔍 [DEBUG] StudentCourseViewer - course:', course)
-    console.log('🔍 [DEBUG] StudentCourseViewer - activeLesson:', activeLesson)
-  }, [course, activeLesson])
 
   useEffect(() => {
     if (activeLesson) {
@@ -84,11 +79,8 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
     }
   }, [activeLesson])
 
-  const isUnlocked = (lesson: any) => {
-    return true // Bỏ khóa hoàn toàn theo yêu cầu của thầy
-  }
+  const isUnlocked = (_lesson: any) => true
 
-  // Hàm lưu tiến trình chung (Dùng cho cả nộp Bài tập lẫn làm Video xong)
   const handlePracticeSubmitted = async (percentage: number) => {
     try {
       await supabase.from('student_progress').upsert({
@@ -115,12 +107,15 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
   if (activePracticeExamId) {
     return (
       <div className="fixed inset-0 z-50 bg-white flex flex-col">
-        <div className="p-4 bg-gray-100 flex items-center border-b shadow-sm">
-          <button onClick={() => setActivePracticeExamId(null)} className="flex items-center gap-2 text-gray-600 hover:text-red-600 font-bold transition">
-            <ChevronLeft /> Thoát luyện tập
+        <div className="px-3 py-2 sm:p-4 bg-gray-100 flex items-center border-b shadow-sm">
+          <button 
+            onClick={() => setActivePracticeExamId(null)} 
+            className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-700 hover:text-red-600 font-bold transition py-1 px-2 rounded-lg hover:bg-gray-200"
+          >
+            <ChevronLeft className="w-4 h-4" /> Thoát luyện tập
           </button>
         </div>
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden">
           <LessonExamRoom 
             examId={activePracticeExamId} 
             studentName={studentName}
@@ -132,28 +127,76 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
     )
   }
 
+  const currentExamIds = activeLesson ? (activeLesson.exam_ids || (activeLesson.exam_id ? [activeLesson.exam_id] : [])) : [];
+  const currentPdfs = activeLesson ? (activeLesson.pdf_list || (activeLesson.pdf_url ? [{ name: 'Tài liệu PDF', url: activeLesson.pdf_url }] : [])) : [];
+
   return (
-    <div className="flex h-screen bg-white">
-      <aside className="w-80 border-r overflow-y-auto p-4 bg-gray-50 custom-scrollbar">
-        <h2 className="font-bold text-lg mb-6">{course?.title}</h2>
+    <div className="flex flex-col md:flex-row h-screen bg-white overflow-hidden">
+      {/* ── THANH TIÊU ĐỀ MOBILE (CHỈ HIỆN TRÊN ĐIỆN THOẠI) ── */}
+      <div className="md:hidden flex items-center justify-between px-3 py-2.5 bg-teal-700 text-white shadow-md z-30 shrink-0">
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-bold bg-teal-800 hover:bg-teal-900 active:scale-95 px-3 py-1.5 rounded-lg border border-teal-500 shadow-sm transition"
+        >
+          <Menu className="w-4 h-4" /> Đề cương bài học
+        </button>
+        <span className="text-xs font-bold truncate max-w-[190px]">{course?.title || 'Khóa học trực tuyến'}</span>
+      </div>
+
+      {/* ── BACKDROP MỜ KHI MỞ MENU TRÊN ĐIỆN THOẠI ── */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden animate-fade-in"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── SIDEBAR ĐỀ CƯƠNG (RESPONSIVE DRAWER TRÊN MOBILE, CỐ ĐỊNH TRÊN DESKTOP) ── */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] border-r overflow-y-auto p-4 bg-gray-50 custom-scrollbar transition-transform duration-300 md:static md:translate-x-0 ${
+        isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+      }`}>
+        <div className="flex items-center justify-between mb-4 md:mb-6 pb-2 border-b md:border-none">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-teal-600 shrink-0" />
+            <h2 className="font-extrabold text-base sm:text-lg text-teal-950 line-clamp-2">{course?.title}</h2>
+          </div>
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition"
+            title="Đóng menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
         {course?.chapters?.sort((a:any, b:any) => a.order_index - b.order_index).map((chapter: any) => (
-          <div key={chapter.id} className="mb-6">
-            <h3 className="text-xs font-black text-gray-400 uppercase mb-3">{chapter.title}</h3>
-            <div className="space-y-2">
+          <div key={chapter.id} className="mb-5">
+            <h3 className="text-xs font-black text-gray-400 uppercase tracking-wider mb-2.5 px-1">{chapter.title}</h3>
+            <div className="space-y-1.5">
               {sortLessons(chapter.lessons || []).map((lesson: any) => {
                 const unlocked = isUnlocked(lesson)
                 const passed = progress.find(p => p.lesson_id === lesson.id)?.is_passed
+                const isSelected = activeLesson?.id === lesson.id
                 return (
                   <button 
                     key={lesson.id}
                     disabled={!unlocked}
-                    onClick={() => setActiveLesson(lesson)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                      activeLesson?.id === lesson.id ? 'bg-teal-600 text-white shadow-lg' : 'hover:bg-teal-50'
+                    onClick={() => {
+                      setActiveLesson(lesson);
+                      setIsSidebarOpen(false); // Tự động đóng sidebar trên mobile sau khi chọn bài
+                    }}
+                    className={`w-full flex items-center gap-2.5 p-2.5 sm:p-3 rounded-xl transition-all text-left ${
+                      isSelected ? 'bg-teal-600 text-white shadow-md' : 'hover:bg-teal-50 text-gray-700'
                     } ${!unlocked ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                   >
-                    {passed ? <CheckCircle className="w-5 h-5 text-green-400" /> : unlocked ? <PlayCircle className="w-5 h-5 text-teal-400" /> : <Lock className="w-5 h-5" />}
-                    <span className="text-sm font-bold text-left">{lesson.title}</span>
+                    {passed ? (
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 shrink-0" />
+                    ) : unlocked ? (
+                      <PlayCircle className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${isSelected ? 'text-white' : 'text-teal-500'}`} />
+                    ) : (
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0" />
+                    )}
+                    <span className="text-xs sm:text-sm font-semibold line-clamp-2 leading-snug">{lesson.title}</span>
                   </button>
                 )
               })}
@@ -162,70 +205,93 @@ export default function StudentCourseViewer({ courseId: propCourseId, studentId:
         ))}
       </aside>
 
-      <main className="flex-1 flex flex-col">
+      {/* ── KHU VỰC NỘI DUNG CHÍNH (MAIN) ── */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto md:overflow-hidden bg-gray-50">
         {activeLesson ? (
-          <div className="flex-1 flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center bg-white shadow-sm z-10">
-              <h1 className="font-extrabold text-xl">{activeLesson.title}</h1>
-              {(() => {
-                const currentExamIds = activeLesson.exam_ids || (activeLesson.exam_id ? [activeLesson.exam_id] : []);
-                if (currentExamIds.length === 0) return null;
-                return (
-                  <div className="flex flex-wrap gap-2">
+          <div className="flex-1 flex flex-col min-w-0 h-full">
+            {/* Header bài học + Nút làm bài thi online */}
+            <div className="p-3 sm:p-4 border-b bg-white shadow-sm z-10 shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-bold uppercase bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">Bài học đang chọn</span>
+                  </div>
+                  <h1 className="font-extrabold text-base sm:text-xl text-gray-900 leading-snug break-words">
+                    {activeLesson.title}
+                  </h1>
+                </div>
+
+                {/* Các nút đề thi Online */}
+                {currentExamIds.length > 0 && (
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto shrink-0">
                     {currentExamIds.map((exId: string, idx: number) => {
                       const examObj = exams.find((e: any) => e.id === exId);
-                      const displayTitle = examObj?.title || `Luyện tập ${idx + 1}`;
+                      const displayTitle = examObj?.title || `Đề thi ${idx + 1}`;
                       return (
                         <button 
                           key={exId} 
                           onClick={() => setActivePracticeExamId(exId)} 
-                          className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl shadow-md transition text-xs flex items-center gap-1"
+                          className="w-full sm:w-auto bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5"
                         >
-                          ✏️ {displayTitle}
+                          <span>✏️</span> Làm bài Online: {displayTitle}
                         </button>
                       );
                     })}
                   </div>
-                );
-              })()}
-            </div>
-            {/* Thanh chuyển tài liệu PDF nếu có nhiều tài liệu */}
-            {(() => {
-              const currentPdfs = activeLesson.pdf_list || (activeLesson.pdf_url ? [{ name: 'Tài liệu PDF', url: activeLesson.pdf_url }] : []);
-              if (currentPdfs.length <= 1) return null;
-              return (
-                <div className="flex gap-2 p-2 bg-gray-100 border-b overflow-x-auto">
-                  {currentPdfs.map((pdf: any, idx: number) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActivePdfUrl(pdf.url)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg border transition ${
-                        activePdfUrl === pdf.url 
-                        ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-teal-50 hover:text-teal-700'
-                      }`}
-                    >
-                      📄 {pdf.name}
-                    </button>
-                  ))}
+                )}
+              </div>
+
+              {/* Thông báo hướng dẫn nếu bài có đề thi online */}
+              {currentExamIds.length > 0 && (
+                <div className="mt-2.5 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-center gap-1.5">
+                  <span className="font-bold">💡 Hướng dẫn:</span>
+                  <span>Bài học có <strong>{currentExamIds.length} đề thi online</strong>. Bấm nút màu xanh ở trên để làm bài và xem điểm tự động!</span>
                 </div>
-              );
-            })()}
-            <div className="flex-1 bg-gray-200 relative">
+              )}
+            </div>
+
+            {/* Thanh chuyển tài liệu PDF (nếu bài có nhiều file PDF) */}
+            {currentPdfs.length > 1 && (
+              <div className="flex gap-2 p-2 bg-gray-100 border-b overflow-x-auto shrink-0">
+                {currentPdfs.map((pdf: any, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActivePdfUrl(pdf.url)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition shrink-0 flex items-center gap-1 ${
+                      activePdfUrl === pdf.url 
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-teal-50 hover:text-teal-700'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" /> {pdf.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Trình phát Video / Tài liệu PDF */}
+            <div className="flex-1 bg-gray-900 relative min-h-[300px] sm:min-h-0">
               {activeLesson.video_url ? (
                 <InteractiveVideoPlayer 
                    lesson={activeLesson} 
                    onComplete={() => handlePracticeSubmitted(100)} 
                 />
               ) : activePdfUrl ? (
-                <iframe src={`${activePdfUrl}#toolbar=0`} className="w-full h-full border-none" />
+                <iframe src={`${activePdfUrl}#toolbar=0`} className="w-full h-full border-none bg-white" title="Tài liệu bài học" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">Không có tài liệu PDF / Video</div>
+                <div className="w-full h-full min-h-[250px] flex flex-col items-center justify-center text-gray-400 p-6 text-center">
+                  <BookOpen className="w-12 h-12 mb-3 text-gray-500 opacity-60" />
+                  <p className="text-sm font-semibold">Bài học này chưa có Video bài giảng</p>
+                  <p className="text-xs text-gray-500 mt-1">Học sinh có thể bấm nút màu xanh ở trên để làm bài kiểm tra trực tuyến!</p>
+                </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 font-bold text-lg">Chọn một bài học để bắt đầu</div>
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 font-bold text-base p-6 text-center">
+            <BookOpen className="w-16 h-16 text-teal-400 mb-3 opacity-60" />
+            <p>Vui lòng chọn một bài học từ đề cương để bắt đầu</p>
+          </div>
         )}
       </main>
     </div>
