@@ -5,13 +5,19 @@ import { ExamData, Question, QuestionOption, ImageData } from '../types';
 
 /**
  * ============================================================
- * MATH WORD PARSER SERVICE - VERSION 8 (OMML + MULTILINE OPTIONS + UNDERLINE)
+ * MATH WORD PARSER SERVICE - VERSION 9 (COMPLETE SUITE)
  *
- * ✅ FIXES:
- * 1) Không “cụt” công thức: đọc thêm OMML equation text (m:t) + w:br line breaks
- * 2) MathJax không “cụt” hệ: align/align* -> aligned khi nằm trong $...$
- * 3) Option/statement bị xuống dòng/paragraph: tự động ghép tiếp vào option/statement trước
- * 4) Underline detection: nếu cả option/statement được gạch chân => coi là đáp án/ý đúng
+ * ✅ FEATURES & FIXES:
+ * 1) Multi-column options on the same line: Split A. B. C. D. or A. B. / C. D. seamlessly.
+ * 2) Multi-column statements in Part 2: Split a) b) c) d) on the same line.
+ * 3) MathType WMF inline equation extraction: Decodes ions (Ba²⁺, OH⁻, SO₄²⁻, NO₃⁻, Pt²⁺) into LaTeX.
+ * 4) Preserves tabs (<w:tab/>) so text and options never concatenate.
+ * 5) Highlight (yellow) & red color answer detection in addition to underline.
+ * 6) Full OMML equation conversion to LaTeX (fractions, roots, systems of equations).
+ * 7) Chemical subscript/superscript support (<sub>, <sup>) preserved in HTML.
+ * 8) Section header detection with colons (PHẦN I:, PHẦN II:, PHẦN III:).
+ * 9) Auto-detects HƯỚNG DẪN GIẢI / ĐÁP ÁN section to prevent duplicate questions.
+ * 10) Part 2 auto-initializes Question 1 if Câu 1 header is omitted before a).
  * ============================================================
  */
 
@@ -30,12 +36,188 @@ interface ParsedQuestion {
   images: ImageData[];
 }
 
-// Underline tracking
+// Underline & highlight tracking
 interface ParagraphData {
   text: string;
   imageRIds: string[];
   hasUnderline: boolean;
   underlinedSegments: string[];
+}
+
+export interface ExtractedOption {
+  letter: string;
+  text: string;
+}
+
+// ============================================================
+// TEXT & OPTION EXTRACTION UTILITIES
+// ============================================================
+
+export function extractOptionsFromText(line: string): ExtractedOption[] {
+  if (!line || !line.trim()) return [];
+
+  // Match option markers: A. B. C. D. or A) B) C) D) or A: B: C: D:
+  // Can be preceded by start of line, whitespace, tab, or dot from previous option
+  const pattern = /(?:^|[\s	]|\.(?=[A-D]\s*[\.\):\-]))([A-D])\s*[\.\):\-]\s*/gi;
+  const matches: { letter: string; index: number; matchLength: number }[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = pattern.exec(line)) !== null) {
+    const letter = m[1].toUpperCase();
+    const letterOffset = m[0].search(/[A-D]/i);
+    const matchIdx = m.index + letterOffset;
+    matches.push({
+      letter,
+      index: matchIdx,
+      matchLength: m[0].length - letterOffset
+    });
+  }
+
+  if (matches.length === 0) return [];
+
+  // Keep strictly ascending sequence: A -> B -> C -> D, or C -> D (for 2nd line)
+  const validMatches: typeof matches = [];
+  let lastLetterCode = 64; // before 'A' (65)
+  for (const match of matches) {
+    const code = match.letter.charCodeAt(0);
+    if (code > lastLetterCode && code <= 68) {
+      validMatches.push(match);
+      lastLetterCode = code;
+    }
+  }
+
+  if (validMatches.length === 0) return [];
+
+  const results: ExtractedOption[] = [];
+  for (let i = 0; i < validMatches.length; i++) {
+    const curr = validMatches[i];
+    const textStart = curr.index + curr.matchLength;
+    const textEnd = i + 1 < validMatches.length ? validMatches[i + 1].index : line.length;
+    let optText = line.substring(textStart, textEnd).trim();
+    // remove trailing semicolons or commas before next option
+    optText = optText.replace(/[;,]+$/, '').trim();
+    results.push({
+      letter: curr.letter,
+      text: optText
+    });
+  }
+
+  return results;
+}
+
+export function extractStatementsFromText(line: string): ExtractedOption[] {
+  if (!line || !line.trim()) return [];
+
+  const pattern = /(?:^|[\s	]|\.(?=[a-d]\s*[\.\):\-]))([a-d])\s*[\.\):\-]\s*/gi;
+  const matches: { letter: string; index: number; matchLength: number }[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = pattern.exec(line)) !== null) {
+    const letter = m[1].toLowerCase();
+    const letterOffset = m[0].search(/[a-d]/i);
+    const matchIdx = m.index + letterOffset;
+    matches.push({
+      letter,
+      index: matchIdx,
+      matchLength: m[0].length - letterOffset
+    });
+  }
+
+  if (matches.length === 0) return [];
+
+  const validMatches: typeof matches = [];
+  let lastLetterCode = 96; // before 'a' (97)
+  for (const match of matches) {
+    const code = match.letter.charCodeAt(0);
+    if (code > lastLetterCode && code <= 100) {
+      validMatches.push(match);
+      lastLetterCode = code;
+    }
+  }
+
+  if (validMatches.length === 0) return [];
+
+  const results: ExtractedOption[] = [];
+  for (let i = 0; i < validMatches.length; i++) {
+    const curr = validMatches[i];
+    const textStart = curr.index + curr.matchLength;
+    const textEnd = i + 1 < validMatches.length ? validMatches[i + 1].index : line.length;
+    let stmtText = line.substring(textStart, textEnd).trim();
+    stmtText = stmtText.replace(/[;,]+$/, '').trim();
+    results.push({
+      letter: curr.letter,
+      text: stmtText
+    });
+  }
+
+  return results;
+}
+
+// ============================================================
+// WMF GDI TEXT PARSER (DECODES MATHTYPE EMBEDDED FORMULAS)
+// ============================================================
+
+export function parseWmfText(buffer: Uint8Array): string[] {
+  let offset = 0;
+  if (buffer.length > 4 && buffer[0] === 0xd7 && buffer[1] === 0xcd && buffer[2] === 0xc6 && buffer[3] === 0x9a) {
+    offset = 22; // placeable header
+  }
+  offset += 18; // standard header
+  const texts: string[] = [];
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+  while (offset + 6 <= buffer.length) {
+    const sizeWords = view.getUint32(offset, true);
+    const func = view.getUint16(offset + 4, true);
+    const recSize = sizeWords * 2;
+    if (recSize <= 0) break;
+
+    if (func === 0x0521) { // META_TEXTOUT
+      const count = view.getUint16(offset + 6, true);
+      let s = '';
+      for (let k = 0; k < count && offset + 8 + k < buffer.length; k++) {
+        s += String.fromCharCode(buffer[offset + 8 + k]);
+      }
+      if (s.trim()) texts.push(s.trim());
+    } else if (func === 0x0a32) { // META_EXTTEXTOUT
+      const count = view.getInt16(offset + 10, true);
+      const options = view.getInt16(offset + 12, true);
+      let txtOff = offset + 14;
+      if (options & 0x0006) txtOff += 8;
+      let s = '';
+      for (let k = 0; k < count && txtOff + k < buffer.length; k++) {
+        s += String.fromCharCode(buffer[txtOff + k]);
+      }
+      if (s.trim()) texts.push(s.trim());
+    }
+    offset += recSize;
+  }
+  return texts;
+}
+
+export function reconstructWmfFormula(tokens: string[]): string {
+  if (!tokens || tokens.length === 0) return '';
+  const charges = tokens.filter((t) => t === '+' || t === '-');
+  const numbers = tokens.filter((t) => /^\d+$/.test(t));
+  const chemSyms = tokens.filter((t) => /^[A-Z][a-z]?([A-Z][a-z]?)*$/.test(t));
+
+  if (charges.length > 0 && chemSyms.length > 0) {
+    let base = chemSyms[0];
+    if (base === 'SO' && tokens.includes('4')) base = 'SO_4';
+    else if (base === 'NO' && tokens.includes('3')) base = 'NO_3';
+
+    let chargeNum = '';
+    for (const n of numbers) {
+      if ((base === 'SO_4' && n === '4') || (base === 'NO_3' && n === '3')) continue;
+      chargeNum = n;
+      break;
+    }
+    const chargeSign = charges[charges.length - 1];
+    const sup = chargeNum ? `${chargeNum}${chargeSign}` : chargeSign;
+    return ` $${base}^{${sup}}$ `;
+  }
+
+  return '';
 }
 
 // ============================================================
@@ -47,62 +229,42 @@ function normalizeVietnamese(text: string): string {
   return text.normalize('NFC');
 }
 
-/**
- * Normalize latex to be safer for MathJax rendering.
- * - \[...\] => $$...$$
- * - \(...\) => $...$
- * - align/align* => aligned (safe inside $...$)
- * - keep newlines; only compress spaces/tabs
- */
 function normalizeLatex(text: string): string {
   if (!text) return '';
-
   let s = text;
-
-  // Convert \[...\] → $$...$$
   s = s.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$1$$$$');
-
-  // Convert \(...\) → $...$
   s = s.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
-
-  // align -> aligned (MathJax safe inside $...$)
   s = s.replace(/\\begin\{align\*?\}/g, '\\begin{aligned}');
   s = s.replace(/\\end\{align\*?\}/g, '\\end{aligned}');
-
-  // Fix multiple consecutive $ signs
   s = s.replace(/\${3,}/g, '$$');
-
-  // Compress spaces/tabs but keep newlines
   s = s.replace(/[ \t]+/g, ' ');
   s = s.replace(/\n{3,}/g, '\n\n');
-
   return s.trim();
 }
 
-/**
- * Escape HTML but preserve LaTeX blocks ($...$ and $$...$$).
- * This avoids breaking MathJax while keeping safe HTML output.
- */
 function escapeHtmlPreserveLaTeX(text: string): string {
   if (!text) return '';
 
-  const latexBlocks: string[] = [];
+  const preservedBlocks: string[] = [];
 
-  const protectLatex = (match: string): string => {
-    latexBlocks.push(match);
-    return `__LATEX_BLOCK_${latexBlocks.length - 1}__`;
+  const protect = (match: string): string => {
+    preservedBlocks.push(match);
+    return `__PRESERVED_BLOCK_${preservedBlocks.length - 1}__`;
   };
 
-  // protect $$...$$ then $...$
-  text = text.replace(/\$\$([\s\S]*?)\$\$/g, protectLatex);
-  text = text.replace(/\$(?!\$)([\s\S]*?)\$(?!\$)/g, protectLatex);
+  // Protect HTML tags (sub, sup, b, i, strong, em)
+  text = text.replace(/<\/?(sub|sup|b|i|u|strong|em|br)>/gi, protect);
+
+  // Protect LaTeX ($$...$$ and $...$)
+  text = text.replace(/\$\$([\s\S]*?)\$\$/g, protect);
+  text = text.replace(/\$(?!\$)([\s\S]*?)\$(?!\$)/g, protect);
 
   text = text.replace(/&/g, '&amp;');
   text = text.replace(/</g, '&lt;');
   text = text.replace(/>/g, '&gt;');
 
-  for (let i = 0; i < latexBlocks.length; i++) {
-    text = text.replace(`__LATEX_BLOCK_${i}__`, latexBlocks[i]);
+  for (let i = 0; i < preservedBlocks.length; i++) {
+    text = text.replace(`__PRESERVED_BLOCK_${i}__`, preservedBlocks[i]);
   }
 
   return text;
@@ -118,9 +280,9 @@ export const parseWordToExam = async (file: File): Promise<ExamData> => {
   const arrayBuffer = await file.arrayBuffer();
   const zip = await JSZip.loadAsync(arrayBuffer);
 
-  // 1) Extract images
-  const { images, imageRelMap } = await extractImages(zip);
-  console.log('🖼️ Extracted images:', images.length);
+  // 1) Extract images and decode WMF equations
+  const { images, imageRelMap, wmfFormulaMap } = await extractImagesAndFormulas(zip);
+  console.log(`🖼️ Extracted images: ${images.length}, decoded WMF formulas: ${wmfFormulaMap.size}`);
 
   // 2) Parse document.xml
   const documentXml = await zip.file('word/document.xml')?.async('string');
@@ -129,8 +291,8 @@ export const parseWordToExam = async (file: File): Promise<ExamData> => {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(documentXml, 'application/xml');
 
-  // 3) Extract paragraphs (text + images + underline) with OMML support
-  const paragraphs = extractParagraphsWithUnderline(xmlDoc, imageRelMap);
+  // 3) Extract paragraphs (text + images + underline + formulas)
+  const paragraphs = extractParagraphsWithUnderline(xmlDoc, imageRelMap, wmfFormulaMap);
   console.log('📝 Total paragraphs:', paragraphs.length);
 
   // 4) Parse questions
@@ -147,17 +309,19 @@ export const parseWordToExam = async (file: File): Promise<ExamData> => {
 };
 
 // ============================================================
-// EXTRACT IMAGES
+// EXTRACT IMAGES & WMF FORMULAS
 // ============================================================
 
-async function extractImages(
+async function extractImagesAndFormulas(
   zip: JSZip
 ): Promise<{
   images: ImageData[];
   imageRelMap: Map<string, string>;
+  wmfFormulaMap: Map<string, string>;
 }> {
   const images: ImageData[] = [];
   const imageRelMap = new Map<string, string>();
+  const wmfFormulaMap = new Map<string, string>();
 
   try {
     const relsContent = await zip.file('word/_rels/document.xml.rels')?.async('string');
@@ -177,9 +341,25 @@ async function extractImages(
     for (const [path, zipEntry] of Object.entries(zip.files)) {
       if (path.startsWith('word/media/') && !zipEntry.dir) {
         const filename = path.split('/').pop() || '';
-        const data = await zipEntry.async('base64');
-
         const ext = filename.split('.').pop()?.toLowerCase() || '';
+
+        // If WMF, check if it contains a MathType chemical/math formula
+        if (ext === 'wmf') {
+          try {
+            const buffer = await zipEntry.async('uint8array');
+            const tokens = parseWmfText(buffer);
+            const formula = reconstructWmfFormula(tokens);
+            if (formula) {
+              wmfFormulaMap.set(filename, formula);
+              console.log(`🧪 Decoded WMF formula [${filename}]: ${formula}`);
+              continue; // Don't add as drawing image since it is converted to clean text
+            }
+          } catch (e) {
+            console.warn(`Could not parse WMF text for ${filename}`, e);
+          }
+        }
+
+        const data = await zipEntry.async('base64');
         const contentTypes: { [key: string]: string } = {
           png: 'image/png',
           jpg: 'image/jpeg',
@@ -187,7 +367,8 @@ async function extractImages(
           gif: 'image/gif',
           webp: 'image/webp',
           bmp: 'image/bmp',
-          svg: 'image/svg+xml'
+          svg: 'image/svg+xml',
+          wmf: 'image/png' // fallback
         };
 
         let rId = '';
@@ -211,11 +392,11 @@ async function extractImages(
     console.warn('⚠️ Error extracting images:', err);
   }
 
-  return { images, imageRelMap };
+  return { images, imageRelMap, wmfFormulaMap };
 }
 
 // ============================================================
-// OMML (OFFICE MATH) TO LATEX CONVERTER
+// OMML TO LATEX CONVERTER
 // ============================================================
 
 function ommlNodeToLatex(node: Element): string {
@@ -238,44 +419,40 @@ function ommlNodeToLatex(node: Element): string {
       const tNodes = node.getElementsByTagName('m:t');
       for (let i = 0; i < tNodes.length; i++) text += tNodes[i].textContent || '';
       if (!text) {
-        const wtNodes = node.getElementsByTagName('w:t');
-        for (let i = 0; i < wtNodes.length; i++) text += wtNodes[i].textContent || '';
+        for (let i = 0; i < node.childNodes.length; i++) {
+          const child = node.childNodes[i] as Element;
+          if (child.nodeType === 1) text += ommlNodeToLatex(child);
+        }
       }
       return text;
     }
-    case 't': {
-      return node.textContent || '';
-    }
-    case 'f': { // Fraction \frac{num}{den}
+    case 'f': { // Fraction
       const numNode = node.getElementsByTagName('m:num')[0];
       const denNode = node.getElementsByTagName('m:den')[0];
       const num = numNode ? ommlNodeToLatex(numNode) : '';
       const den = denNode ? ommlNodeToLatex(denNode) : '';
       return `\\frac{${num}}{${den}}`;
     }
-    case 'num':
-    case 'den':
-    case 'e': { // General container
-      let res = '';
-      for (let i = 0; i < node.childNodes.length; i++) {
-        const child = node.childNodes[i] as Element;
-        if (child.nodeType === 1) res += ommlNodeToLatex(child);
-      }
-      return res;
+    case 'srad': { // Radical / Root
+      const degNode = node.getElementsByTagName('m:deg')[0];
+      const eNode = node.getElementsByTagName('m:e')[0];
+      const deg = degNode ? ommlNodeToLatex(degNode).trim() : '';
+      const e = eNode ? ommlNodeToLatex(eNode) : '';
+      return deg ? `\\sqrt[${deg}]{${e}}` : `\\sqrt{${e}}`;
     }
     case 'ssup': { // Superscript
       const eNode = node.getElementsByTagName('m:e')[0];
       const supNode = node.getElementsByTagName('m:sup')[0];
       const e = eNode ? ommlNodeToLatex(eNode) : '';
       const sup = supNode ? ommlNodeToLatex(supNode) : '';
-      return `{${e}}^{${sup}}`;
+      return `${e}^{${sup}}`;
     }
     case 'ssub': { // Subscript
       const eNode = node.getElementsByTagName('m:e')[0];
       const subNode = node.getElementsByTagName('m:sub')[0];
       const e = eNode ? ommlNodeToLatex(eNode) : '';
       const sub = subNode ? ommlNodeToLatex(subNode) : '';
-      return `{${e}}_{${sub}}`;
+      return `${e}_{${sub}}`;
     }
     case 'ssubsup': { // Sub-Superscript
       const eNode = node.getElementsByTagName('m:e')[0];
@@ -284,16 +461,9 @@ function ommlNodeToLatex(node: Element): string {
       const e = eNode ? ommlNodeToLatex(eNode) : '';
       const sub = subNode ? ommlNodeToLatex(subNode) : '';
       const sup = supNode ? ommlNodeToLatex(supNode) : '';
-      return `{${e}}_{${sub}}^{${sup}}`;
+      return `${e}_{${sub}}^{${sup}}`;
     }
-    case 'rad': { // Radical / Root \sqrt[deg]{e}
-      const degNode = node.getElementsByTagName('m:deg')[0];
-      const eNode = node.getElementsByTagName('m:e')[0];
-      const deg = degNode ? ommlNodeToLatex(degNode).trim() : '';
-      const e = eNode ? ommlNodeToLatex(eNode) : '';
-      return deg ? `\\sqrt[${deg}]{${e}}` : `\\sqrt{${e}}`;
-    }
-    case 'd': { // Delimiters
+    case 'd': { // Delimiter / brackets / systems
       const dPr = node.getElementsByTagName('m:dPr')[0];
       let begChr = '(';
       let endChr = ')';
@@ -304,17 +474,13 @@ function ommlNodeToLatex(node: Element): string {
         if (end && end.getAttribute('m:val') !== null) endChr = end.getAttribute('m:val')!;
       }
       const eNodes = node.getElementsByTagName('m:e');
-      if (begChr === '{' && !endChr) { // System of equations
+      if (begChr === '{' && !endChr) {
         const rows: string[] = [];
-        for (let i = 0; i < eNodes.length; i++) {
-          rows.push(ommlNodeToLatex(eNodes[i]));
-        }
+        for (let i = 0; i < eNodes.length; i++) rows.push(ommlNodeToLatex(eNodes[i]));
         return `\\begin{cases} ${rows.join(' \\\\ ')} \\end{cases}`;
       }
       let inner = '';
-      for (let i = 0; i < eNodes.length; i++) {
-        inner += ommlNodeToLatex(eNodes[i]);
-      }
+      for (let i = 0; i < eNodes.length; i++) inner += ommlNodeToLatex(eNodes[i]);
       const left = begChr ? (['(', '[', '{', '|'].includes(begChr) ? `\\left${begChr === '{' ? '\\{' : begChr}` : begChr) : '';
       const right = endChr ? ([')', ']', '}', '|'].includes(endChr) ? `\\right${endChr === '}' ? '\\}' : endChr}` : endChr) : (begChr ? '\\right.' : '');
       return `${left}${inner}${right}`;
@@ -330,19 +496,17 @@ function ommlNodeToLatex(node: Element): string {
       if (chr === '^' || chr === '̂') return `\\hat{${e}}`;
       return `\\vec{${e}}`;
     }
-    case 'func': { // Function (sin, cos, lim, log)
+    case 'func': {
       const fNameNode = node.getElementsByTagName('m:fName')[0];
       const eNode = node.getElementsByTagName('m:e')[0];
       const fName = fNameNode ? ommlNodeToLatex(fNameNode) : '';
       const e = eNode ? ommlNodeToLatex(eNode) : '';
       return `${fName}{${e}}`;
     }
-    case 'eqarr': { // Equation array
+    case 'eqarr': {
       const eNodes = node.getElementsByTagName('m:e');
       const rows: string[] = [];
-      for (let i = 0; i < eNodes.length; i++) {
-        rows.push(ommlNodeToLatex(eNodes[i]));
-      }
+      for (let i = 0; i < eNodes.length; i++) rows.push(ommlNodeToLatex(eNodes[i]));
       return `\\begin{aligned} ${rows.join(' \\\\ ')} \\end{aligned}`;
     }
     default: {
@@ -357,10 +521,14 @@ function ommlNodeToLatex(node: Element): string {
 }
 
 // ============================================================
-// EXTRACT PARAGRAPHS (TEXT + IMAGE + UNDERLINE) WITH OMML SUPPORT
+// EXTRACT PARAGRAPHS (WITH TABS, FORMULAS & HIGHLIGHT)
 // ============================================================
 
-function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<string, string>): ParagraphData[] {
+function extractParagraphsWithUnderline(
+  xmlDoc: Document,
+  imageRelMap: Map<string, string>,
+  wmfFormulaMap: Map<string, string>
+): ParagraphData[] {
   const paragraphs: ParagraphData[] = [];
   const pElements = xmlDoc.getElementsByTagName('w:p');
 
@@ -372,7 +540,7 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
     let hasUnderline = false;
     const underlinedSegments: string[] = [];
 
-    // 1) Thu thập toàn bộ ảnh trong paragraph (kể cả w:drawing, w:pict trực tiếp)
+    // Collect drawing/pict images in paragraph
     const allBlips = p.getElementsByTagName('a:blip');
     for (let k = 0; k < allBlips.length; k++) {
       const embed = allBlips[k].getAttribute('r:embed');
@@ -382,10 +550,17 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
     const allVImgs = p.getElementsByTagName('v:imagedata');
     for (let k = 0; k < allVImgs.length; k++) {
       const rid = allVImgs[k].getAttribute('r:id') || allVImgs[k].getAttribute('o:relid');
-      if (rid && !imageRIds.includes(rid)) imageRIds.push(rid);
+      if (rid) {
+        const fname = imageRelMap.get(rid) || '';
+        // If this image was decoded into a chemical formula, don't keep as image
+        if (wmfFormulaMap.has(fname)) {
+          // Handled inline in runs
+        } else if (!imageRIds.includes(rid)) {
+          imageRIds.push(rid);
+        }
+      }
     }
 
-    // 2) Duyệt toàn bộ các node con của paragraph theo đúng thứ tự tài liệu
     const childNodes = Array.from(p.childNodes);
 
     for (let j = 0; j < childNodes.length; j++) {
@@ -394,7 +569,7 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
 
       const nodeName = (node.nodeName || '').toLowerCase();
 
-      // ✅ A. Nếu là công thức Toán OMML (m:oMath hoặc m:oMathPara)
+      // OMML math
       if (nodeName === 'm:omath' || nodeName === 'm:omathpara') {
         const latex = ommlNodeToLatex(node);
         if (latex.trim()) {
@@ -403,16 +578,36 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
         continue;
       }
 
-      // ✅ B. Nếu là run bình thường (w:r)
+      // Run element (w:r)
       if (nodeName === 'w:r') {
         const rPr = node.getElementsByTagName('w:rPr')[0];
         const isUnderlined = rPr ? rPr.getElementsByTagName('w:u').length > 0 : false;
-        
-        // Hóa học & Toán: Kiểm tra chỉ số trên / chỉ số dưới (subscript / superscript)
+        const isHighlighted = rPr ? rPr.getElementsByTagName('w:highlight').length > 0 : false;
+        const colorNode = rPr?.getElementsByTagName('w:color')[0];
+        const colorVal = colorNode?.getAttribute('w:val')?.toLowerCase();
+        const isRedColor = colorVal === 'ff0000' || colorVal === 'red';
+
         const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0];
         const vertAlign = vertAlignNode?.getAttribute('w:val');
 
         let runText = '';
+
+        // Check for tabs
+        const tabs = node.getElementsByTagName('w:tab');
+        if (tabs.length > 0) {
+          runText += '    '.repeat(tabs.length);
+        }
+
+        // Check for inline WMF formulas
+        const vImgs = node.getElementsByTagName('v:imagedata');
+        for (let k = 0; k < vImgs.length; k++) {
+          const rid = vImgs[k].getAttribute('r:id') || vImgs[k].getAttribute('o:relid');
+          if (rid) {
+            const fname = imageRelMap.get(rid) || '';
+            const form = wmfFormulaMap.get(fname);
+            if (form) runText += ` ${form} `;
+          }
+        }
 
         // w:t
         const wTextNodes = node.getElementsByTagName('w:t');
@@ -432,14 +627,14 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
         const brs = node.getElementsByTagName('w:br');
         if (brs.length > 0) runText += '\n'.repeat(brs.length);
 
-        // ✅ Chuyển chỉ số trên / dưới cho Công thức Hóa học & Toán học (H2SO4 -> H₂SO₄ hoặc H_{2}SO_{4})
+        // Subscripts / Superscripts
         if (vertAlign === 'subscript' && runText.trim()) {
           runText = `<sub>${runText}</sub>`;
         } else if (vertAlign === 'superscript' && runText.trim()) {
           runText = `<sup>${runText}</sup>`;
         }
 
-        if (isUnderlined && runText.trim()) {
+        if ((isUnderlined || isHighlighted || isRedColor) && runText.trim()) {
           hasUnderline = true;
           underlinedSegments.push(runText.trim());
         }
@@ -448,7 +643,7 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
       }
     }
 
-    // ✅ C. Chuẩn hóa công thức hóa học: Mũi tên phản ứng
+    // Reaction arrows
     text = text.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
     text = text.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
     text = text.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
@@ -459,7 +654,7 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
     text = normalizeVietnamese(text.trim());
     text = normalizeLatex(text);
 
-    // Markdown underline format: [X]{.underline}
+    // Markdown underline
     const markdownUnderlinePattern = /\[([A-Da-d])\]\{\.underline\}/g;
     let mdMatch: RegExpExecArray | null;
     while ((mdMatch = markdownUnderlinePattern.exec(text)) !== null) {
@@ -468,7 +663,6 @@ function extractParagraphsWithUnderline(xmlDoc: Document, _imageRelMap: Map<stri
     }
     text = text.replace(/\[([A-Da-d])\]\{\.underline\}/g, '$1');
 
-    // normalize whitespace around newlines
     text = text.replace(/[ \t]*\n[ \t]*/g, '\n').trim();
 
     if (text || imageRIds.length > 0) {
@@ -499,7 +693,7 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): Ex
 
   const part1Questions = parsePart1WithUnderline(paragraphs, sectionInfo.part1Start, sectionInfo.part2Start, images);
   const part2Questions = parsePart2(paragraphs, sectionInfo.part2Start, sectionInfo.part3Start, images);
-  const part3Questions = parsePart3(paragraphs, sectionInfo.part3Start, paragraphs.length, images);
+  const part3Questions = parsePart3(paragraphs, sectionInfo.part3Start, sectionInfo.part3End, images);
 
   console.log(
     `📊 Parsed: PHẦN 1=${part1Questions.length}, PHẦN 2=${part2Questions.length}, PHẦN 3=${part3Questions.length}`
@@ -533,6 +727,7 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): Ex
       const q = convertToQuestion(pq, globalIndex++);
       section2Questions.push(q);
       examData.questions.push(q);
+      if (q.correctAnswer) examData.answers[q.number] = q.correctAnswer;
     }
 
     examData.sections.push({
@@ -544,10 +739,10 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): Ex
     });
   }
 
-  // PHẦN 3 (trả lời ngắn) + PHẦN 4 (tự luận) — cùng từ parsePart3
+  // PHẦN 3 & 4
   if (part3Questions.length > 0) {
-    const shortAnswerQs = part3Questions.filter(pq => pq.type === 'short_answer');
-    const writingQs     = part3Questions.filter(pq => pq.type === 'writing');
+    const shortAnswerQs = part3Questions.filter((pq) => pq.type === 'short_answer');
+    const writingQs = part3Questions.filter((pq) => pq.type === 'writing');
 
     if (shortAnswerQs.length > 0) {
       const section3Questions: Question[] = [];
@@ -573,7 +768,6 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): Ex
         const q = convertToQuestion(pq, globalIndex++);
         section4Questions.push(q);
         examData.questions.push(q);
-        // writing không có correctAnswer → không lưu vào examData.answers
       }
 
       examData.sections.push({
@@ -597,19 +791,21 @@ interface SectionInfo {
   part1Start: number;
   part2Start: number;
   part3Start: number;
+  part3End: number;
 }
 
 function detectSections(_fullText: string, paragraphs: ParagraphData[]): SectionInfo {
   const info: SectionInfo = {
     part1Start: -1,
     part2Start: -1,
-    part3Start: -1
+    part3Start: -1,
+    part3End: paragraphs.length
   };
 
   const part1Patterns = [
     /PHẦN\s*1/i,
     /PHAN\s*1/i,
-    /PHẦN\s+I[.\s]/i,
+    /PHẦN\s+I[.:\s]/i,
     /Phần\s*1/i,
     /I\.\s*TRẮC\s*NGHIỆM/i,
     /I\.\s*TRAC\s*NGHIEM/i
@@ -618,7 +814,7 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
   const part2Patterns = [
     /PHẦN\s*2/i,
     /PHAN\s*2/i,
-    /PHẦN\s+II[.\s]/i,
+    /PHẦN\s+II[.:\s]/i,
     /Phần\s*2/i,
     /II\.\s*ĐÚNG\s*SAI/i,
     /II\.\s*DUNG\s*SAI/i,
@@ -629,7 +825,7 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
   const part3Patterns = [
     /PHẦN\s*3/i,
     /PHAN\s*3/i,
-    /PHẦN\s+III[.\s]/i,
+    /PHẦN\s+III[.:\s]/i,
     /Phần\s*3/i,
     /III\.\s*TRẢ\s*LỜI/i,
     /III\.\s*TRA\s*LOI/i,
@@ -637,7 +833,33 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
     /TRA\s*LOI\s*NGAN/i
   ];
 
+  const solutionPatterns = [
+    /HƯỚNG\s*DẪN\s*GIẢI/i,
+    /HUONG\s*DAN\s*GIAI/i,
+    /LỜI\s*GIẢI\s*CHI\s*TIẾT/i,
+    /LOI\s*GIAI\s*CHI\s*TIET/i,
+    /BẢNG\s*ĐÁP\s*ÁN/i,
+    /BANG\s*DAP\s*AN/i,
+    /ĐÁP\s*ÁN\s*CHI\s*TIẾT/i
+  ];
+
+  // Detect where solution section begins
+  let solutionStart = paragraphs.length;
   for (let i = 0; i < paragraphs.length; i++) {
+    const text = paragraphs[i].text;
+    for (const pat of solutionPatterns) {
+      if (pat.test(text)) {
+        solutionStart = i;
+        break;
+      }
+    }
+    if (solutionStart < paragraphs.length) break;
+  }
+
+  // Scan section headers (only before solution section)
+  const maxScanIdx = solutionStart < paragraphs.length ? solutionStart : paragraphs.length;
+
+  for (let i = 0; i < maxScanIdx; i++) {
     const text = paragraphs[i].text;
 
     if (info.part1Start === -1) {
@@ -649,7 +871,7 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
       }
     }
 
-    if (info.part2Start === -1 && i > info.part1Start) {
+    if (info.part2Start === -1 && (info.part1Start === -1 || i > info.part1Start)) {
       for (const pattern of part2Patterns) {
         if (pattern.test(text)) {
           info.part2Start = i;
@@ -658,7 +880,7 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
       }
     }
 
-    if (info.part3Start === -1 && i > Math.max(info.part1Start, info.part2Start)) {
+    if (info.part3Start === -1 && (info.part2Start !== -1 ? i > info.part2Start : i > info.part1Start)) {
       for (const pattern of part3Patterns) {
         if (pattern.test(text)) {
           info.part3Start = i;
@@ -669,14 +891,15 @@ function detectSections(_fullText: string, paragraphs: ParagraphData[]): Section
   }
 
   if (info.part1Start === -1) info.part1Start = 0;
-  if (info.part2Start === -1) info.part2Start = paragraphs.length;
-  if (info.part3Start === -1) info.part3Start = paragraphs.length;
+  if (info.part2Start === -1) info.part2Start = info.part3Start !== -1 ? info.part3Start : maxScanIdx;
+  if (info.part3Start === -1) info.part3Start = maxScanIdx;
+  info.part3End = maxScanIdx;
 
   return info;
 }
 
 // ============================================================
-// PARSE PART 1: MULTIPLE CHOICE (WITH UNDERLINE + MULTILINE OPTIONS)
+// PARSE PART 1: MULTIPLE CHOICE (WITH MULTI-COLUMN OPTIONS)
 // ============================================================
 
 function parsePart1WithUnderline(
@@ -695,15 +918,11 @@ function parsePart1WithUnderline(
   let inSolution = false;
   let solutionBuffer: string[] = [];
 
-  // underline letters seen in this question
   let currentQuestionUnderlinedLetters: string[] = [];
-
-  // option multiline support
   let currentOptionIndex = -1;
   let startedOptions = false;
 
   const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
-  const optionPattern = /^\s*([A-D])\s*[.\)]\s*(.*)/i;
   const answerPattern = /Ch(?:ọn|on)\s*([A-D])/i;
 
   for (let i = startIdx; i < endIdx; i++) {
@@ -726,7 +945,6 @@ function parsePart1WithUnderline(
     // New question
     const qMatch = text.match(questionPattern);
     if (qMatch) {
-      // flush prev
       if (currentQ) {
         if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join(' ').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
@@ -735,7 +953,7 @@ function parsePart1WithUnderline(
           const underlinedAnswer = currentQuestionUnderlinedLetters.find((l) => /^[A-D]$/i.test(l));
           if (underlinedAnswer) {
             currentQ.correctAnswer = underlinedAnswer.toUpperCase();
-            console.log(`📝 Câu ${currentQ.number}: Đáp án từ underline = ${currentQ.correctAnswer}`);
+            console.log(`📝 Câu ${currentQ.number}: Đáp án từ underline/highlight = ${currentQ.correctAnswer}`);
           }
         }
 
@@ -763,13 +981,10 @@ function parsePart1WithUnderline(
       solutionBuffer = [];
       currentQuestionUnderlinedLetters = [];
 
-      // reset option tracking
       currentOptionIndex = -1;
       startedOptions = false;
 
-      // underline in question line
       if (para.hasUnderline) currentQuestionUnderlinedLetters.push(...para.underlinedSegments);
-
       if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
       continue;
     }
@@ -795,27 +1010,30 @@ function parsePart1WithUnderline(
       continue;
     }
 
-    // Option line
-    const optMatch = text.match(optionPattern);
-    if (optMatch && collectingContent) {
+    // Option line (supports 1, 2, or 4 options on the same line)
+    const extractedOpts = extractOptionsFromText(text);
+    if (extractedOpts.length > 0 && collectingContent) {
       if (currentQ.options.length === 0 && contentBuffer.length > 0) {
         currentQ.text = contentBuffer.join(' ').trim();
         contentBuffer = [];
       }
 
-      const letter = optMatch[1].toUpperCase();
-      const optText = (optMatch[2] || '').trim();
+      for (const opt of extractedOpts) {
+        currentQ.options.push({ letter: opt.letter, text: opt.text });
+        currentOptionIndex = currentQ.options.length - 1;
+        startedOptions = true;
 
-      currentQ.options.push({ letter, text: optText });
-      currentOptionIndex = currentQ.options.length - 1;
-      startedOptions = true;
-
-      // underline => correct
-      if (para.hasUnderline) {
-        currentQuestionUnderlinedLetters.push(letter);
-        console.log(`🔍 Underline option ${letter} ở câu ${currentQ.number}`);
+        if (para.hasUnderline) {
+          const isMarked = para.underlinedSegments.some(
+            (seg) => seg.includes(opt.letter) || (opt.text && seg.includes(opt.text))
+          );
+          if (isMarked || extractedOpts.length === 1) {
+            currentQuestionUnderlinedLetters.push(opt.letter);
+          }
+        }
       }
 
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
       continue;
     }
 
@@ -829,7 +1047,7 @@ function parsePart1WithUnderline(
       continue;
     }
 
-    // Collect question stem (only before options)
+    // Question stem
     if (collectingContent && text && !inSolution && !startedOptions) {
       if (/^H(?:ình|inh)\s*\d+/i.test(text)) {
         if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
@@ -839,7 +1057,7 @@ function parsePart1WithUnderline(
       if (para.hasUnderline) currentQuestionUnderlinedLetters.push(...para.underlinedSegments);
     }
 
-    // Collect solution
+    // Solution
     if (inSolution && text) {
       if (!/^H(?:ình|inh)\s*\d+/i.test(text)) solutionBuffer.push(text);
     }
@@ -856,7 +1074,7 @@ function parsePart1WithUnderline(
       const underlinedAnswer = currentQuestionUnderlinedLetters.find((l) => /^[A-D]$/i.test(l));
       if (underlinedAnswer) {
         currentQ.correctAnswer = underlinedAnswer.toUpperCase();
-        console.log(`📝 Câu ${currentQ.number}: Đáp án từ underline = ${currentQ.correctAnswer}`);
+        console.log(`📝 Câu ${currentQ.number}: Đáp án từ underline/highlight = ${currentQ.correctAnswer}`);
       }
     }
 
@@ -868,7 +1086,7 @@ function parsePart1WithUnderline(
 }
 
 // ============================================================
-// PARSE PART 2: TRUE/FALSE (WITH UNDERLINE + MULTILINE STATEMENTS)
+// PARSE PART 2: TRUE/FALSE (WITH MULTI-COLUMN STATEMENTS)
 // ============================================================
 
 function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[]): ParsedQuestion[] {
@@ -882,15 +1100,12 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   let inSolution = false;
   let solutionBuffer: string[] = [];
 
-  // underline => true statements
   let currentQuestionTrueStatements: Set<string> = new Set();
-
-  // statement multiline support
   let currentStmtIndex = -1;
   let startedStatements = false;
 
   const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
-  const statementPattern = /^\s*([a-d])\s*[\)\.]\s*(.*)/i;
+  const dungSaiAnswerPattern = /([a-d])\s*[\)\.]\s*(Đúng|Sai|Dung)/gi;
 
   for (let i = startIdx; i < endIdx; i++) {
     const para = paragraphs[i];
@@ -910,7 +1125,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
         if (!currentQ.correctAnswer && currentQuestionTrueStatements.size > 0) {
           const trueStmts = Array.from(currentQuestionTrueStatements).sort();
           currentQ.correctAnswer = trueStmts.join(',');
-          console.log(`📝 Câu ${currentQ.number} (Đúng/Sai): underline = ${currentQ.correctAnswer}`);
+          console.log(`📝 Câu ${currentQ.number} (Đúng/Sai): Đáp án = ${currentQ.correctAnswer}`);
         }
 
         if (currentQ.text) questions.push(currentQ);
@@ -944,9 +1159,34 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       continue;
     }
 
-    if (!currentQ) continue;
+    // Auto-create Câu 1 if statement a) appears before any Câu header
+    const extractedStmts = extractStatementsFromText(text);
+    if (!currentQ && extractedStmts.length > 0 && collectingContent === false) {
+      currentQ = {
+        number: 1,
+        globalIndex: 0,
+        part: 2,
+        type: 'true_false',
+        text: contentBuffer.join(' ').trim() || 'Thí sinh chọn Đúng hoặc Sai cho mỗi ý sau:',
+        options: [],
+        correctAnswer: null,
+        solution: '',
+        images: []
+      };
+      contentBuffer = [];
+      collectingContent = true;
+      inSolution = false;
+      currentQuestionTrueStatements = new Set();
+      currentStmtIndex = -1;
+      startedStatements = false;
+    }
 
-    if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text)) {
+    if (!currentQ) {
+      if (text && !inSolution) contentBuffer.push(text);
+      continue;
+    }
+
+    if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text) || /^Đáp\s*án:/i.test(text)) {
       if (contentBuffer.length > 0 && !currentQ.text) {
         currentQ.text = contentBuffer.join(' ').trim();
         contentBuffer = [];
@@ -954,29 +1194,40 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       collectingContent = false;
       inSolution = true;
       solutionBuffer = [];
-      continue;
     }
 
-    const stmtMatch = text.match(statementPattern);
-    if (stmtMatch && collectingContent) {
+    // Check solution for "a) Đúng", "b) Sai", etc.
+    let dsMatch: RegExpExecArray | null;
+    while ((dsMatch = dungSaiAnswerPattern.exec(text)) !== null) {
+      const letter = dsMatch[1].toLowerCase();
+      const val = dsMatch[2];
+      if (/^Đúng|Dung$/i.test(val)) {
+        currentQuestionTrueStatements.add(letter);
+      }
+    }
+
+    if (extractedStmts.length > 0 && collectingContent) {
       if (currentQ.options.length === 0 && contentBuffer.length > 0) {
         currentQ.text = contentBuffer.join(' ').trim();
         contentBuffer = [];
       }
 
-      const letter = stmtMatch[1].toLowerCase();
-      const stmtText = (stmtMatch[2] || '').trim();
+      for (const stmt of extractedStmts) {
+        currentQ.options.push({ letter: stmt.letter, text: stmt.text });
+        currentStmtIndex = currentQ.options.length - 1;
+        startedStatements = true;
 
-      currentQ.options.push({ letter, text: stmtText });
-      currentStmtIndex = currentQ.options.length - 1;
-      startedStatements = true;
-
-      // underline => statement true
-      if (para.hasUnderline) {
-        currentQuestionTrueStatements.add(letter);
-        console.log(`🔍 Underline statement ${letter} ở câu ${currentQ.number}`);
+        if (para.hasUnderline) {
+          const isMarked = para.underlinedSegments.some(
+            (seg) => seg.toLowerCase().includes(stmt.letter) || (stmt.text && seg.includes(stmt.text))
+          );
+          if (isMarked || extractedStmts.length === 1) {
+            currentQuestionTrueStatements.add(stmt.letter);
+          }
+        }
       }
 
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
       continue;
     }
 
@@ -1018,7 +1269,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (!currentQ.correctAnswer && currentQuestionTrueStatements.size > 0) {
       const trueStmts = Array.from(currentQuestionTrueStatements).sort();
       currentQ.correctAnswer = trueStmts.join(',');
-      console.log(`📝 Câu ${currentQ.number} (Đúng/Sai): underline = ${currentQ.correctAnswer}`);
+      console.log(`📝 Câu ${currentQ.number} (Đúng/Sai): Đáp án = ${currentQ.correctAnswer}`);
     }
 
     if (currentQ.text) questions.push(currentQ);
@@ -1029,11 +1280,11 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 }
 
 // ============================================================
-// PARSE PART 3: SHORT ANSWER
+// PARSE PART 3: SHORT ANSWER & WRITING
 // ============================================================
 
 function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[]): ParsedQuestion[] {
-  if (startIdx < 0 || startIdx >= paragraphs.length) return [];
+  if (startIdx < 0 || startIdx >= paragraphs.length || endIdx <= startIdx) return [];
 
   const questions: ParsedQuestion[] = [];
   let currentQ: ParsedQuestion | null = null;
@@ -1042,7 +1293,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   let solutionBuffer: string[] = [];
 
   const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
-  const answerPattern = /^[*\s]*(?:Đ|D)áp\s*(?:án|an)[:\s]*(.+)/i;
+  const answerPattern = /^[\*\s]*(?:Đ|D)áp\s*(?:án|an)[:\s]*(.+)/i;
 
   for (let i = startIdx; i < endIdx; i++) {
     const para = paragraphs[i];
@@ -1054,10 +1305,10 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
     const qMatch = text.match(questionPattern);
     if (qMatch) {
+      // flush prev
       if (currentQ) {
         if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
-        // 🆕 Nếu không có "Đáp án:" → tự luận (writing), chuyển sang Phần 4
         if (!currentQ.correctAnswer) {
           currentQ.type = 'writing';
           currentQ.part = 4;
@@ -1091,12 +1342,8 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (!currentQ) continue;
 
     if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text)) {
-      if (contentBuffer.length > 0) {
-        currentQ.text = contentBuffer.join(' ').trim();
-        contentBuffer = [];
-      }
+      if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
       collectingContent = false;
-      solutionBuffer = [];
       continue;
     }
 
@@ -1114,7 +1361,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       contentBuffer.push(text);
     }
 
-    // collect solution text after "Lời giải"
+    // Solution
     if (collectingContent === false && text && !/^C(?:âu|au)\s*\d+/.test(text)) {
       if (!/^H(?:ình|inh)\s*\d+/i.test(text) && !answerPattern.test(text)) {
         solutionBuffer.push(text);
@@ -1127,7 +1374,6 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   if (currentQ) {
     if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
     if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
-    // 🆕 Nếu không có "Đáp án:" → tự luận (writing), chuyển sang Phần 4
     if (!currentQ.correctAnswer) {
       currentQ.type = 'writing';
       currentQ.part = 4;
