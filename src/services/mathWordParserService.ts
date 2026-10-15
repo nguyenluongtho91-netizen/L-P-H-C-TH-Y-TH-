@@ -197,6 +197,28 @@ export function parseWmfText(buffer: Uint8Array): string[] {
 
 export function reconstructWmfFormula(tokens: string[]): string {
   if (!tokens || tokens.length === 0) return '';
+
+  // Greek alpha: Symbol font 'a' (alpha)
+  if (tokens.length === 1 && tokens[0] === 'a') {
+    return '$\\alpha$';
+  }
+
+  // Reaction arrows with numbers: (1), (2), (3), (4)
+  const numArrow = tokens.find((t) => /^\(\d+\)$/.test(t));
+  if (numArrow) {
+    return `$\\xrightarrow{${numArrow}}$`;
+  }
+
+  // Reaction arrows
+  if (tokens.some((t) => t.includes('¾') || t.includes('®') || t === '->' || t === '-->')) {
+    return '$\\rightarrow$';
+  }
+
+  // Delta H (enthalpy)
+  if (tokens.some((t) => t.includes('H(kJ/mol)') || t.includes('f298') || t.includes('r298'))) {
+    return '$\\Delta_f H^\\circ_{298}$';
+  }
+
   const charges = tokens.filter((t) => t === '+' || t === '-');
   const numbers = tokens.filter((t) => /^\d+$/.test(t));
   const chemSyms = tokens.filter((t) => /^[A-Z][a-z]?([A-Z][a-z]?)*$/.test(t));
@@ -344,7 +366,7 @@ async function extractImagesAndFormulas(
         const ext = filename.split('.').pop()?.toLowerCase() || '';
 
         // If WMF, check if it contains a MathType chemical/math formula
-        if (ext === 'wmf') {
+        if (ext === 'wmf' || ext === 'emf') {
           try {
             const buffer = await zipEntry.async('uint8array');
             const tokens = parseWmfText(buffer);
@@ -352,11 +374,11 @@ async function extractImagesAndFormulas(
             if (formula) {
               wmfFormulaMap.set(filename, formula);
               console.log(`🧪 Decoded WMF formula [${filename}]: ${formula}`);
-              continue; // Don't add as drawing image since it is converted to clean text
             }
           } catch (e) {
             console.warn(`Could not parse WMF text for ${filename}`, e);
           }
+          continue; // Always skip WMF/EMF from web images list because browsers cannot render them
         }
 
         const data = await zipEntry.async('base64');
