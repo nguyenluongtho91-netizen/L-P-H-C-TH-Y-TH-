@@ -60,21 +60,39 @@ export default function ExamMgmt() {
   }
 
   const getExamSemester = (title: string): 'hk1' | 'hk2' | 'other' => {
-    const t = (title || '').toLowerCase()
-    if (/\b(gk1|ck1|hk1|gki|cki|hki|gk_1|ck_1|hk_1)\b/i.test(t) || 
-        t.includes('kì 1') || t.includes('kỳ 1') || t.includes('kì i') || t.includes('kỳ i') ||
-        t.includes('học kì 1') || t.includes('học kỳ 1') || t.includes('học kì i') || t.includes('học kỳ i') ||
-        t.includes('giữa kì 1') || t.includes('giữa kỳ 1') || t.includes('cuối kì 1') || t.includes('cuối kỳ 1') ||
-        t.includes('giữa kì i') || t.includes('giữa kỳ i') || t.includes('cuối kì i') || t.includes('cuối kỳ i')) {
-      return 'hk1'
-    }
-    if (/\b(gk2|ck2|hk2|gkii|ckii|hkii|gk_2|ck_2|hk_2)\b/i.test(t) || 
-        t.includes('kì 2') || t.includes('kỳ 2') || t.includes('kì ii') || t.includes('kỳ ii') ||
-        t.includes('học kì 2') || t.includes('học kỳ 2') || t.includes('học kì ii') || t.includes('học kỳ ii') ||
-        t.includes('giữa kì 2') || t.includes('giữa kỳ 2') || t.includes('cuối kì 2') || t.includes('cuối kỳ 2') ||
-        t.includes('giữa kì ii') || t.includes('giữa kỳ ii') || t.includes('cuối kì ii') || t.includes('cuối kỳ ii')) {
-      return 'hk2'
-    }
+    const raw = (title || '').toLowerCase()
+    const norm = raw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    // Kiểm tra Học kì 1: gk1, ck1, hk1, gki, cki, hki, ki 1, ky 1, giua ki 1, cuoi ki 1, chuong 1, 2, 3
+    const isHk1 = 
+      /\b(gk1|ck1|hk1|gki|cki|hki)\b/.test(norm) ||
+      /\b(gk|ck|hk)\s*(1|i)\b/.test(norm) ||
+      /\b(ki|ky)\s*(1|i)\b/.test(norm) ||
+      /\b(giua|cuoi)\s*(ki|ky)\s*(1|i)\b/.test(norm) ||
+      /\bhoc\s*(ki|ky)\s*(1|i)\b/.test(norm) ||
+      /\bchuong\s*(1|2|3)\b/.test(norm) ||
+      norm.includes('gk1') || norm.includes('ck1') || norm.includes('hk1') || norm.includes('ki 1') || norm.includes('ky 1')
+
+    if (isHk1) return 'hk1'
+
+    // Kiểm tra Học kì 2: gk2, ck2, hk2, gkii, ckii, hkii, ki 2, ky 2, giua ki 2, cuoi ki 2, chuong 4, 5, 6
+    const isHk2 = 
+      /\b(gk2|ck2|hk2|gkii|ckii|hkii)\b/.test(norm) ||
+      /\b(gk|ck|hk)\s*(2|ii)\b/.test(norm) ||
+      /\b(ki|ky)\s*(2|ii)\b/.test(norm) ||
+      /\b(giua|cuoi)\s*(ki|ky)\s*(2|ii)\b/.test(norm) ||
+      /\bhoc\s*(ki|ky)\s*(2|ii)\b/.test(norm) ||
+      /\bchuong\s*(4|5|6)\b/.test(norm) ||
+      norm.includes('gk2') || norm.includes('ck2') || norm.includes('hk2') || norm.includes('ki 2') || norm.includes('ky 2')
+
+    if (isHk2) return 'hk2'
+
     return 'other'
   }
 
@@ -528,14 +546,29 @@ export default function ExamMgmt() {
   }
 
   const getExamGrade = (title: string) => {
-    const t = title.toLowerCase()
-    if (t.includes('lớp 12') || t.includes('khối 12') || t.includes('toán 12') || t.includes('khối mười hai') || /\b(khối\s+)?12\b/.test(t)) return 12
-    if (t.includes('lớp 11') || t.includes('khối 11') || t.includes('toán 11') || t.includes('khối mười một') || /\b(khối\s+)?11\b/.test(t)) return 11
-    if (t.includes('lớp 10') || t.includes('khối 10') || t.includes('toán 10') || t.includes('khối mười') || /\b(khối\s+)?10\b/.test(t)) return 10
-    if (t.includes('lớp 6') || t.includes('khối 6') || t.includes('toán 6') || t.includes('khối sáu') || /\b(khối\s+)?6\b/.test(t)) return 6
-    if (t.includes('lớp 7') || t.includes('khối 7') || t.includes('toán 7') || t.includes('khối bảy') || /\b(khối\s+)?7\b/.test(t)) return 7
-    if (t.includes('lớp 8') || t.includes('khối 8') || t.includes('toán 8') || t.includes('khối tám') || /\b(khối\s+)?8\b/.test(t)) return 8
-    if (t.includes('lớp 9') || t.includes('khối 9') || t.includes('toán 9') || t.includes('khối chín') || /\b(khối\s+)?9\b/.test(t)) return 9
+    const raw = (title || '').toLowerCase()
+    const norm = raw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    // 1. Kiểm tra theo số từ 12 xuống 6
+    for (const g of [12, 11, 10, 9, 8, 7, 6]) {
+      const regex = new RegExp(`(^|\\b)(lop|khoi|toan)?\\s*${g}(\\b|$)`)
+      if (regex.test(norm) || norm.startsWith(`${g} `) || norm === `${g}`) return g
+    }
+    // 2. Chữ viết: sáu, bảy, tám, chín, mười
+    if (norm.includes('khoi muoi hai') || norm.includes('lop muoi hai')) return 12
+    if (norm.includes('khoi muoi mot') || norm.includes('lop muoi mot')) return 11
+    if (norm.includes('khoi muoi') || norm.includes('lop muoi')) return 10
+    if (norm.includes('khoi chin') || norm.includes('lop chin')) return 9
+    if (norm.includes('khoi tam') || norm.includes('lop tam')) return 8
+    if (norm.includes('khoi bay') || norm.includes('lop bay')) return 7
+    if (norm.includes('khoi sau') || norm.includes('lop sau')) return 6
+
     return null
   }
 
@@ -755,7 +788,7 @@ export default function ExamMgmt() {
             { id: 'hk1', label: 'Học kì 1', list: hk1List, badge: 'bg-amber-100 text-amber-800 border-amber-200', iconColor: 'text-amber-500', headerBg: 'bg-amber-50/70 border-amber-200 hover:bg-amber-100/60' },
             { id: 'hk2', label: 'Học kì 2', list: hk2List, badge: 'bg-blue-100 text-blue-800 border-blue-200', iconColor: 'text-blue-500', headerBg: 'bg-blue-50/70 border-blue-200 hover:bg-blue-100/60' },
             ...(otherList.length > 0 ? [{ id: 'other', label: 'Khác / Chuyên đề', list: otherList, badge: 'bg-gray-100 text-gray-700 border-gray-200', iconColor: 'text-gray-500', headerBg: 'bg-gray-50 border-gray-200 hover:bg-gray-100' }] : [])
-          ].filter(sec => semesterFilter === 'all' || semesterFilter === sec.id)
+          ].filter(sec => semesterFilter === 'all' || semesterFilter === sec.id || (sec.id === 'other' && otherList.length > 0))
 
           return (
             <div key={grade} className={`flex flex-col rounded-2xl border-t-4 ${theme.border} bg-white shadow-sm overflow-hidden min-h-[400px]`}>
