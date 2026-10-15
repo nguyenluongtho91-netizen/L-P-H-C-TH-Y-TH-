@@ -1076,15 +1076,7 @@ export default function ExamMgmt() {
                         <div className="space-y-4">
                           <div className="pl-12">
                             {(() => {
-                              let cleanText = (q.text || '').trim();
-                              cleanText = cleanText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
-                              cleanText = cleanText
-                                .replace(/([.:;?!,])\s*(\([a-e]\))/g, '$1<br/>$2')
-                                .replace(/([.:;?!,])\s*(\([1-6]\))/g, '$1<br/>$2')
-                                .replace(/([.:;?!,])\s*(Bước\s*\d+[:.])/gi, '$1<br/>$2')
-                                .replace(/([.:;?!,])\s*(Phần\s*\d+[:.])/gi, '$1<br/>$2')
-                                .replace(/([.:;?!])\s*(Số\s*phát\s*biểu|Các\s*biện\s*pháp|Liệt\s*kê\s*các|Xác\s*định\s*%)/gi, '$1<br/>$2');
-
+                              const cleanText = (q.text || '').trim().replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
                               return (
                                 <MathText html={cleanText} block className="text-gray-800 font-medium text-base leading-relaxed" />
                               );

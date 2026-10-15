@@ -164,14 +164,7 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
         {exam.questions.map((q: any, i: number) => {
           const displayNum = (q.number % 100) || (i + 1);
           const uAns = answers[q.number];
-          let cleanText = (q.text || '').trim();
-          cleanText = cleanText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
-          const formattedText = cleanText
-            .replace(/([.:;?!,])\s*(\([a-e]\))/g, '$1<br/>$2')
-            .replace(/([.:;?!,])\s*(\([1-6]\))/g, '$1<br/>$2')
-            .replace(/([.:;?!,])\s*(Bước\s*\d+[:.])/gi, '$1<br/>$2')
-            .replace(/([.:;?!,])\s*(Phần\s*\d+[:.])/gi, '$1<br/>$2')
-            .replace(/([.:;?!])\s*(Số\s*phát\s*biểu|Các\s*biện\s*pháp|Liệt\s*kê\s*các|Xác\s*định\s*%)/gi, '$1<br/>$2');
+          const formattedText = (q.text || '').trim().replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
           
           return (
             <div key={q.number} className="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
