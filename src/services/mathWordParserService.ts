@@ -319,8 +319,8 @@ function escapeHtmlPreserveLaTeX(text: string): string {
     return `__PRESERVED_BLOCK_${preservedBlocks.length - 1}__`;
   };
 
-  // Protect HTML tags (sub, sup, b, i, strong, em)
-  text = text.replace(/<\/?(sub|sup|b|i|u|strong|em|br)>/gi, protect);
+  // Protect all safe HTML tags (img, div, span, table, sub, sup, b, i, etc.)
+  text = text.replace(/<(\/?[a-z0-9]+)(\s+[^>]*)?>/gi, protect);
 
   // Protect LaTeX ($$...$$ and $...$)
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, protect);
