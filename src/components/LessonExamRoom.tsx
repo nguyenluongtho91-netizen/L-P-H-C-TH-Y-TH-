@@ -164,17 +164,21 @@ export default function LessonExamRoom({ examId, studentName, onSubmitted, onExi
         {exam.questions.map((q: any, i: number) => {
           const displayNum = (q.number % 100) || (i + 1);
           const uAns = answers[q.number];
-          const rawText = (q.text || '').trim();
-          const formattedText = /^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i.test(rawText)
-            ? rawText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, `<strong>Câu ${displayNum}.</strong> `)
-            : `<strong>Câu ${displayNum}.</strong> ${rawText}`;
+          let cleanText = (q.text || '').trim();
+          cleanText = cleanText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
+          const formattedText = cleanText
+            .replace(/([.:;?!,])\s*(\([a-e]\))/g, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(\([1-6]\))/g, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(Bước\s*\d+[:.])/gi, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(Phần\s*\d+[:.])/gi, '$1<br/>$2')
+            .replace(/([.:;?!])\s*(Số\s*phát\s*biểu|Các\s*biện\s*pháp|Liệt\s*kê\s*các|Xác\s*định\s*%)/gi, '$1<br/>$2');
           
           return (
             <div key={q.number} className="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-gray-100">
               {/* Tiêu đề câu hỏi */}
               <div className="flex items-start gap-2.5 sm:gap-3 mb-3 border-b pb-2.5">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-black text-xs sm:text-sm shrink-0 mt-0.5">
-                  {displayNum}
+                <div className="px-2.5 py-1 rounded-lg bg-teal-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shrink-0 mt-0.5 shadow-sm">
+                  Câu {displayNum}
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5 text-xs sm:text-sm md:text-base text-gray-800 font-medium overflow-x-auto leading-relaxed">
                   <MathText html={formattedText} block />

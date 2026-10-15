@@ -504,12 +504,17 @@ const QuestionCard: React.FC<any> = ({ question, displayNum, userAnswer, onChang
       <div className="px-5 py-4">
         {/* Nội dung câu hỏi */}
         {(() => {
-          const rawText = (question.text || '').trim();
-          const formattedText = /^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i.test(rawText)
-            ? rawText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, `<strong>Câu ${displayNum}.</strong> `)
-            : `<strong>Câu ${displayNum}.</strong> ${rawText}`;
+          let cleanText = (question.text || '').trim();
+          cleanText = cleanText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
+          cleanText = cleanText
+            .replace(/([.:;?!,])\s*(\([a-e]\))/g, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(\([1-6]\))/g, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(Bước\s*\d+[:.])/gi, '$1<br/>$2')
+            .replace(/([.:;?!,])\s*(Phần\s*\d+[:.])/gi, '$1<br/>$2')
+            .replace(/([.:;?!])\s*(Số\s*phát\s*biểu|Các\s*biện\s*pháp|Liệt\s*kê\s*các|Xác\s*định\s*%)/gi, '$1<br/>$2');
+
           return (
-            <MathText html={formattedText} className="text-gray-800 leading-relaxed text-[15px] mb-3" block />
+            <MathText html={cleanText} className="text-gray-800 leading-relaxed text-[15px] mb-3" block />
           );
         })()}
         

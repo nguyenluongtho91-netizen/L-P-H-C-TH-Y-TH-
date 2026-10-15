@@ -972,7 +972,7 @@ function parsePart1WithUnderline(
     const qMatch = text.match(questionPattern);
     if (qMatch) {
       if (currentQ) {
-        if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join(' ').trim();
+        if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
 
         if (!currentQ.correctAnswer && currentQuestionUnderlinedLetters.length > 0) {
@@ -1003,7 +1003,7 @@ function parsePart1WithUnderline(
 
       collectingContent = true;
       inSolution = false;
-      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
+      contentBuffer = [restText ? restText : ''];
       solutionBuffer = [];
       currentQuestionUnderlinedLetters = [];
 
@@ -1020,7 +1020,7 @@ function parsePart1WithUnderline(
     // "Lời giải"
     if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text)) {
       if (contentBuffer.length > 0 && !currentQ.text) {
-        currentQ.text = contentBuffer.join(' ').trim();
+        currentQ.text = contentBuffer.join('<br/>').trim();
         contentBuffer = [];
       }
       collectingContent = false;
@@ -1040,7 +1040,7 @@ function parsePart1WithUnderline(
     const extractedOpts = extractOptionsFromText(text);
     if (extractedOpts.length > 0 && collectingContent) {
       if (currentQ.options.length === 0 && contentBuffer.length > 0) {
-        currentQ.text = contentBuffer.join(' ').trim();
+        currentQ.text = contentBuffer.join('<br/>').trim();
         contentBuffer = [];
       }
 
@@ -1093,7 +1093,7 @@ function parsePart1WithUnderline(
 
   // flush last
   if (currentQ) {
-    if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join(' ').trim();
+    if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
     if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
 
     if (!currentQ.correctAnswer && currentQuestionUnderlinedLetters.length > 0) {
@@ -1154,7 +1154,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (qMatch) {
       // flush prev
       if (currentQ) {
-        if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join(' ').trim();
+        if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
 
         if (!currentQ.correctAnswer && currentQuestionTrueStatements.size > 0) {
@@ -1183,7 +1183,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
       collectingContent = true;
       inSolution = false;
-      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
+      contentBuffer = [restText ? restText : ''];
       solutionBuffer = [];
 
       currentQuestionTrueStatements = new Set();
@@ -1202,7 +1202,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
         globalIndex: 0,
         part: 2,
         type: 'true_false',
-        text: contentBuffer.join(' ').trim() || 'Thí sinh chọn Đúng hoặc Sai cho mỗi ý sau:',
+        text: contentBuffer.join('<br/>').trim() || 'Thí sinh chọn Đúng hoặc Sai cho mỗi ý sau:',
         options: [],
         correctAnswer: null,
         solution: '',
@@ -1223,7 +1223,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
     if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text) || /^Đáp\s*án:/i.test(text)) {
       if (contentBuffer.length > 0 && !currentQ.text) {
-        currentQ.text = contentBuffer.join(' ').trim();
+        currentQ.text = contentBuffer.join('<br/>').trim();
         contentBuffer = [];
       }
       collectingContent = false;
@@ -1243,7 +1243,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
     if (extractedStmts.length > 0 && collectingContent) {
       if (currentQ.options.length === 0 && contentBuffer.length > 0) {
-        currentQ.text = contentBuffer.join(' ').trim();
+        currentQ.text = contentBuffer.join('<br/>').trim();
         contentBuffer = [];
       }
 
@@ -1298,7 +1298,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 
   // flush last
   if (currentQ) {
-    if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join(' ').trim();
+    if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
     if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
 
     if (!currentQ.correctAnswer && currentQuestionTrueStatements.size > 0) {
@@ -1343,7 +1343,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (qMatch) {
       // flush prev
       if (currentQ) {
-        if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
+        if (contentBuffer.length > 0) currentQ.text = contentBuffer.join('<br/>').trim();
         if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
 // keep as short_answer in Part 3
         if (currentQ.text) questions.push(currentQ);
@@ -1365,7 +1365,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       };
 
       collectingContent = true;
-      contentBuffer = [restText ? `<strong>Câu ${qNum}.</strong> ${restText}` : `<strong>Câu ${qNum}.</strong>`];
+      contentBuffer = [restText ? restText : ''];
       solutionBuffer = [];
 
       if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
@@ -1375,7 +1375,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (!currentQ) continue;
 
     if (/^L(?:ời|oi)\s*gi(?:ải|ai)/i.test(text)) {
-      if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
+      if (contentBuffer.length > 0) currentQ.text = contentBuffer.join('<br/>').trim();
       collectingContent = false;
       continue;
     }
@@ -1405,7 +1405,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   }
 
   if (currentQ) {
-    if (contentBuffer.length > 0) currentQ.text = contentBuffer.join(' ').trim();
+    if (contentBuffer.length > 0) currentQ.text = contentBuffer.join('<br/>').trim();
     if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join(' ').trim();
     if (!currentQ.correctAnswer) {
       currentQ.type = 'writing';

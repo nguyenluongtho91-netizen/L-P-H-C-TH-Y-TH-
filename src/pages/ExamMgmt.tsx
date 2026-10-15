@@ -1036,9 +1036,9 @@ export default function ExamMgmt() {
                       
                       {/* Tiêu đề & Nút thao tác câu hỏi */}
                       <div className="flex justify-between items-start mb-4 border-b border-gray-50 pb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-teal-100 text-teal-700 font-bold rounded-full flex items-center justify-center flex-shrink-0">
-                            {displayQNum}
+                        <div className="flex items-center gap-2.5">
+                          <div className="px-3.5 py-1.5 bg-teal-600 text-white font-extrabold text-sm rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                            Câu {displayQNum}
                           </div>
                           <span className="text-xs text-gray-400 font-mono">ID: {q.number}</span>
                         </div>
@@ -1076,14 +1076,19 @@ export default function ExamMgmt() {
                         <div className="space-y-4">
                           <div className="pl-12">
                             {(() => {
-                            const rawText = (q.text || '').trim();
-                            const formattedText = /^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i.test(rawText)
-                              ? rawText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, `<strong>Câu ${displayQNum}.</strong> `)
-                              : `<strong>Câu ${displayQNum}.</strong> ${rawText}`;
-                            return (
-                              <MathText html={formattedText} block className="text-gray-800 font-medium text-base leading-relaxed" />
-                            );
-                          })()}
+                              let cleanText = (q.text || '').trim();
+                              cleanText = cleanText.replace(/^(<strong>)?Câu\s*\d+\s*[.:]?(<\/strong>)?\s*/i, '');
+                              cleanText = cleanText
+                                .replace(/([.:;?!,])\s*(\([a-e]\))/g, '$1<br/>$2')
+                                .replace(/([.:;?!,])\s*(\([1-6]\))/g, '$1<br/>$2')
+                                .replace(/([.:;?!,])\s*(Bước\s*\d+[:.])/gi, '$1<br/>$2')
+                                .replace(/([.:;?!,])\s*(Phần\s*\d+[:.])/gi, '$1<br/>$2')
+                                .replace(/([.:;?!])\s*(Số\s*phát\s*biểu|Các\s*biện\s*pháp|Liệt\s*kê\s*các|Xác\s*định\s*%)/gi, '$1<br/>$2');
+
+                              return (
+                                <MathText html={cleanText} block className="text-gray-800 font-medium text-base leading-relaxed" />
+                              );
+                            })()}
                             {q.images?.filter((img: any) => !img.filename?.toLowerCase().endsWith('.wmf') && !img.id?.toLowerCase().endsWith('.wmf') && img.contentType !== 'image/x-wmf').map((img: any, idx: number) => (
                               <img 
                                 key={idx} 
