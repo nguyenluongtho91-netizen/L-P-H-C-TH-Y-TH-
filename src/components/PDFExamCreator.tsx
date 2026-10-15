@@ -30,6 +30,7 @@ type SolutionMode = 'split' | 'full';
 interface PDFExamCreatorProps {
   teacherId: string;
   teacherName: string;
+  initialPdfFile?: File;
   onSave: (exam: Omit<Exam, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onCancel: () => void;
 }
@@ -207,7 +208,7 @@ function SupabaseUploadBlock({ label, pdfBase64, pdfFileName, pdfSizeKB, examTit
 
 // ─── COMPONENT CHÍNH ─────────────────────────────────────────────────────────
 
-const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName, onSave, onCancel }) => {
+const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName, initialPdfFile, onSave, onCancel }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -265,6 +266,13 @@ const PDFExamCreator: React.FC<PDFExamCreatorProps> = ({ teacherId, teacherName,
     };
     r.readAsDataURL(file);
   }, []);
+
+  // Tự động load file PDF nếu được truyền từ trang ngoài (ví dụ nút Tải lên từ PDF)
+  React.useEffect(() => {
+    if (initialPdfFile) {
+      handleExamFile(initialPdfFile);
+    }
+  }, [initialPdfFile, handleExamFile]);
 
   const handleDropExam = useCallback((e: React.DragEvent) => {
     e.preventDefault();

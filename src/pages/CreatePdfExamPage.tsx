@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useExamStore } from '@/store/examStore'
 import PDFExamCreator from '@/components/PDFExamCreator'
@@ -8,14 +8,15 @@ export default function CreatePdfExamPage() {
   const authStore = useAuthStore() as any
   const user = authStore.user
   const navigate = useNavigate()
+  const location = useLocation() as any
+  const initialPdfFile = location.state?.file || location.state?.pdfFile
   const { createExam } = useExamStore()
 
   const handleSave = async (exam: any) => {
     try {
-      // Gọi hàm createExam từ store có sẵn của thầy
       await createExam(exam, exam.title)
       toast.success('Tạo đề thi PDF thành công! 🎉')
-      navigate('/exams') // Quay lại trang ngân hàng đề
+      navigate('/exams')
     } catch (error) {
       console.error(error)
       toast.error('Có lỗi khi lưu đề thi')
@@ -28,6 +29,7 @@ export default function CreatePdfExamPage() {
       <PDFExamCreator
         teacherId={user?.id || ''}
         teacherName={user?.name || user?.full_name || 'Giáo viên'}
+        initialPdfFile={initialPdfFile}
         onSave={handleSave}
         onCancel={() => navigate('/exams')}
       />

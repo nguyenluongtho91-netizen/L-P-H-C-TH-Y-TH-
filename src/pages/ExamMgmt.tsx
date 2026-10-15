@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FileUp, FileText, Trash2, RefreshCw, Eye, Edit2, Save, X, Settings, Download, BookOpen, Sparkles, Folder, FolderOpen, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import { useExamStore } from '@/store/examStore'
 import { parseWordToExam } from '@/services/mathWordParserService'
@@ -16,7 +17,15 @@ import { compileFullTex } from '@/services/api'
 import { uploadPdfToSupabase } from '@/services/supabaseService'
 
 export default function ExamMgmt() {
+  const navigate = useNavigate()
   const { exams, loading, loadExams, createExam, deleteExam, getExamData } = useExamStore()
+
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      navigate('/create-pdf-exam', { state: { file } })
+    }
+  }
   const [uploading, setUploading] = useState(false)
   
   // State cho xem trước
@@ -600,19 +609,32 @@ export default function ExamMgmt() {
           <p className="text-gray-400 text-sm mt-1">Phân tích tự động và cấu hình điểm thi</p>
         </div>
         
-        <div className="flex gap-2">
-          <label className={`btn-teal flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-70 pointer-events-none' : ''}`}>
+        <div className="flex flex-wrap gap-2">
+          {/* Nút 1: Tải lên từ Word */}
+          <label className={`btn-teal flex items-center gap-2 cursor-pointer shadow-sm hover:opacity-90 transition-all ${uploading ? 'opacity-70 pointer-events-none' : ''}`}>
             {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
             {uploading ? 'Đang xử lý...' : 'Tải lên từ Word'}
             <input type="file" accept=".docx" className="hidden" onChange={handleFileUpload} disabled={uploading} />
           </label>
+
+          {/* Nút 2: Tải lên từ LaTeX */}
           <label 
-            className={`btn-teal flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-70 pointer-events-none' : ''}`}
+            className={`btn-teal flex items-center gap-2 cursor-pointer shadow-sm hover:opacity-90 transition-all ${uploading ? 'opacity-70 pointer-events-none' : ''}`}
             style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}
           >
             {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
             {uploading ? 'Đang xử lý...' : 'Tải lên từ LaTeX'}
             <input type="file" accept=".tex" className="hidden" onChange={handleTexUpload} disabled={uploading} />
+          </label>
+
+          {/* Nút 3: Tải lên từ PDF */}
+          <label 
+            className={`btn-teal flex items-center gap-2 cursor-pointer shadow-sm hover:opacity-90 transition-all ${uploading ? 'opacity-70 pointer-events-none' : ''}`}
+            style={{ background: 'linear-gradient(135deg, #e11d48, #f43f5e)' }}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Tải lên từ PDF</span>
+            <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} disabled={uploading} />
           </label>
         </div>
       </div>
