@@ -10,7 +10,8 @@ import toast, { Toaster } from 'react-hot-toast';
 import {
   Video, MicOff, Hand, Volume2, Shield, ShieldAlert, Lock, Unlock,
   Copy, Check, FileText, ArrowLeft, Maximize2,
-  Columns, Sparkles, LogIn, Bell, BellOff, Edit3, X, RefreshCw
+  Columns, Sparkles, LogIn, Bell, BellOff, Edit3, X, RefreshCw,
+  MonitorCheck
 } from 'lucide-react';
 
 const TEACHER_PHONE = '0345833133';
@@ -182,7 +183,7 @@ export default function LiveClassroomPage() {
     };
   }, [currentRoomName, isHost]);
 
-  // Khởi tạo phòng học Jitsi - BỎ HOÀN TOÀN MỌI BƯỚC ĐĂNG NHẬP / CHỜ QUẢN TRỊ VIÊN
+  // Khởi tạo phòng học Jitsi - TỐI ƯU HÓA HÌNH ẢNH FULL HD 1080P SIÊU NÉT
   useEffect(() => {
     if (!hasJoined || !isPinUnlocked) return;
 
@@ -194,7 +195,6 @@ export default function LiveClassroomPage() {
 
       const displayName = isHost ? 'Thầy Lương Thọ (Giáo viên)' : (studentName.trim() || 'Học sinh');
       
-      // Xóa sạch script cũ nếu từ domain khác để tránh lưu cache jit.si
       if (typeof window !== 'undefined' && (window as any).JitsiMeetExternalAPI) {
         try {
           const options = {
@@ -206,6 +206,7 @@ export default function LiveClassroomPage() {
               displayName: displayName
             },
             configOverwrite: {
+              // Bỏ hoàn toàn trang tiền phòng & chờ đăng nhập
               prejoinPageEnabled: false,
               prejoinConfig: {
                 enabled: false
@@ -219,18 +220,66 @@ export default function LiveClassroomPage() {
               enableInsecureRoomNameWarning: false,
               enableLobbyChat: false,
               hideLobbyButton: true,
+
+              // --- CẤU HÌNH ĐỘ NÉT CAO FULL HD 1080P (SIÊU SẮC NÉT) ---
+              resolution: 1080,
+              constraints: {
+                video: {
+                  height: {
+                    ideal: 1080,
+                    max: 1080,
+                    min: 720
+                  },
+                  width: {
+                    ideal: 1920,
+                    max: 1920,
+                    min: 1280
+                  },
+                  frameRate: {
+                    ideal: 30,
+                    max: 60,
+                    min: 15
+                  }
+                }
+              },
+              videoQuality: {
+                disabledBitrates: false,
+                maxFullResolutionParticipants: 4,
+                preferredCodec: 'H264',
+                minHeightForQualityLvl: {
+                  360: 'standard',
+                  720: 'high',
+                  1080: 'fullHd'
+                }
+              },
+              // Kết nối P2P trực tiếp để đạt độ nét tối đa, không qua nén giảm chất lượng
+              p2p: {
+                enabled: true,
+                preferH264: true,
+                disableH264: false,
+                useStunTurn: true
+              },
+              desktopSharingFrameRate: {
+                min: 25,
+                max: 30
+              },
+              disableSimulcast: false,
+              enableLayerSuspension: false,
+
+              // Thanh công cụ gồm nút chọn chất lượng hình ảnh
               toolbarButtons: isHost ? [
                 'microphone', 'camera', 'desktop', 'fullscreen', 'chat',
-                'raisehand', 'tileview', 'mute-everyone', 'settings'
+                'raisehand', 'tileview', 'mute-everyone', 'settings', 'videoquality'
               ] : [
-                'microphone', 'camera', 'fullscreen', 'chat', 'raisehand', 'tileview'
+                'microphone', 'camera', 'fullscreen', 'chat', 'raisehand', 'tileview', 'videoquality'
               ]
             },
             interfaceConfigOverwrite: {
               SHOW_JITSI_WATERMARK: false,
               SHOW_WATERMARK_FOR_GUESTS: false,
               DEFAULT_REMOTE_DISPLAY_NAME: 'Học sinh Thầy Thọ',
-              TOOLBAR_ALWAYS_VISIBLE: true
+              TOOLBAR_ALWAYS_VISIBLE: true,
+              OPTIMAL_BROWSING_RESOLUTION: 1080
             }
           };
 
@@ -238,7 +287,11 @@ export default function LiveClassroomPage() {
           jitsiApiRef.current = api;
 
           api.addEventListener('videoConferenceJoined', () => {
-            toast.success(isHost ? 'Đã khởi tạo phòng học với quyền Giáo viên!' : 'Đã kết nối vào phòng học trực tuyến!');
+            toast.success(isHost ? 'Phòng học Thầy Thọ sẵn sàng ở độ phân giải Full HD 1080p!' : 'Đã kết nối vào phòng học trực tuyến Full HD!');
+            try {
+              // Ép mức chất lượng video cao nhất Full HD (1080p)
+              api.executeCommand('setVideoQuality', 1080);
+            } catch {}
           });
           return;
         } catch (e) {
@@ -246,9 +299,9 @@ export default function LiveClassroomPage() {
         }
       }
 
-      // Iframe trực tiếp: VÀO THẲNG PHÒNG 100%, KHÔNG CẦN CHỜ MODERATOR
+      // Iframe trực tiếp: VÀO THẲNG PHÒNG ĐỘ NÉT CAO 1080P
       const iframe = document.createElement('iframe');
-      iframe.src = `https://${JITSI_DOMAIN}/${encodeURIComponent(currentRoomName)}#userInfo.displayName="${encodeURIComponent(displayName)}"&config.prejoinPageEnabled=false&config.prejoinConfig.enabled=false&config.requireDisplayName=false&config.disableDeepLinking=true&config.startWithAudioMuted=${!isHost}&config.startWithVideoMuted=false&interfaceConfig.SHOW_JITSI_WATERMARK=false`;
+      iframe.src = `https://${JITSI_DOMAIN}/${encodeURIComponent(currentRoomName)}#userInfo.displayName="${encodeURIComponent(displayName)}"&config.prejoinPageEnabled=false&config.prejoinConfig.enabled=false&config.requireDisplayName=false&config.disableDeepLinking=true&config.resolution=1080&config.p2p.enabled=true&config.startWithAudioMuted=${!isHost}&config.startWithVideoMuted=false&interfaceConfig.SHOW_JITSI_WATERMARK=false`;
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
@@ -265,7 +318,6 @@ export default function LiveClassroomPage() {
         script.async = true;
         script.onload = initJitsi;
         script.onerror = () => {
-          // Nếu script lỗi, tự động dùng iframe trực tiếp
           initJitsi();
         };
         document.body.appendChild(script);
@@ -356,6 +408,19 @@ export default function LiveClassroomPage() {
     setSoundVolumeState(vol);
     setSoundVolume(vol);
     toast(`Âm lượng hiệu ứng: ${Math.round(vol * 100)}%`, { duration: 1500 });
+  };
+
+  // Ép lại độ phân giải Full HD 1080p
+  const handleForceFullHD = () => {
+    try {
+      jitsiApiRef.current?.executeCommand('setVideoQuality', 1080);
+      toast.success('🌟 Đã tối ưu độ nét Full HD 1080p cho Camera và Chia sẻ màn hình!', {
+        icon: '✨',
+        duration: 3000
+      });
+    } catch {
+      toast('Camera đang chạy ở độ phân giải cao nhất được hỗ trợ bởi thiết bị.');
+    }
   };
 
   // Học sinh giơ tay / hạ tay
@@ -715,8 +780,18 @@ export default function LiveClassroomPage() {
             </div>
           </div>
 
-          {/* Nhóm 2: Quyền lớp học, Khóa tập trung & Phát đề */}
+          {/* Nhóm 2: Quyền lớp học, Khóa tập trung, Chất lượng 1080p & Phát đề */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* NÚT CHẤT LƯỢNG HÌNH ẢNH FULL HD 1080P */}
+            <button
+              onClick={handleForceFullHD}
+              className="px-2.5 py-1 rounded-md bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/50 hover:to-purple-600/50 text-indigo-300 border border-indigo-500/40 flex items-center gap-1 font-bold text-xs transition active:scale-95 shadow-sm"
+              title="Camera và Chia sẻ màn hình đang ở chế độ Full HD 1080p sắc nét nhất. Bấm để làm tươi lại chất lượng cao."
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Full HD 1080p 🌟</span>
+            </button>
+
             {/* NÚT KHÓA TẬP TRUNG TOÀN LỚP */}
             <button
               onClick={toggleFocusMode}
