@@ -2,6 +2,11 @@
 // Web Audio API Sound Effects Synthesizer for Classroom
 class ClassroomSoundEffects {
   private ctx: AudioContext | null = null;
+  public volume: number = 0.8;
+
+  setVolume(val: number) {
+    this.volume = Math.max(0, Math.min(1, val));
+  }
 
   private initCtx() {
     if (!this.ctx) {
@@ -178,4 +183,8 @@ export function playSound(type: SoundEffectType) {
       soundEffects.playFanfare();
       break;
   }
+}
+
+export function setSoundVolume(val: number) {
+  soundEffects.setVolume(val);
 }

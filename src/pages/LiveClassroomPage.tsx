@@ -5,12 +5,12 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useExamStore } from '@/store/examStore';
 import LessonExamRoom from '@/components/LessonExamRoom';
-import { playSound, SOUND_EFFECTS, SoundEffectType } from '@/utils/soundEffects';
+import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   Video, MicOff, Hand, Volume2, Shield, Lock, Unlock,
   Copy, Check, FileText, ArrowLeft, Maximize2,
-  Columns, Sparkles, LogIn
+  Columns, Sparkles, LogIn, Bell, BellOff
 } from 'lucide-react';
 
 const TEACHER_PHONE = '0345833133';
@@ -40,6 +40,13 @@ export default function LiveClassroomPage() {
   // Danh sách giơ tay
   const [raisedHands, setRaisedHands] = useState<string[]>([]);
   const [myHandRaised, setMyHandRaised] = useState(false);
+  const [enableRaiseHandSound, setEnableRaiseHandSound] = useState(false);
+  const enableRaiseHandSoundRef = useRef(false);
+  const [soundVolume, setSoundVolumeState] = useState<number>(0.8);
+
+  useEffect(() => {
+    enableRaiseHandSoundRef.current = enableRaiseHandSound;
+  }, [enableRaiseHandSound]);
   const [copied, setCopied] = useState(false);
 
   // Jitsi container & API ref
@@ -81,6 +88,9 @@ export default function LiveClassroomPage() {
       .on('broadcast', { event: 'raise_hand' }, ({ payload }) => {
         if (payload?.name) {
           setRaisedHands(prev => Array.from(new Set([...prev, payload.name])));
+          if (enableRaiseHandSoundRef.current) {
+            playSound('bell');
+          }
           toast(`✋ ${payload.name} giơ tay phát biểu!`, {
             id: 'raise-hand-notification',
             position: 'top-center',
