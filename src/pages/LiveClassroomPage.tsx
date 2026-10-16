@@ -11,7 +11,7 @@ import {
   Video, MicOff, Hand, Volume2, Shield, ShieldAlert, Lock, Unlock,
   Copy, Check, FileText, ArrowLeft, Maximize2,
   Columns, Sparkles, LogIn, Bell, BellOff, Edit3, X, RefreshCw,
-  MonitorCheck
+  Radio, Square, Download
 } from 'lucide-react';
 
 const TEACHER_PHONE = '0345833133';
@@ -60,6 +60,14 @@ export default function LiveClassroomPage() {
   const [lockRaiseHand, setLockRaiseHand] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
 
+  // --- CHẾ ĐỘ GHI MÀN HÌNH BÀI GIẢNG (SCREEN RECORDER) ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<any>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<any>(null);
+
   useEffect(() => {
     enableRaiseHandSoundRef.current = enableRaiseHandSound;
   }, [enableRaiseHandSound]);
@@ -71,6 +79,16 @@ export default function LiveClassroomPage() {
   const channelRef = useRef<any>(null);
 
   const currentRoomName = roomId ? `LopHocThayTho_${roomId}` : DEFAULT_ROOM_ID;
+
+  // Dọn dẹp luồng ghi màn hình khi thoát trang
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (recordingStreamRef.current) {
+        recordingStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
 
   // Tự động nhận diện nếu Thầy Thọ đang đăng nhập tài khoản
   useEffect(() => {
@@ -266,10 +284,10 @@ export default function LiveClassroomPage() {
               disableSimulcast: false,
               enableLayerSuspension: false,
 
-              // Thanh công cụ gồm nút chọn chất lượng hình ảnh
+              // Thanh công cụ gồm nút chọn chất lượng hình ảnh & ghi hình
               toolbarButtons: isHost ? [
                 'microphone', 'camera', 'desktop', 'fullscreen', 'chat',
-                'raisehand', 'tileview', 'mute-everyone', 'settings', 'videoquality'
+                'raisehand', 'tileview', 'mute-everyone', 'settings', 'videoquality', 'localrecording'
               ] : [
                 'microphone', 'camera', 'fullscreen', 'chat', 'raisehand', 'tileview', 'videoquality'
               ]
@@ -421,6 +439,106 @@ export default function LiveClassroomPage() {
     } catch {
       toast('Camera đang chạy ở độ phân giải cao nhất được hỗ trợ bởi thiết bị.');
     }
+  };
+
+  // Định dạng thời gian ghi hình (MM:SS)
+  const formatDuration = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  // --- BẮT ĐẦU GHI MÀN HÌNH BÀI GIẢNG (100% MIỄN PHÍ, KHÔNG GIỚI HẠN) ---
+  const handleStartRecording = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        toast.error('Trình duyệt của bạn không hỗ trợ tính năng ghi màn hình trực tiếp.');
+        return;
+      }
+
+      // Mở hộp thoại chọn màn hình/thẻ muốn ghi
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: true
+      });
+
+      recordingStreamRef.current = stream;
+      recordedChunksRef.current = [];
+
+      let mimeType = 'video/webm;codecs=vp9,opus';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4';
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}`;
+        const filename = `Bai_Giang_Thay_Tho_${dateStr}.webm`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        toast.success(`🎉 Đã lưu video bài giảng về máy: ${filename}`, { duration: 6000 });
+        setIsRecording(false);
+        setRecordingDuration(0);
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      };
+
+      // Tự động dừng khi Thầy bấm nút "Dừng chia sẻ" của trình duyệt
+      stream.getVideoTracks()[0].onended = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+      };
+
+      recorder.start(1000);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      toast.success('🔴 Đang ghi màn hình bài giảng! Bấm "Dừng ghi" khi muốn lưu video.', {
+        duration: 4000
+      });
+    } catch (err: any) {
+      if (err.name !== 'NotAllowedError') {
+        toast.error('Không thể bắt đầu ghi hình: ' + (err.message || 'Lỗi'));
+      }
+    }
+  };
+
+  // --- DỪNG VÀ TẢI VIDEO BÀI GIẢNG VỀ MÁY TÍNH ---
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
   };
 
   // Học sinh giơ tay / hạ tay
@@ -780,8 +898,29 @@ export default function LiveClassroomPage() {
             </div>
           </div>
 
-          {/* Nhóm 2: Quyền lớp học, Khóa tập trung, Chất lượng 1080p & Phát đề */}
+          {/* Nhóm 2: Quyền lớp học, Khóa tập trung, Ghi màn hình & Phát đề */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* NÚT GHI MÀN HÌNH BÀI GIẢNG (SCREEN RECORDER) */}
+            {!isRecording ? (
+              <button
+                onClick={handleStartRecording}
+                className="px-2.5 py-1 rounded-md bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 font-bold text-xs transition active:scale-95 shadow-sm"
+                title="Bấm để ghi lại video bài giảng và màn hình (tải file trực tiếp về máy tính)"
+              >
+                <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                <span>Ghi màn hình ⏺️</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStopRecording}
+                className="px-3 py-1 rounded-md bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-2 font-bold text-xs transition active:scale-95 shadow-lg shadow-rose-600/40 animate-pulse"
+                title="Bấm để dừng ghi và tải ngay video bài giảng về máy tính"
+              >
+                <Square className="w-3 h-3 fill-current" />
+                <span>Dừng ghi ({formatDuration(recordingDuration)}) ⏹️</span>
+              </button>
+            )}
+
             {/* NÚT CHẤT LƯỢNG HÌNH ẢNH FULL HD 1080P */}
             <button
               onClick={handleForceFullHD}
@@ -1025,7 +1164,7 @@ export default function LiveClassroomPage() {
               </div>
               <h3 className="text-base font-bold text-white">Xác nhận Thầy Lương Thọ</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Kích hoạt quyền Giáo viên để điều khiển âm thanh, tắt mic và phát đề.
+                Kích hoạt quyền Giáo viên để điều khiển âm thanh, tắt mic, ghi màn hình và phát đề.
               </p>
             </div>
             <form onSubmit={handleHostLogin} className="space-y-3">
