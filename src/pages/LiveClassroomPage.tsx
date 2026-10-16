@@ -55,17 +55,8 @@ export default function LiveClassroomPage() {
   // Chế độ xem: 'video' (chỉ video), 'classroom' (sơ đồ bàn học), 'split' (song song), 'exam' (làm bài)
   const [layoutMode, setLayoutMode] = useState<'video' | 'classroom' | 'split' | 'exam'>('video');
 
-  // Danh sách học sinh theo thứ tự bàn học
-  const [studentList, setStudentList] = useState<Array<{ id?: string; name: string; isHost?: boolean }>>([
-    { name: 'Nguyễn Văn An (10A1)', isHost: false },
-    { name: 'Trần Thị Mai (10A1)', isHost: false },
-    { name: 'Lê Hoàng Nam (10A2)', isHost: false },
-    { name: 'Phạm Minh Đức (10A2)', isHost: false },
-    { name: 'Vũ Thùy Linh (10A1)', isHost: false },
-    { name: 'Đặng Tuấn Kiệt (10A3)', isHost: false },
-    { name: 'Hoàng Bảo Ngọc (10A2)', isHost: false },
-    { name: 'Bùi Gia Huy (10A1)', isHost: false }
-  ]);
+  // Danh sách học sinh thực tế trong phòng (Không dùng dữ liệu ảo, chỉ hiển thị người thật vào học)
+  const [studentList, setStudentList] = useState<Array<{ id?: string; name: string; isHost?: boolean }>>([]);
 
   // Danh sách giơ tay & âm thanh
   const [raisedHands, setRaisedHands] = useState<string[]>([]);
@@ -161,10 +152,11 @@ export default function LiveClassroomPage() {
         }
       })
       .on('broadcast', { event: 'student_join' }, ({ payload }) => {
-        if (payload?.name && !payload.isHost) {
+        if (payload?.name && !payload.isHost && !payload.name.includes('Thầy')) {
+          const clean = payload.name.replace(/🪑\s*\[BÀN\s*\d+\]\s*/i, '').trim();
           setStudentList(prev => {
-            if (prev.some(s => s.name === payload.name)) return prev;
-            return [...prev, { name: payload.name, isHost: false }];
+            if (prev.some(s => s.name === clean)) return prev;
+            return [...prev, { name: clean, isHost: false }];
           });
         }
       })
@@ -363,15 +355,39 @@ export default function LiveClassroomPage() {
             try {
               // Ép mức chất lượng video cao nhất Full HD (1080p)
               api.executeCommand('setVideoQuality', 1080);
+              
+              // Tự động quét tất cả học sinh thật đang có mặt trong phòng
+              const participants = api.getParticipantsInfo?.();
+              if (Array.isArray(participants)) {
+                participants.forEach((p: any) => {
+                  const raw = p?.displayName || '';
+                  const clean = raw.replace(/🪑\s*\[BÀN\s*\d+\]\s*/i, '').replace(/👨‍🏫\s*\[BỤC GIẢNG\]\s*/i, '').trim();
+                  if (clean && !clean.includes('Thầy')) {
+                    setStudentList(prev => {
+                      if (prev.some(s => s.name === clean || (p.participantId && s.id === p.participantId))) return prev;
+                      return [...prev, { id: p.participantId, name: clean, isHost: false }];
+                    });
+                  }
+                });
+              }
             } catch {}
           });
 
           api.addEventListener('participantJoined', (event: any) => {
-            if (event?.displayName) {
+            const raw = event?.displayName || '';
+            const clean = raw.replace(/🪑\s*\[BÀN\s*\d+\]\s*/i, '').replace(/👨‍🏫\s*\[BỤC GIẢNG\]\s*/i, '').trim();
+            if (clean && !clean.includes('Thầy')) {
               setStudentList(prev => {
-                if (prev.some(s => s.name === event.displayName)) return prev;
-                return [...prev, { name: event.displayName, isHost: false }];
+                if (prev.some(s => s.name === clean || (event.id && s.id === event.id))) return prev;
+                return [...prev, { id: event.id, name: clean, isHost: false }];
               });
+            }
+          });
+
+          // Tự động xóa học sinh khỏi bàn khi rời phòng
+          api.addEventListener('participantLeft', (event: any) => {
+            if (event?.id) {
+              setStudentList(prev => prev.filter(s => s.id !== event.id));
             }
           });
 
