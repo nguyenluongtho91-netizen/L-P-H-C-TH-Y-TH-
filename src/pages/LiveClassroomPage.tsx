@@ -7,6 +7,7 @@ import { useExamStore } from '@/store/examStore';
 import LessonExamRoom from '@/components/LessonExamRoom';
 import CasioCalculator from '@/components/CasioCalculator';
 import ClassroomSeatingChart from '@/components/ClassroomSeatingChart';
+import ClassroomGamesModal from '@/components/ClassroomGamesModal';
 import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -86,6 +87,7 @@ export default function LiveClassroomPage() {
   const [lockRaiseHand, setLockRaiseHand] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showCasio, setShowCasio] = useState(false);
+  const [showGamesModal, setShowGamesModal] = useState(false);
 
   // --- CHẾ ĐỘ GHI MÀN HÌNH BÀI GIẢNG (SCREEN RECORDER) ---
   const [isRecording, setIsRecording] = useState(false);
@@ -971,6 +973,16 @@ export default function LiveClassroomPage() {
 
         {/* Phải: Đổi tên, Giơ tay, Máy tính Casio, Copy Link & Thông tin Giáo viên */}
         <div className="flex items-center gap-2">
+          {/* NÚT TRÒ CHƠI GỌI TÊN HỌC SINH VUI NHỘN & GAY CẤN */}
+          <button
+            onClick={() => setShowGamesModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition shadow-lg bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:from-amber-400 hover:to-rose-400 text-white animate-pulse"
+            title="Mở các trò chơi gọi tên học sinh ngẫu nhiên cực vui và gay cấn (Vòng quay, Hộp quà bí ẩn, Slot machine)"
+          >
+            <span>🎲</span>
+            <span className="hidden sm:inline">Trò Chơi Gọi Tên</span>
+          </button>
+
           {/* NÚT MÁY TÍNH CASIO FX-580 CHO THẦY VÀ HỌC SINH */}
           <button
             onClick={() => setShowCasio(!showCasio)}
@@ -1074,6 +1086,16 @@ export default function LiveClassroomPage() {
                 <span className="font-medium">{item.label}</span>
               </button>
             ))}
+
+            {/* Nút Gọi tên ngẫu nhiên cho Thầy */}
+            <button
+              onClick={() => setShowGamesModal(true)}
+              className="px-2.5 py-1 rounded-md bg-gradient-to-r from-amber-500/20 to-rose-500/20 hover:from-amber-500/40 hover:to-rose-500/40 text-amber-300 border border-amber-500/40 flex items-center gap-1 font-bold text-xs transition active:scale-95"
+              title="Mở các trò chơi gọi tên học sinh lên bảng phát biểu"
+            >
+              <span>🎲</span>
+              <span>Trò chơi gọi tên 🎯</span>
+            </button>
 
             {/* Điều khiển âm lượng */}
             <div className="flex items-center gap-1 ml-2 pl-2 border-l border-slate-700/80">
@@ -1546,6 +1568,13 @@ export default function LiveClassroomPage() {
 
       {/* CỬA SỔ MÁY TÍNH CASIO FX-580VN X NỔI */}
       <CasioCalculator isOpen={showCasio} onClose={() => setShowCasio(false)} />
+
+      {/* TRUNG TÂM CÁC TRÒ CHƠI GỌI TÊN HỌC SINH */}
+      <ClassroomGamesModal
+        isOpen={showGamesModal}
+        onClose={() => setShowGamesModal(false)}
+        studentList={studentList}
+      />
     </div>
   );
 }
