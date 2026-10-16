@@ -6,13 +6,14 @@ import { useAuthStore } from '@/store/authStore';
 import { useExamStore } from '@/store/examStore';
 import LessonExamRoom from '@/components/LessonExamRoom';
 import CasioCalculator from '@/components/CasioCalculator';
+import ClassroomSeatingChart from '@/components/ClassroomSeatingChart';
 import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   Video, MicOff, Hand, Volume2, Shield, ShieldAlert, Lock, Unlock,
   Copy, Check, FileText, ArrowLeft, Maximize2,
   Columns, Sparkles, LogIn, Bell, BellOff, Edit3, X, RefreshCw,
-  Radio, Square, Download
+  Radio, Square, Download, Grid, LayoutGrid, Users
 } from 'lucide-react';
 
 const TEACHER_PHONE = '0345833133';
@@ -50,7 +51,21 @@ export default function LiveClassroomPage() {
   // Đề thi trực tiếp
   const [activeExamId, setActiveExamId] = useState<string | null>(null);
   const [activeExamTitle, setActiveExamTitle] = useState<string>('');
-  const [layoutMode, setLayoutMode] = useState<'split' | 'video' | 'exam'>('video');
+
+  // Chế độ xem: 'video' (chỉ video), 'classroom' (sơ đồ bàn học), 'split' (song song), 'exam' (làm bài)
+  const [layoutMode, setLayoutMode] = useState<'video' | 'classroom' | 'split' | 'exam'>('video');
+
+  // Danh sách học sinh theo thứ tự bàn học
+  const [studentList, setStudentList] = useState<Array<{ id?: string; name: string; isHost?: boolean }>>([
+    { name: 'Nguyễn Văn An (10A1)', isHost: false },
+    { name: 'Trần Thị Mai (10A1)', isHost: false },
+    { name: 'Lê Hoàng Nam (10A2)', isHost: false },
+    { name: 'Phạm Minh Đức (10A2)', isHost: false },
+    { name: 'Vũ Thùy Linh (10A1)', isHost: false },
+    { name: 'Đặng Tuấn Kiệt (10A3)', isHost: false },
+    { name: 'Hoàng Bảo Ngọc (10A2)', isHost: false },
+    { name: 'Bùi Gia Huy (10A1)', isHost: false }
+  ]);
 
   // Danh sách giơ tay & âm thanh
   const [raisedHands, setRaisedHands] = useState<string[]>([]);
@@ -108,6 +123,16 @@ export default function LiveClassroomPage() {
     loadExams();
   }, [user, profile]);
 
+  // Cập nhật học sinh hiện tại vào danh sách bàn
+  useEffect(() => {
+    if (studentName && !studentName.includes('Thầy') && !isHost) {
+      setStudentList(prev => {
+        if (prev.some(s => s.name === studentName)) return prev;
+        return [...prev, { name: studentName, isHost: false }];
+      });
+    }
+  }, [studentName, isHost]);
+
   // Kết nối Supabase Realtime Channel để đồng bộ âm thanh, giơ tay, phát đề
   useEffect(() => {
     const channel = supabase.channel(`live-room-${currentRoomName}`, {
@@ -122,6 +147,14 @@ export default function LiveClassroomPage() {
             icon: payload.icon || '🔊',
             position: 'top-center',
             duration: 2500
+          });
+        }
+      })
+      .on('broadcast', { event: 'student_join' }, ({ payload }) => {
+        if (payload?.name && !payload.isHost) {
+          setStudentList(prev => {
+            if (prev.some(s => s.name === payload.name)) return prev;
+            return [...prev, { name: payload.name, isHost: false }];
           });
         }
       })
@@ -194,14 +227,22 @@ export default function LiveClassroomPage() {
           }
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'student_join',
+            payload: { name: isHost ? 'Thầy Lương Thọ' : studentName, isHost }
+          });
+        }
+      });
 
     channelRef.current = channel;
 
     return () => {
       channel.unsubscribe();
     };
-  }, [currentRoomName, isHost]);
+  }, [currentRoomName, isHost, studentName]);
 
   // Khởi tạo phòng học Jitsi - TỐI ƯU HÓA HÌNH ẢNH FULL HD 1080P SIÊU NÉT
   useEffect(() => {
@@ -240,6 +281,7 @@ export default function LiveClassroomPage() {
               enableInsecureRoomNameWarning: false,
               enableLobbyChat: false,
               hideLobbyButton: true,
+              channelLastN: -1, // Hiển thị đầy đủ tất cả camera không bị ẩn
 
               // --- CẤU HÌNH ĐỘ NÉT CAO FULL HD 1080P (SIÊU SẮC NÉT) ---
               resolution: 1080,
@@ -264,7 +306,7 @@ export default function LiveClassroomPage() {
               },
               videoQuality: {
                 disabledBitrates: false,
-                maxFullResolutionParticipants: 4,
+                maxFullResolutionParticipants: 8,
                 preferredCodec: 'H264',
                 minHeightForQualityLvl: {
                   360: 'standard',
@@ -313,6 +355,16 @@ export default function LiveClassroomPage() {
               api.executeCommand('setVideoQuality', 1080);
             } catch {}
           });
+
+          api.addEventListener('participantJoined', (event: any) => {
+            if (event?.displayName) {
+              setStudentList(prev => {
+                if (prev.some(s => s.name === event.displayName)) return prev;
+                return [...prev, { name: event.displayName, isHost: false }];
+              });
+            }
+          });
+
           return;
         } catch (e) {
           console.warn('Lỗi Jitsi API, chuyển sang Iframe trực tiếp:', e);
@@ -751,34 +803,73 @@ export default function LiveClassroomPage() {
           </div>
         </div>
 
-        {/* Giữa: Chuyển đổi chế độ màn hình (khi có đề thi) */}
-        {activeExamId && (
-          <div className="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 text-xs">
-            <button
-              onClick={() => setLayoutMode('video')}
-              className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${layoutMode === 'video' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Chỉ Video</span>
-            </button>
-            <button
-              onClick={() => setLayoutMode('split')}
-              className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${layoutMode === 'split' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <Columns className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Song song (Đề + Live)</span>
-            </button>
-            <button
-              onClick={() => setLayoutMode('exam')}
-              className={`px-2.5 py-1 rounded-md transition flex items-center gap-1 ${layoutMode === 'exam' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Tập trung làm bài</span>
-            </button>
-          </div>
-        )}
+        {/* Giữa: Chuyển đổi các chế độ xem linh hoạt (Video, Sơ đồ bàn học, Lưới Camera, Đề thi) */}
+        <div className="flex items-center bg-slate-800/80 p-0.5 rounded-xl border border-slate-700/60 text-xs">
+          <button
+            onClick={() => {
+              setLayoutMode('video');
+              try { jitsiApiRef.current?.executeCommand('setTileView', false); } catch {}
+            }}
+            className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${layoutMode === 'video' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
+            title="Chế độ xem video thông thường"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Chỉ Video</span>
+          </button>
 
-        {/* Phải: Đổi tên, Giơ tay, Copy Link & Thông tin Giáo viên */}
+          {/* NÚT CHẾ ĐỘ SƠ ĐỒ BÀN HỌC SINH */}
+          <button
+            onClick={() => setLayoutMode('classroom')}
+            className={`px-3 py-1 rounded-lg transition flex items-center gap-1.5 font-bold ${
+              layoutMode === 'classroom'
+                ? 'bg-gradient-to-r from-indigo-600 to-rose-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'text-amber-400 hover:text-white'
+            }`}
+            title="Xem toàn bộ sơ đồ lớp học: Các dãy bàn học sinh được đánh số thứ tự"
+          >
+            <span>🏫</span>
+            <span>Sơ đồ Bàn học</span>
+          </button>
+
+          {/* NÚT CHẾ ĐỘ LƯỚI TOÀN BỘ CAMERA (TILE VIEW) */}
+          <button
+            onClick={() => {
+              setLayoutMode('video');
+              try {
+                jitsiApiRef.current?.executeCommand('setTileView', true);
+                toast.success('🔲 Đã kích hoạt lưới camera xem tất cả học sinh!');
+              } catch {
+                toast('Đã bật chế độ xem lưới camera');
+              }
+            }}
+            className="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1"
+            title="Xem tất cả camera học sinh đồng thời trên 1 màn hình lưới"
+          >
+            <Grid className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden md:inline">Lưới Camera</span>
+          </button>
+
+          {activeExamId && (
+            <>
+              <button
+                onClick={() => setLayoutMode('split')}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${layoutMode === 'split' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Song song</span>
+              </button>
+              <button
+                onClick={() => setLayoutMode('exam')}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${layoutMode === 'exam' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Làm bài</span>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Phải: Đổi tên, Giơ tay, Máy tính Casio, Copy Link & Thông tin Giáo viên */}
         <div className="flex items-center gap-2">
           {/* NÚT MÁY TÍNH CASIO FX-580 CHO THẦY VÀ HỌC SINH */}
           <button
@@ -1033,7 +1124,7 @@ export default function LiveClassroomPage() {
         </div>
       )}
 
-      {/* --- NỘI DUNG CHÍNH (KHU VỰC LIVE & ĐỀ THI) --- */}
+      {/* --- NỘI DUNG CHÍNH (KHU VỰC LIVE, SƠ ĐỒ LỚP HỌC & ĐỀ THI) --- */}
       <main className="flex-1 relative flex overflow-hidden">
         {/* MODAL MÃ PIN (CHỈ HIỂN THỊ NẾU THẦY BẬT KHÓA PIN VÀ CHƯA NHẬP) */}
         {requirePin && !isPinUnlocked && !isHost ? (
@@ -1067,8 +1158,10 @@ export default function LiveClassroomPage() {
         {/* CONTAINER 1: VIDEO JITSI MEET TRỰC TIẾP */}
         <div
           className={`h-full transition-all duration-300 relative bg-black ${
-            !activeExamId || layoutMode === 'video'
+            layoutMode === 'video'
               ? 'w-full'
+              : layoutMode === 'classroom'
+              ? 'w-full md:w-1/3 border-r border-slate-800'
               : layoutMode === 'split'
               ? 'w-full md:w-1/2 border-r border-slate-800'
               : 'w-0 hidden md:block md:w-1/4 opacity-60 hover:opacity-100'
@@ -1077,15 +1170,34 @@ export default function LiveClassroomPage() {
           <div ref={jitsiContainerRef} className="w-full h-full" />
         </div>
 
-        {/* CONTAINER 2: BÀI KIỂM TRA / ĐỀ THI TRỰC TIẾP (KHI THẦY PHÁT) */}
-        {activeExamId && (
+        {/* CONTAINER 2: SƠ ĐỒ LỚP HỌC & CÁC DÃY BÀN HỌC SINH (SEATING CHART) */}
+        {layoutMode === 'classroom' && (
+          <div className="flex-1 h-full overflow-hidden bg-slate-950">
+            <ClassroomSeatingChart
+              isHost={isHost}
+              studentList={studentList}
+              raisedHands={raisedHands}
+              focusMode={focusMode}
+              onLowerHand={(name) => {
+                setRaisedHands(prev => prev.filter(n => n !== name));
+                channelRef.current?.send({
+                  type: 'broadcast',
+                  event: 'lower_hand',
+                  payload: { name }
+                });
+                toast.success(`Đã hạ tay học sinh "${name}"`);
+              }}
+            />
+          </div>
+        )}
+
+        {/* CONTAINER 3: BÀI KIỂM TRA / ĐỀ THI TRỰC TIẾP (KHI THẦY PHÁT) */}
+        {activeExamId && (layoutMode === 'split' || layoutMode === 'exam') && (
           <div
             className={`h-full transition-all duration-300 overflow-y-auto bg-slate-900 ${
               layoutMode === 'exam'
                 ? 'w-full md:w-3/4'
-                : layoutMode === 'split'
-                ? 'w-full md:w-1/2'
-                : 'hidden'
+                : 'w-full md:w-1/2'
             }`}
           >
             <div className="p-2 sm:p-4 h-full flex flex-col">
@@ -1213,6 +1325,7 @@ export default function LiveClassroomPage() {
           </div>
         </div>
       )}
+
       {/* CỬA SỔ MÁY TÍNH CASIO FX-580VN X NỔI */}
       <CasioCalculator isOpen={showCasio} onClose={() => setShowCasio(false)} />
     </div>
