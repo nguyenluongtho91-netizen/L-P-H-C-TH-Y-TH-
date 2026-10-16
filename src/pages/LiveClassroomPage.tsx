@@ -82,9 +82,10 @@ export default function LiveClassroomPage() {
         if (payload?.name) {
           setRaisedHands(prev => Array.from(new Set([...prev, payload.name])));
           playSound('bell');
-          toast(`✋ ${payload.name} vừa giơ tay phát biểu!`, {
-            position: 'top-right',
-            duration: 4000,
+          toast(`✋ ${payload.name} giơ tay phát biểu!`, {
+            id: 'raise-hand-notification',
+            position: 'top-center',
+            duration: 3000,
             style: { background: '#f59e0b', color: '#fff', fontWeight: 'bold' }
           });
         }
@@ -93,6 +94,10 @@ export default function LiveClassroomPage() {
         if (payload?.name) {
           setRaisedHands(prev => prev.filter(n => n !== payload.name));
         }
+      })
+      .on('broadcast', { event: 'lower_all_hands' }, () => {
+        setRaisedHands([]);
+        setMyHandRaised(false);
       })
       .on('broadcast', { event: 'broadcast_exam' }, ({ payload }) => {
         if (payload?.examId) {
@@ -176,11 +181,7 @@ export default function LiveClassroomPage() {
           toast.success(isHost ? 'Đã khởi tạo phòng học với quyền Giáo viên!' : 'Đã kết nối vào phòng học trực tuyến!');
         });
 
-        api.addEventListener('raiseHandUpdated', (e: any) => {
-          if (e?.handRaised && !isHost) {
-            handleRaiseHand(true);
-          }
-        });
+// Jitsi native raise hand handled inside video
       } else {
         // Fallback: Iframe chất lượng cao nếu external_api chưa load
         const iframe = document.createElement('iframe');
@@ -210,6 +211,18 @@ export default function LiveClassroomPage() {
       }
     };
   }, [hasJoined, isHost]);
+
+  // Hạ tay tất cả học sinh (Dành cho Thầy Thọ)
+  const handleLowerAllHands = () => {
+    setRaisedHands([]);
+    toast.dismiss();
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'lower_all_hands',
+      payload: {}
+    });
+    toast.success('Đã hạ tay toàn bộ học sinh!', { duration: 2000 });
+  };
 
   // Xử lý giơ tay phát biểu
   const handleRaiseHand = (forceState?: boolean) => {
@@ -355,7 +368,7 @@ export default function LiveClassroomPage() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      <Toaster position="top-center" />
+      <Toaster position="top-center" toastOptions={{ duration: 3000, max: 2 }} />
 
       {/* --- THANH HEADER CỐ ĐỊNH --- */}
       <header className="h-14 bg-slate-900 border-b border-slate-800 px-3 md:px-5 flex items-center justify-between shrink-0 z-30">
@@ -535,9 +548,16 @@ export default function LiveClassroomPage() {
 
             {/* Học sinh giơ tay badge */}
             {raisedHands.length > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-                <Hand className="w-3.5 h-3.5" />
-                <span>{raisedHands.length} bạn giơ tay: {raisedHands.join(', ')}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                <Hand className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-medium max-w-[250px] truncate">{raisedHands.length} bạn giơ tay: {raisedHands.join(', ')}</span>
+                <button
+                  onClick={handleLowerAllHands}
+                  className="ml-1 px-1.5 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] transition active:scale-95"
+                  title="Hạ tay tất cả học sinh"
+                >
+                  Hạ tay ✕
+                </button>
               </div>
             )}
           </div>
