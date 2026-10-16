@@ -633,7 +633,7 @@ export default function ClassroomGamesModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-amber-500/50 rounded-3xl max-w-6xl w-[98vw] max-h-[96vh] flex flex-col shadow-2xl shadow-amber-500/20 overflow-hidden relative">
+      <div className="bg-slate-950/95 backdrop-blur-2xl border-2 border-sky-400/50 rounded-3xl shadow-2xl shadow-sky-500/20 max-w-6xl w-[98vw] max-h-[96vh] flex flex-col shadow-2xl shadow-amber-500/20 overflow-hidden relative">
         
         {/* --- HEADER MODAL TRÒ CHƠI --- */}
         <div className="bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 p-4 sm:px-6 flex items-center justify-between text-white shrink-0">
@@ -643,7 +643,7 @@ export default function ClassroomGamesModal({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
-                <span>VÒNG QUAY & TRÒ CHƠI GỌI TÊN HỌC SINH</span>
+                <span>📐 TOÁN & 🧪 HÓA HỌC — TRÒ CHƠI GỌI TÊN THẦY THỌ</span>
                 <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                   Vui nhộn & Gay cấn
                 </span>
@@ -796,7 +796,7 @@ export default function ClassroomGamesModal({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* CỘT TRÁI/GIỮA: KHU VỰC CHƠI GAME (CHIẾM 2 CỘT) */}
-          <div className="md:col-span-2 flex flex-col items-center justify-center bg-slate-950/60 border border-slate-800 rounded-3xl p-4 sm:p-6 relative min-h-[360px]">
+          <div className="md:col-span-2 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xl border border-sky-500/30 rounded-3xl p-4 sm:p-6 relative min-h-[420px] shadow-inner">
             
             {/* THÔNG BÁO NGƯỜI THẮNG CUỘC NỔ BẬT */}
             {winner && (

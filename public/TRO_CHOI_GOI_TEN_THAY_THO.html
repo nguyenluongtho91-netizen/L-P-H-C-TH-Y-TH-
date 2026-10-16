@@ -26,13 +26,44 @@
       font-family: 'Outfit', sans-serif;
     }
     body {
-      background-color: var(--bg-dark);
+      background: radial-gradient(circle at 50% 15%, #172554 0%, #0f172a 45%, #030712 100%);
       color: #f3f4f6;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
       user-select: none;
+      position: relative;
+    }
+
+    /* Lưới toạ độ Toán học & Phòng Lab Hóa học chuyên nghiệp */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+      background-size: 45px 45px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Canvas hoạt hoạ công thức Toán & Phân tử Hóa học */
+    #mathChemCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.85;
+    }
+
+    header, .class-bar, .tab-bar, .container {
+      position: relative;
+      z-index: 10;
     }
 
     /* Screen shake */
@@ -323,9 +354,10 @@
 
     /* Game Stage (GẦN TRÀN MÀN HÌNH - RỘNG VÀ LỚN) */
     .stage {
-      background: #0b1120;
-      border: 2px solid #1e293b;
-      border-radius: 26px;
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(20px);
+      border: 2px solid rgba(56, 189, 248, 0.35);
+      border-radius: 30px;
       padding: 24px;
       display: flex;
       flex-direction: column;
@@ -333,8 +365,24 @@
       justify-content: center;
       position: relative;
       min-height: 920px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.4);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.7), inset 0 1px 3px rgba(255,255,255,0.15);
       width: 100%;
+      overflow: hidden;
+    }
+    /* Quầng sáng Hào quang Reactor / Aurora toán hóa rực rỡ sau bánh xe */
+    .stage::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 850px;
+      height: 850px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(168, 85, 247, 0.16) 40%, rgba(245, 158, 11, 0.08) 60%, transparent 75%);
+      pointer-events: none;
+      z-index: 0;
+      border-radius: 50%;
+      filter: blur(45px);
     }
 
     /* Winner Popup */
@@ -927,7 +975,7 @@
       <div>
         <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — 10 Lớp Học</span></h1>
         <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 2px;">
-          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học tràn đầy năng lượng & gay cấn
+          📐 GIÁO VIÊN TOÁN & 🧪 HÓA HỌC: NGUYỄN LƯƠNG THỌ — Khởi động tiết học bùng nổ đam mê khoa học
         </p>
       </div>
     </div>
@@ -1385,7 +1433,153 @@
         localStorage.setItem('thaytho_all_classes_v2', JSON.stringify(allClassData));
         localStorage.setItem('thaytho_current_class_key', currentClassKey);
       } catch {}
-      renderClassPills();
+      
+    // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
+    const MATH_CHEM_SYMBOLS = [
+      '∫ f(x)dx', 'π ≈ 3.14', '∑', '√x', 'lim x→∞', 'E = mc²', 'ΔrH°₂₉₈', 'C₆H₆',
+      'H₂O', 'CO₂', 'Fe²⁺', 'CuSO₄', 'NaCl', 'pH = -log[H⁺]', 'sin²x + cos²x = 1',
+      'λ', 'Ω', 'Δ', '∞', 'log_a(b)', 'C₂H₅OH', 'H₂SO₄', 'CH₄', 'KMnO₄', 'f'(x)'
+    ];
+
+    function initMathChemBackground() {
+      const canvas = document.getElementById('mathChemCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // 1. Các hạt liên kết phân tử hóa học (Molecular Nodes)
+      const nodes = [];
+      const nodeCount = Math.floor(Math.min(window.innerWidth / 30, 45));
+      for (let i = 0; i < nodeCount; i++) {
+        nodes.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: (Math.random() - 0.5) * 0.7,
+          radius: Math.random() * 2.5 + 1.5,
+          color: Math.random() > 0.5 ? '#38bdf8' : '#a855f7'
+        });
+      }
+
+      // 2. Ký hiệu Toán & Hóa trôi bồng bềnh
+      const floatingItems = [];
+      const colors = ['rgba(56, 189, 248, 0.45)', 'rgba(250, 204, 21, 0.45)', 'rgba(52, 211, 153, 0.45)', 'rgba(192, 132, 252, 0.45)', 'rgba(251, 113, 133, 0.45)'];
+      for (let i = 0; i < 24; i++) {
+        floatingItems.push({
+          text: MATH_CHEM_SYMBOLS[i % MATH_CHEM_SYMBOLS.length],
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vy: -(Math.random() * 0.45 + 0.2),
+          vx: (Math.random() - 0.5) * 0.25,
+          size: Math.floor(Math.random() * 6 + 14),
+          color: colors[i % colors.length],
+          rot: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 0.3
+        });
+      }
+
+      let atomAngle = 0;
+
+      function renderBg() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ mô hình nguyên tử hóa học quay chậm ở góc nền
+        atomAngle += 0.008;
+        const atomCenterX = canvas.width * 0.12;
+        const atomCenterY = canvas.height * 0.82;
+        
+        ctx.save();
+        ctx.translate(atomCenterX, atomCenterY);
+        // Hạt nhân
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = '#f59e0b';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        // 3 Quỹ đạo electron elip
+        for (let j = 0; j < 3; j++) {
+          ctx.save();
+          ctx.rotate(atomAngle + (j * Math.PI) / 3);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 60, 22, 0, 0, 2 * Math.PI);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          // Electron
+          const ex = Math.cos(atomAngle * 2 + j) * 60;
+          const ey = Math.sin(atomAngle * 2 + j) * 22;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 3.5, 0, 2 * Math.PI);
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Vẽ các liên kết phân tử hóa học (Molecular lattice)
+        for (let i = 0; i < nodes.length; i++) {
+          const n1 = nodes[i];
+          n1.x += n1.vx;
+          n1.y += n1.vy;
+          if (n1.x < 0 || n1.x > canvas.width) n1.vx *= -1;
+          if (n1.y < 0 || n1.y > canvas.height) n1.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(n1.x, n1.y, n1.radius, 0, 2 * Math.PI);
+          ctx.fillStyle = n1.color;
+          ctx.fill();
+
+          for (let j = i + 1; j < nodes.length; j++) {
+            const n2 = nodes[j];
+            const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+            if (dist < 110) {
+              ctx.beginPath();
+              ctx.moveTo(n1.x, n1.y);
+              ctx.lineTo(n2.x, n2.y);
+              ctx.strokeStyle = `rgba(56, 189, 248, ${0.18 * (1 - dist / 110)})`;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Vẽ các ký hiệu Toán & Hóa học lơ lửng
+        floatingItems.forEach(item => {
+          item.y += item.vy;
+          item.x += item.vx;
+          item.rot += item.rotSpeed;
+          if (item.y < -30) {
+            item.y = canvas.height + 30;
+            item.x = Math.random() * canvas.width;
+          }
+
+          ctx.save();
+          ctx.translate(item.x, item.y);
+          ctx.rotate((item.rot * Math.PI) / 180);
+          ctx.font = `bold ${item.size}px Outfit, monospace, sans-serif`;
+          ctx.fillStyle = item.color;
+          ctx.shadowColor = item.color;
+          ctx.shadowBlur = 8;
+          ctx.fillText(item.text, 0, 0);
+          ctx.restore();
+        });
+
+        requestAnimationFrame(renderBg);
+      }
+      renderBg();
+    }
+
+    initMathChemBackground();
+    renderClassPills();
       renderList();
       if (currentGame === 'wheel') drawWheel();
       if (currentGame === 'race') initRaceTracks();
@@ -2040,6 +2234,152 @@
     }
 
     // Khởi tạo ban đầu
+    
+    // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
+    const MATH_CHEM_SYMBOLS = [
+      '∫ f(x)dx', 'π ≈ 3.14', '∑', '√x', 'lim x→∞', 'E = mc²', 'ΔrH°₂₉₈', 'C₆H₆',
+      'H₂O', 'CO₂', 'Fe²⁺', 'CuSO₄', 'NaCl', 'pH = -log[H⁺]', 'sin²x + cos²x = 1',
+      'λ', 'Ω', 'Δ', '∞', 'log_a(b)', 'C₂H₅OH', 'H₂SO₄', 'CH₄', 'KMnO₄', 'f'(x)'
+    ];
+
+    function initMathChemBackground() {
+      const canvas = document.getElementById('mathChemCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // 1. Các hạt liên kết phân tử hóa học (Molecular Nodes)
+      const nodes = [];
+      const nodeCount = Math.floor(Math.min(window.innerWidth / 30, 45));
+      for (let i = 0; i < nodeCount; i++) {
+        nodes.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: (Math.random() - 0.5) * 0.7,
+          radius: Math.random() * 2.5 + 1.5,
+          color: Math.random() > 0.5 ? '#38bdf8' : '#a855f7'
+        });
+      }
+
+      // 2. Ký hiệu Toán & Hóa trôi bồng bềnh
+      const floatingItems = [];
+      const colors = ['rgba(56, 189, 248, 0.45)', 'rgba(250, 204, 21, 0.45)', 'rgba(52, 211, 153, 0.45)', 'rgba(192, 132, 252, 0.45)', 'rgba(251, 113, 133, 0.45)'];
+      for (let i = 0; i < 24; i++) {
+        floatingItems.push({
+          text: MATH_CHEM_SYMBOLS[i % MATH_CHEM_SYMBOLS.length],
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vy: -(Math.random() * 0.45 + 0.2),
+          vx: (Math.random() - 0.5) * 0.25,
+          size: Math.floor(Math.random() * 6 + 14),
+          color: colors[i % colors.length],
+          rot: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 0.3
+        });
+      }
+
+      let atomAngle = 0;
+
+      function renderBg() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ mô hình nguyên tử hóa học quay chậm ở góc nền
+        atomAngle += 0.008;
+        const atomCenterX = canvas.width * 0.12;
+        const atomCenterY = canvas.height * 0.82;
+        
+        ctx.save();
+        ctx.translate(atomCenterX, atomCenterY);
+        // Hạt nhân
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = '#f59e0b';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        // 3 Quỹ đạo electron elip
+        for (let j = 0; j < 3; j++) {
+          ctx.save();
+          ctx.rotate(atomAngle + (j * Math.PI) / 3);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 60, 22, 0, 0, 2 * Math.PI);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          // Electron
+          const ex = Math.cos(atomAngle * 2 + j) * 60;
+          const ey = Math.sin(atomAngle * 2 + j) * 22;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 3.5, 0, 2 * Math.PI);
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Vẽ các liên kết phân tử hóa học (Molecular lattice)
+        for (let i = 0; i < nodes.length; i++) {
+          const n1 = nodes[i];
+          n1.x += n1.vx;
+          n1.y += n1.vy;
+          if (n1.x < 0 || n1.x > canvas.width) n1.vx *= -1;
+          if (n1.y < 0 || n1.y > canvas.height) n1.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(n1.x, n1.y, n1.radius, 0, 2 * Math.PI);
+          ctx.fillStyle = n1.color;
+          ctx.fill();
+
+          for (let j = i + 1; j < nodes.length; j++) {
+            const n2 = nodes[j];
+            const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+            if (dist < 110) {
+              ctx.beginPath();
+              ctx.moveTo(n1.x, n1.y);
+              ctx.lineTo(n2.x, n2.y);
+              ctx.strokeStyle = `rgba(56, 189, 248, ${0.18 * (1 - dist / 110)})`;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Vẽ các ký hiệu Toán & Hóa học lơ lửng
+        floatingItems.forEach(item => {
+          item.y += item.vy;
+          item.x += item.vx;
+          item.rot += item.rotSpeed;
+          if (item.y < -30) {
+            item.y = canvas.height + 30;
+            item.x = Math.random() * canvas.width;
+          }
+
+          ctx.save();
+          ctx.translate(item.x, item.y);
+          ctx.rotate((item.rot * Math.PI) / 180);
+          ctx.font = `bold ${item.size}px Outfit, monospace, sans-serif`;
+          ctx.fillStyle = item.color;
+          ctx.shadowColor = item.color;
+          ctx.shadowBlur = 8;
+          ctx.fillText(item.text, 0, 0);
+          ctx.restore();
+        });
+
+        requestAnimationFrame(renderBg);
+      }
+      renderBg();
+    }
+
+    initMathChemBackground();
     renderClassPills();
     renderList();
     drawWheel();
