@@ -435,8 +435,95 @@
       text-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
     }
     .winner-desc {
-      font-size: 13px;
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+    }
+
+    .winner-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: #94a3b8;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      z-index: 52;
+    }
+    .winner-close-btn:hover {
+      background: rgba(239, 68, 68, 0.9);
+      color: #ffffff;
+      transform: scale(1.1);
+    }
+
+    .winner-action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .btn-winner-action {
+      padding: 12px 26px;
+      border-radius: 14px;
+      border: none;
+      font-weight: 800;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      user-select: none;
+    }
+    .btn-winner-action:hover {
+      transform: translateY(-2px) scale(1.02);
+    }
+    .btn-winner-action:active {
+      transform: translateY(1px);
+    }
+    .btn-continue {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      font-size: 16px;
+      padding: 14px 32px;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
+      animation: pulseContinue 1.8s infinite;
+    }
+    @keyframes pulseContinue {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+    }
+    .btn-exclude-continue {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.4);
+    }
+    .btn-exclude-continue:hover {
+      background: #f43f5e;
+      color: white;
+    }
+    .btn-close-winner {
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .btn-close-winner:hover {
+      background: rgba(255, 255, 255, 0.18);
+      color: white;
     }
 
     /* Buttons */
@@ -1037,10 +1124,24 @@
     <div class="stage" id="mainStage">
       <!-- Winner Banner -->
       <div class="winner-banner" id="winnerBanner">
+        <button class="winner-close-btn" onclick="hideWinner()" title="Đóng bảng thông báo (Phím Esc)">✕</button>
         <div class="winner-inner">
           <div class="winner-tag">✨ XIN CHÚC MỪNG HỌC SINH ĐƯỢC CHỌN ✨</div>
           <div class="winner-name" id="winnerNameText">Nguyễn Văn An</div>
           <div class="winner-desc" id="winnerDescText">Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!</div>
+
+          <!-- Các nút TIẾP TỤC & HÀNH ĐỘNG DÀNH CHO THẦY THỌ -->
+          <div class="winner-action-bar">
+            <button class="btn-winner-action btn-continue" onclick="continueNextSpin()" title="Quay tiếp bạn khác ngay lập tức (hoặc bấm phím Space / Enter)">
+              <span>▶️</span> TIẾP TỤC (GỌI BẠN TIẾP THEO)
+            </button>
+            <button class="btn-winner-action btn-exclude-continue" onclick="excludeAndContinue()" title="Loại học sinh này khỏi danh sách và quay tiếp bạn khác">
+              <span>🗑️</span> LOẠI BẠN NÀY & QUAY TIẾP
+            </button>
+            <button class="btn-winner-action btn-close-winner" onclick="hideWinner()" title="Đóng bảng thông báo">
+              <span>✕</span> ĐÓNG THÔNG BÁO
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1572,8 +1673,40 @@
       if (game === 'chest') resetChests();
     }
 
+    let currentWinner = '';
+
     function hideWinner() {
-      document.getElementById('winnerBanner').style.display = 'none';
+      const banner = document.getElementById('winnerBanner');
+      if (banner) banner.style.display = 'none';
+      const spinBtn = document.getElementById('btnSpinWheel');
+      if (spinBtn && !isSpinning) {
+        spinBtn.innerHTML = '<span>🎯</span> QUAY NGAY';
+      }
+    }
+
+    // --- CHỨC NĂNG TIẾP TỤC (GỌI BẠN TIẾP THEO) DÀNH CHO THẦY THỌ ---
+    function continueNextSpin() {
+      hideWinner();
+      setTimeout(() => {
+        if (currentGame === 'wheel') spinWheel();
+        else if (currentGame === 'bomb') startBomb();
+        else if (currentGame === 'slot') startSlot();
+        else if (currentGame === 'race') startRace();
+        else if (currentGame === 'lightning') startLightning();
+        else if (currentGame === 'chest') startChestRandom();
+      }, 150);
+    }
+
+    function excludeAndContinue() {
+      if (currentWinner) {
+        const idx = students.indexOf(currentWinner);
+        if (idx > -1) {
+          students.splice(idx, 1);
+          allClassData[currentClassKey] = students;
+          saveAllClassData();
+        }
+      }
+      continueNextSpin();
     }
 
     function triggerScreenShake() {
@@ -1588,6 +1721,7 @@
     }
 
     function showWinner(name, customDesc = '') {
+      currentWinner = name;
       document.getElementById('winnerNameText').innerText = name;
       if (customDesc) {
         document.getElementById('winnerDescText').innerText = customDesc;
@@ -1597,6 +1731,12 @@
       document.getElementById('winnerBanner').style.display = 'block';
       audio.fanfare();
       launchConfetti();
+
+      // Cập nhật nút quay bên dưới thành "TIẾP TỤC QUAY"
+      const spinBtn = document.getElementById('btnSpinWheel');
+      if (spinBtn) {
+        spinBtn.innerHTML = '<span>🔄</span> TIẾP TỤC QUAY LƯỢT TIẾP';
+      }
 
       const exclude = document.getElementById('chkExclude').checked;
       if (exclude) {
@@ -2232,6 +2372,27 @@
       }
       renderBg();
     }
+
+    // --- PHÍM TẮT TIỆN LỢI CHO THẦY THỌ (SPACE / ENTER / ESC) ---
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        const banner = document.getElementById('winnerBanner');
+        if (banner && banner.style.display === 'block') {
+          continueNextSpin();
+        } else {
+          if (currentGame === 'wheel') spinWheel();
+          else if (currentGame === 'bomb') startBomb();
+          else if (currentGame === 'slot') startSlot();
+          else if (currentGame === 'race') startRace();
+          else if (currentGame === 'lightning') startLightning();
+          else if (currentGame === 'chest') startChestRandom();
+        }
+      } else if (e.code === 'Escape') {
+        hideWinner();
+      }
+    });
 
     // --- KHỞI TẠO TOÀN DIỆN ---
     initMathChemBackground();

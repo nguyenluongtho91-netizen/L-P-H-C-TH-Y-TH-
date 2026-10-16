@@ -810,9 +810,55 @@ export default function ClassroomGamesModal({
                   <h3 className="text-xl sm:text-2xl font-black text-white my-1 drop-shadow-md">
                     🎉 {winner} 🎉
                   </h3>
-                  <p className="text-xs text-slate-300">
+                  <p className="text-xs text-slate-300 mb-3">
                     Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!
                   </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        setWinner(null);
+                        setTimeout(() => {
+                          if (activeTab === 'wheel') spinWheel();
+                          else if (activeTab === 'bomb') startBomb();
+                          else if (activeTab === 'slot') startSlot();
+                          else if (activeTab === 'race') startRace();
+                          else if (activeTab === 'lightning') startLightning();
+                          else if (activeTab === 'chest') startChest();
+                        }, 150);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <span>▶️</span> TIẾP TỤC (QUAY TIẾP)
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (winner) {
+                          setCustomNames(prev => prev.filter(n => n !== winner));
+                        }
+                        setWinner(null);
+                        setTimeout(() => {
+                          if (activeTab === 'wheel') spinWheel();
+                          else if (activeTab === 'bomb') startBomb();
+                          else if (activeTab === 'slot') startSlot();
+                          else if (activeTab === 'race') startRace();
+                          else if (activeTab === 'lightning') startLightning();
+                          else if (activeTab === 'chest') startChest();
+                        }, 150);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white border border-rose-500/30 font-bold text-xs hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <span>🗑️</span> LOẠI & QUAY TIẾP
+                    </button>
+
+                    <button
+                      onClick={() => setWinner(null)}
+                      className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 font-bold text-xs transition-all"
+                    >
+                      <span>✕</span> Đóng
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
