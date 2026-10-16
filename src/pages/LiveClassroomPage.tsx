@@ -8,7 +8,7 @@ import LessonExamRoom from '@/components/LessonExamRoom';
 import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  Video, MicOff, Hand, Volume2, Shield, Lock, Unlock,
+  Video, MicOff, Hand, Volume2, Shield, ShieldAlert, Lock, Unlock,
   Copy, Check, FileText, ArrowLeft, Maximize2,
   Columns, Sparkles, LogIn, Bell, BellOff
 } from 'lucide-react';
@@ -43,6 +43,8 @@ export default function LiveClassroomPage() {
   const [enableRaiseHandSound, setEnableRaiseHandSound] = useState(false);
   const enableRaiseHandSoundRef = useRef(false);
   const [soundVolume, setSoundVolumeState] = useState<number>(0.8);
+  const [lockRaiseHand, setLockRaiseHand] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   useEffect(() => {
     enableRaiseHandSoundRef.current = enableRaiseHandSound;
@@ -128,6 +130,27 @@ export default function LiveClassroomPage() {
         if (typeof payload?.requirePin === 'boolean') {
           setRequirePin(payload.requirePin);
           if (payload.pin) setRoomPin(payload.pin);
+        }
+      })
+      .on('broadcast', { event: 'student_permissions' }, ({ payload }) => {
+        if (payload?.fromHost) {
+          if (typeof payload.lockRaiseHand === 'boolean') setLockRaiseHand(payload.lockRaiseHand);
+          if (typeof payload.focusMode === 'boolean') {
+            setFocusMode(payload.focusMode);
+            if (payload.focusMode) {
+              toast('🔒 Thầy Thọ bật Chế độ Tập trung: Tắt mic và khóa giơ tay để giảng bài!', {
+                icon: '🔒',
+                position: 'top-center',
+                duration: 4000
+              });
+            } else {
+              toast('🔓 Thầy Thọ đã mở lại quyền giơ tay và thảo luận!', {
+                icon: '🔓',
+                position: 'top-center',
+                duration: 3000
+              });
+            }
+          }
         }
       })
       .subscribe();
@@ -233,8 +256,60 @@ export default function LiveClassroomPage() {
     toast.success('Đã hạ tay toàn bộ học sinh!', { duration: 2000 });
   };
 
+  // Thầy bật/tắt Chế độ Tập trung (Khóa tất cả bên học sinh)
+  const toggleFocusMode = () => {
+    if (!isHost) return;
+    const nextMode = !focusMode;
+    setFocusMode(nextMode);
+    setLockRaiseHand(nextMode);
+
+    if (nextMode) {
+      handleMuteAll();
+      handleLowerAllHands();
+      toast.success('🛑 ĐÃ KHÓA TẤT CẢ: Tắt mic cả lớp và khóa nút giơ tay để tập trung nghe giảng!', { duration: 3000 });
+    } else {
+      toast.success('🔓 Đã mở lại quyền bình thường cho học sinh!', { duration: 2500 });
+    }
+
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'student_permissions',
+      payload: {
+        fromHost: true,
+        focusMode: nextMode,
+        lockRaiseHand: nextMode
+      }
+    });
+  };
+
+  // Thầy bật/tắt riêng quyền Giơ tay của học sinh
+  const toggleLockRaiseHand = () => {
+    if (!isHost) return;
+    const nextState = !lockRaiseHand;
+    setLockRaiseHand(nextState);
+    if (nextState) {
+      handleLowerAllHands();
+      toast('🔒 Đã khóa nút giơ tay của học sinh', { icon: '🔒', duration: 2000 });
+    } else {
+      toast.success('🔓 Đã mở lại nút giơ tay cho học sinh', { duration: 2000 });
+    }
+
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'student_permissions',
+      payload: {
+        fromHost: true,
+        lockRaiseHand: nextState
+      }
+    });
+  };
+
   // Xử lý giơ tay phát biểu
   const handleRaiseHand = (forceState?: boolean) => {
+    if (lockRaiseHand || focusMode) {
+      toast('Thầy đang khóa giơ tay để cả lớp tập trung nghe giảng!', { icon: '🔒' });
+      return;
+    }
     const nextState = forceState !== undefined ? forceState : !myHandRaised;
     setMyHandRaised(nextState);
 
@@ -440,17 +515,27 @@ export default function LiveClassroomPage() {
         {/* Phải: Copy Link, Giơ tay & Thông tin Host */}
         <div className="flex items-center gap-2">
           {hasJoined && !isHost && (
-            <button
-              onClick={() => handleRaiseHand()}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow ${
-                myHandRaised
-                  ? 'bg-amber-500 text-slate-950 animate-bounce'
-                  : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30'
-              }`}
-            >
-              <Hand className="w-4 h-4" />
-              <span>{myHandRaised ? 'Đang giơ tay' : 'Giơ tay ✋'}</span>
-            </button>
+            (lockRaiseHand || focusMode) ? (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-500 border border-slate-700/60 text-xs font-medium cursor-not-allowed"
+                title="Thầy đang khóa giơ tay để cả lớp tập trung nghe giảng"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-500/70" />
+                <span>Khóa giơ tay 🔒</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleRaiseHand()}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow ${
+                  myHandRaised
+                    ? 'bg-amber-500 text-slate-950 animate-bounce'
+                    : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30'
+                }`}
+              >
+                <Hand className="w-4 h-4" />
+                <span>{myHandRaised ? 'Đang giơ tay' : 'Giơ tay ✋'}</span>
+              </button>
+            )
           )}
 
           <button
