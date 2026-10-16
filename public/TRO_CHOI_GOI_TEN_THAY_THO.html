@@ -921,6 +921,263 @@
       margin-top: 6px;
     }
 
+    /* --- GAME 7: PHÒNG LAB HÓA HỌC BÙNG NỔ --- */
+    .chemical-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 850px;
+      position: relative;
+    }
+    .chemical-reactor-box {
+      background: radial-gradient(circle at 50% 50%, #064e3b 0%, #022c22 45%, #090d16 90%);
+      border: 3px solid #10b981;
+      border-radius: 28px;
+      padding: 30px 24px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 0 50px rgba(16, 185, 129, 0.35), inset 0 0 30px rgba(16, 185, 129, 0.2);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .chemical-reactor-box.critical {
+      border-color: #ef4444;
+      background: radial-gradient(circle at 50% 50%, #7f1d1d 0%, #450a0a 45%, #090d16 90%);
+      box-shadow: 0 0 60px rgba(239, 68, 68, 0.6), inset 0 0 40px rgba(239, 68, 68, 0.4);
+      animation: reactorAlarm 0.25s infinite alternate;
+    }
+    @keyframes reactorAlarm {
+      0% { filter: brightness(1); }
+      100% { filter: brightness(1.35) drop-shadow(0 0 25px #ef4444); }
+    }
+    .chem-gauges-row {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      margin-bottom: 20px;
+      gap: 16px;
+    }
+    .chem-gauge {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1.5px solid rgba(16, 185, 129, 0.4);
+      border-radius: 16px;
+      padding: 10px 18px;
+      text-align: center;
+      flex: 1;
+    }
+    .chem-gauge-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .chem-gauge-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #34d399;
+      font-family: monospace;
+      margin-top: 2px;
+    }
+    .chem-flask-area {
+      position: relative;
+      width: 160px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px 0 20px;
+    }
+    .chem-flask-icon {
+      font-size: 110px;
+      filter: drop-shadow(0 0 25px rgba(52, 211, 153, 0.8));
+      transition: transform 0.15s;
+    }
+    .chemical-reactor-box.critical .chem-flask-icon {
+      filter: drop-shadow(0 0 35px rgba(239, 68, 68, 0.95));
+      animation: chemShake 0.1s infinite alternate;
+    }
+    @keyframes chemShake {
+      0% { transform: rotate(-5deg) scale(1.05); }
+      100% { transform: rotate(5deg) scale(1.1); }
+    }
+    .chem-student-display {
+      font-size: 28px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(52, 211, 153, 0.9);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px 24px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      width: 90%;
+    }
+
+    /* --- GAME 8: TÊN LỬA VŨ TRỤ --- */
+    .rocket-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 850px;
+      position: relative;
+    }
+    .rocket-launchpad {
+      background: radial-gradient(circle at 50% 80%, #1e1b4b 0%, #0f172a 60%, #030712 100%);
+      border: 3px solid #6366f1;
+      border-radius: 28px;
+      padding: 30px 20px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      box-shadow: 0 0 50px rgba(99, 102, 241, 0.4);
+      margin-bottom: 24px;
+      overflow: hidden;
+      min-height: 380px;
+      justify-content: center;
+    }
+    .rocket-status-banner {
+      font-size: 13px;
+      font-weight: 900;
+      color: #818cf8;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .rocket-countdown-big {
+      font-size: 64px;
+      font-weight: 900;
+      color: #facc15;
+      font-family: monospace;
+      text-shadow: 0 0 30px rgba(250, 204, 21, 0.8);
+      margin-bottom: 10px;
+      min-height: 75px;
+      display: flex;
+      align-items: center;
+    }
+    .rocket-ship-box {
+      position: relative;
+      font-size: 85px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-bottom: 12px;
+    }
+    .rocket-ship-box.launching {
+      animation: rocketAscend 0.6s infinite alternate;
+      filter: drop-shadow(0 20px 25px #ea580c) drop-shadow(0 35px 35px #facc15);
+    }
+    @keyframes rocketAscend {
+      0% { transform: translateY(0) scale(1.02); }
+      100% { transform: translateY(-12px) scale(1.06); }
+    }
+    .rocket-target-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(129, 140, 248, 0.9);
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      border-radius: 16px;
+      padding: 10px 26px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 90%;
+    }
+
+    /* --- GAME 9: ĐẤU TRƯỜNG SINH TỒN --- */
+    .battle-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1050px;
+      position: relative;
+    }
+    .battle-header-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 14px;
+      padding: 0 8px;
+    }
+    .battle-stat {
+      font-size: 13px;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+    .battle-stat b {
+      color: #f43f5e;
+      font-size: 16px;
+    }
+    .battle-arena-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 800px) {
+      .battle-arena-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 550px) {
+      .battle-arena-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .battle-fighter-card {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 16px;
+      padding: 14px 10px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #e2e8f0;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .battle-fighter-card.safe {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.12);
+      color: #6ee7b7;
+      opacity: 0.6;
+      transform: scale(0.96);
+    }
+    .battle-fighter-card.danger {
+      border-color: #ef4444;
+      background: #7f1d1d;
+      color: #fecaca;
+      transform: scale(1.08);
+      box-shadow: 0 0 25px #ef4444;
+      animation: pulse 0.2s infinite alternate;
+      z-index: 5;
+    }
+    .battle-fighter-card.survivor {
+      border-color: #f59e0b;
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #090d16;
+      transform: scale(1.15);
+      box-shadow: 0 0 40px #f59e0b;
+      font-weight: 900;
+      z-index: 10;
+    }
+
     /* Sidebar */
     .sidebar {
       background: #0f172a;
@@ -1065,7 +1322,7 @@
     <div class="header-title">
       <div class="header-icon">🎲</div>
       <div>
-        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — 10 Lớp Học</span></h1>
+        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">9 Siêu Trò Gay Cấn & Đẳng Cấp — 10 Lớp Học</span></h1>
         <p style="font-size: 12px; color: rgba(255,255,255,0.9); margin-top: 2px;">
           📐 GIÁO VIÊN TOÁN & 🧪 HÓA HỌC: NGUYỄN LƯƠNG THỌ — Khởi động tiết học bùng nổ đam mê khoa học
         </p>
@@ -1111,6 +1368,15 @@
       </button>
       <button class="tab-btn chest-tab" onclick="switchGame('chest')">
         <span>🎁</span> 6. Chiếc Rương Bí Ẩn
+      </button>
+      <button class="tab-btn chemical-tab" onclick="switchGame('chemical')">
+        <span>🧪</span> 7. Phòng Lab Bùng Nổ
+      </button>
+      <button class="tab-btn rocket-tab" onclick="switchGame('rocket')">
+        <span>🚀</span> 8. Tên Lửa Vũ Trụ
+      </button>
+      <button class="tab-btn battle-tab" onclick="switchGame('battle')">
+        <span>⚔️</span> 9. Đấu Trường Sinh Tồn
       </button>
     </div>
     <label class="exclude-option">
@@ -1250,6 +1516,65 @@
         </div>
         <button class="btn-spin" id="btnStartChest" style="background: linear-gradient(135deg, #a855f7, #7e22ce); color: #fff;" onclick="startChestRandom()">
           <span>🎁</span> MỞ NGẪU NHIÊN 1 RƯƠNG
+        </button>
+      </div>
+
+      <!-- Trò 7: Phòng Lab Bùng Nổ -->
+      <div id="gameChemical" class="chemical-stage">
+        <div style="font-size: 14px; font-weight: 800; color: #34d399; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
+          🧪 LÒ PHẢN ỨNG HÓA HỌC — ĐIỂM TỚI HẠN BÙNG NỔ!
+        </div>
+        <div class="chemical-reactor-box" id="chemReactorBox">
+          <div class="chem-gauges-row">
+            <div class="chem-gauge">
+              <div class="chem-gauge-label">🌡️ Nhiệt Độ Lò</div>
+              <div class="chem-gauge-val" id="chemTemp">25 °C</div>
+            </div>
+            <div class="chem-gauge">
+              <div class="chem-gauge-label">⚡ Áp Suất Buồng</div>
+              <div class="chem-gauge-val" id="chemPressure">1.0 atm</div>
+            </div>
+            <div class="chem-gauge">
+              <div class="chem-gauge-label">⚠️ Trạng Thái</div>
+              <div class="chem-gauge-val" id="chemStatus" style="color: #10b981;">ỔN ĐỊNH</div>
+            </div>
+          </div>
+
+          <div class="chem-flask-area">
+            <div class="chem-flask-icon" id="chemFlaskIcon">🧪</div>
+          </div>
+
+          <div class="chem-student-display" id="chemStudentName">SẴN SÀNG PHẢN ỨNG...</div>
+        </div>
+
+        <button class="btn-spin" id="btnStartChemical" style="background: linear-gradient(135deg, #10b981, #047857); color: #ffffff;" onclick="startChemical()">
+          <span>🧪💥</span> KÍCH HOẠT PHẢN ỨNG HÓA HỌC
+        </button>
+      </div>
+
+      <!-- Trò 8: Tên Lửa Vũ Trụ -->
+      <div id="gameRocket" class="rocket-stage">
+        <div class="rocket-launchpad">
+          <div class="rocket-status-banner" id="rocketStatus">🚀 SÂN BAY VŨ TRỤ SPACEX — T-MINUS COUNTDOWN</div>
+          <div class="rocket-countdown-big" id="rocketCountdown">READY</div>
+          <div class="rocket-ship-box" id="rocketShip">🚀</div>
+          <div class="rocket-target-name" id="rocketTargetName">CHỜ LỆNH PHÓNG TÊN LỬA...</div>
+        </div>
+        <button class="btn-spin" id="btnStartRocket" style="background: linear-gradient(135deg, #6366f1, #4338ca); color: #ffffff;" onclick="startRocket()">
+          <span>🚀🔥</span> PHÓNG TÊN LỬA VŨ TRỤ
+        </button>
+      </div>
+
+      <!-- Trò 9: Đấu Trường Sinh Tồn -->
+      <div id="gameBattle" class="battle-stage">
+        <div class="battle-header-info">
+          <div class="battle-stat">ĐẤU TRƯỜNG: <b style="color: #f59e0b;">SURVIVOR BATTLE ROYALE</b></div>
+          <div class="battle-stat">VÒNG BO: <b id="battleRoundText">CHƯA BẮT ĐẦU</b></div>
+          <div class="battle-stat">CÒN LẠI: <b id="battleAliveText">12 BẠN</b></div>
+        </div>
+        <div class="battle-arena-grid" id="battleArenaGrid"></div>
+        <button class="btn-spin" id="btnStartBattle" style="background: linear-gradient(135deg, #f43f5e, #be123c); color: #ffffff;" onclick="startBattle()">
+          <span>⚔️🔥</span> BẮT ĐẦU VÒNG BO SINH TỬ
         </button>
       </div>
 
@@ -1411,7 +1736,76 @@
           });
         } catch {}
       }
-      fanfare() {
+      alarm() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(1400, this.ctx.currentTime + 0.15);
+          osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.3);
+          gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.3);
+        } catch {}
+      }
+      bubble() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const startF = 300 + Math.random() * 400;
+          osc.frequency.setValueAtTime(startF, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(startF * 1.8, this.ctx.currentTime + 0.06);
+          gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.06);
+        } catch {}
+      }
+      rocketRoar() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(190, this.ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.25);
+        } catch {}
+      }
+      sonarPing() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.45);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.45);
+        } catch {}
+      }
+            fanfare() {
         try {
           this.init();
           if (!this.ctx) return;
@@ -1666,11 +2060,17 @@
       document.getElementById('gameRace').style.display = game === 'race' ? 'flex' : 'none';
       document.getElementById('gameLightning').style.display = game === 'lightning' ? 'flex' : 'none';
       document.getElementById('gameChest').style.display = game === 'chest' ? 'flex' : 'none';
+      document.getElementById('gameChemical').style.display = game === 'chemical' ? 'flex' : 'none';
+      document.getElementById('gameRocket').style.display = game === 'rocket' ? 'flex' : 'none';
+      document.getElementById('gameBattle').style.display = game === 'battle' ? 'flex' : 'none';
 
       if (game === 'wheel') drawWheel();
       if (game === 'race') initRaceTracks();
       if (game === 'lightning') initLightningGrid();
       if (game === 'chest') resetChests();
+      if (game === 'chemical') resetChemical();
+      if (game === 'rocket') resetRocket();
+      if (game === 'battle') initBattleArena();
     }
 
     let currentWinner = '';
@@ -1694,6 +2094,12 @@
         else if (currentGame === 'race') startRace();
         else if (currentGame === 'lightning') startLightning();
         else if (currentGame === 'chest') startChestRandom();
+        else if (currentGame === 'chemical') startChemical();
+        else if (currentGame === 'rocket') startRocket();
+        else if (currentGame === 'battle') startBattle();
+        else if (currentGame === 'chemical') startChemical();
+        else if (currentGame === 'rocket') startRocket();
+        else if (currentGame === 'battle') startBattle();
       }, 150);
     }
 
@@ -2230,6 +2636,247 @@
       } else {
         document.exitFullscreen().catch(() => {});
       }
+    }
+
+    // --- GAME 7: PHÒNG LAB HÓA HỌC BÙNG NỔ ---
+    function resetChemical() {
+      const box = document.getElementById('chemReactorBox');
+      box.className = 'chemical-reactor-box';
+      document.getElementById('chemTemp').innerText = '25 °C';
+      document.getElementById('chemTemp').style.color = '#34d399';
+      document.getElementById('chemPressure').innerText = '1.0 atm';
+      document.getElementById('chemStatus').innerText = 'ỔN ĐỊNH';
+      document.getElementById('chemStatus').style.color = '#10b981';
+      document.getElementById('chemStudentName').innerText = 'SẴN SÀNG PHẢN ỨNG...';
+      document.getElementById('chemFlaskIcon').innerText = '🧪';
+    }
+
+    function startChemical() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const btn = document.getElementById('btnStartChemical');
+      const box = document.getElementById('chemReactorBox');
+      const tempText = document.getElementById('chemTemp');
+      const presText = document.getElementById('chemPressure');
+      const statusText = document.getElementById('chemStatus');
+      const nameText = document.getElementById('chemStudentName');
+      const flaskIcon = document.getElementById('chemFlaskIcon');
+
+      btn.disabled = true;
+      btn.innerText = 'PHẢN ỨNG ĐANG TĂNG NHIỆT... 💥';
+
+      let temp = 25;
+      let pressure = 1.0;
+      let step = 0;
+      const totalSteps = 42;
+
+      const timer = setInterval(() => {
+        step++;
+        temp += Math.floor(Math.random() * 35 + 20);
+        pressure += (Math.random() * 2.8 + 1.2);
+        tempText.innerText = `${temp} °C`;
+        presText.innerText = `${pressure.toFixed(1)} atm`;
+
+        nameText.innerText = students[Math.floor(Math.random() * students.length)];
+        audio.bubble();
+
+        if (step > 15) {
+          box.classList.add('critical');
+          statusText.innerText = 'NGUY HIỂM!';
+          statusText.style.color = '#ef4444';
+          tempText.style.color = '#ef4444';
+          flaskIcon.innerText = '⚗️';
+          audio.alarm();
+        }
+
+        if (step >= totalSteps) {
+          clearInterval(timer);
+          const chosen = students[Math.floor(Math.random() * students.length)];
+          nameText.innerText = chosen;
+          flaskIcon.innerText = '💥';
+
+          triggerFlash();
+          triggerScreenShake();
+          audio.thunderCrash();
+
+          setTimeout(() => {
+            flaskIcon.innerText = '🏆';
+            btn.disabled = false;
+            btn.innerHTML = '<span>🧪💥</span> KÍCH HOẠT PHẢN ỨNG HÓA HỌC';
+            isSpinning = false;
+            showWinner(chosen, `🧪 PHẢN ỨNG HOÀN TẤT! Học sinh xuất sắc phòng thí nghiệm Hóa học Thầy Lương Thọ!`);
+          }, 400);
+        }
+      }, 95);
+    }
+
+    // --- GAME 8: PHÓNG TÊN LỬA VŨ TRỤ ---
+    function resetRocket() {
+      document.getElementById('rocketStatus').innerText = '🚀 SÂN BAY VŨ TRỤ SPACEX — T-MINUS COUNTDOWN';
+      document.getElementById('rocketCountdown').innerText = 'READY';
+      document.getElementById('rocketCountdown').style.color = '#facc15';
+      const ship = document.getElementById('rocketShip');
+      ship.className = 'rocket-ship-box';
+      ship.innerText = '🚀';
+      document.getElementById('rocketTargetName').innerText = 'CHỜ LỆNH PHÓNG TÊN LỬA...';
+    }
+
+    function startRocket() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const btn = document.getElementById('btnStartRocket');
+      const status = document.getElementById('rocketStatus');
+      const countBig = document.getElementById('rocketCountdown');
+      const ship = document.getElementById('rocketShip');
+      const targetName = document.getElementById('rocketTargetName');
+
+      btn.disabled = true;
+      btn.innerText = 'ĐANG ĐẾM NGƯỢC PHÓNG... 🚀';
+
+      let count = 5;
+      countBig.innerText = `T- ${count}`;
+      audio.sonarPing();
+
+      const cdInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countBig.innerText = `T- ${count}`;
+          targetName.innerText = students[Math.floor(Math.random() * students.length)];
+          audio.sonarPing();
+        } else {
+          clearInterval(cdInterval);
+          countBig.innerText = 'IGNITION! 🔥';
+          countBig.style.color = '#ef4444';
+          status.innerText = '🚀 ĐỘNG CƠ PHẢN LỰC ĐẠT VẬN TỐC MACH 15 — WARP DRIVE!';
+          ship.classList.add('launching');
+          triggerScreenShake();
+
+          let warpSteps = 0;
+          const warpInterval = setInterval(() => {
+            warpSteps++;
+            audio.rocketRoar();
+            targetName.innerText = students[Math.floor(Math.random() * students.length)];
+
+            if (warpSteps >= 25) {
+              clearInterval(warpInterval);
+              const chosen = students[Math.floor(Math.random() * students.length)];
+              targetName.innerText = `🎯 TỌA ĐỘ KHÓA: ${chosen}`;
+              countBig.innerText = 'LOCKED 🎯';
+              countBig.style.color = '#38bdf8';
+              triggerFlash();
+              audio.fanfare();
+
+              btn.disabled = false;
+              btn.innerHTML = '<span>🚀🔥</span> PHÓNG TÊN LỬA VŨ TRỤ';
+              isSpinning = false;
+              showWinner(chosen, `🚀 HẠ CÁNH THÀNH CÔNG! Phi hành gia vũ trụ thuộc ${CLASS_LABELS[currentClassKey]} đã kết nối trạm điều khiển!`);
+            }
+          }, 100);
+        }
+      }, 700);
+    }
+
+    // --- GAME 9: ĐẤU TRƯỜNG SINH TỒN (BATTLE ROYALE) ---
+    let battleFighters = [];
+
+    function initBattleArena() {
+      const grid = document.getElementById('battleArenaGrid');
+      grid.innerHTML = '';
+      if (students.length === 0) return;
+
+      const count = Math.min(students.length, 12);
+      const shuffled = [...students].sort(() => 0.5 - Math.random());
+      battleFighters = shuffled.slice(0, count).map(name => ({
+        name,
+        status: 'alive' // 'alive', 'safe', 'danger'
+      }));
+
+      document.getElementById('battleRoundText').innerText = 'SẴN SÀNG';
+      document.getElementById('battleAliveText').innerText = `${battleFighters.length} BẠN`;
+
+      battleFighters.forEach((f, idx) => {
+        const card = document.createElement('div');
+        card.className = 'battle-fighter-card';
+        card.id = `bfighter${idx}`;
+        card.innerHTML = `
+          <div style="font-size: 22px;">🛡️</div>
+          <div>${f.name}</div>
+          <div style="font-size: 10px; color: #94a3b8;" id="bstatus${idx}">ĐANG CHIẾN ĐẤU</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function startBattle() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      initBattleArena();
+
+      const btn = document.getElementById('btnStartBattle');
+      btn.disabled = true;
+      btn.innerText = 'VÒNG BO ĐANG THU HẸP... ⚔️';
+
+      let aliveIndices = battleFighters.map((_, i) => i);
+      let round = 1;
+
+      function eliminateRound() {
+        if (aliveIndices.length <= 1) {
+          const finalWinnerIdx = aliveIndices[0];
+          const finalWinner = battleFighters[finalWinnerIdx];
+          const card = document.getElementById(`bfighter${finalWinnerIdx}`);
+          if (card) {
+            card.className = 'battle-fighter-card survivor';
+            document.getElementById(`bstatus${finalWinnerIdx}`).innerText = '👑 NGƯỜI ĐƯỢC CHỌN!';
+          }
+
+          document.getElementById('battleRoundText').innerText = 'KẾT THÚC!';
+          document.getElementById('battleAliveText').innerText = '1 BẠN';
+
+          triggerFlash();
+          triggerScreenShake();
+          audio.fanfare();
+
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚔️🔥</span> BẮT ĐẦU VÒNG BO SINH TỬ';
+          isSpinning = false;
+          showWinner(finalWinner.name, `👑 VÒNG BO TỬ THẦN! Chiến binh trụ lại cuối cùng của ${CLASS_LABELS[currentClassKey]}! Mời bạn trả lời!`);
+          return;
+        }
+
+        document.getElementById('battleRoundText').innerText = `VÒNG ${round}`;
+        document.getElementById('battleAliveText').innerText = `${aliveIndices.length} BẠN`;
+        round++;
+
+        // Chọn 1 bạn may mắn thoát hiểm (AN TOÀN)
+        const randIndexInAlive = Math.floor(Math.random() * aliveIndices.length);
+        const safeIdx = aliveIndices.splice(randIndexInAlive, 1)[0];
+
+        // Highlight nguy hiểm các bạn còn lại
+        aliveIndices.forEach(idx => {
+          const card = document.getElementById(`bfighter${idx}`);
+          if (card) card.className = 'battle-fighter-card danger';
+        });
+        audio.heartbeat();
+
+        setTimeout(() => {
+          const safeCard = document.getElementById(`bfighter${safeIdx}`);
+          if (safeCard) {
+            safeCard.className = 'battle-fighter-card safe';
+            safeCard.querySelector('div').innerText = '✅';
+            document.getElementById(`bstatus${safeIdx}`).innerText = 'ĐÃ AN TOÀN!';
+          }
+          audio.magicChime();
+
+          setTimeout(eliminateRound, 650);
+        }, 500);
+      }
+
+      setTimeout(eliminateRound, 600);
     }
 
     // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
