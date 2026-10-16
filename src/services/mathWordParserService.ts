@@ -827,12 +827,13 @@ function extractTableAsHtml(
               if (formula) {
                 runText += ` ${formula} `;
               } else {
-                tableImageRIds.push(rid);
                 const img = images.find(im => im.filename === fname || im.rId === rid);
                 if (img) {
                   const b64 = img.base64 || (img as any).data;
                   const src = b64.startsWith('data:') ? b64 : `data:${img.contentType || (img as any).type || 'image/png'};base64,${b64}`;
                   runText += `<img src="${src}" alt="Ảnh" class="max-h-28 mx-auto my-1 object-contain inline-block rounded" />`;
+                } else {
+                  tableImageRIds.push(rid);
                 }
               }
             }
@@ -843,13 +844,14 @@ function extractTableAsHtml(
           for (const blip of blips) {
             const rid = blip.getAttribute('r:embed');
             if (rid) {
-              tableImageRIds.push(rid);
               const fname = imageRelMap.get(rid) || '';
               const img = images.find(im => im.filename === fname || im.rId === rid);
               if (img) {
                 const b64 = img.base64 || (img as any).data;
                 const src = b64.startsWith('data:') ? b64 : `data:${img.contentType || (img as any).type || 'image/png'};base64,${b64}`;
                 runText += `<img src="${src}" alt="Ảnh" class="max-h-28 mx-auto my-1 object-contain inline-block rounded" />`;
+              } else {
+                tableImageRIds.push(rid);
               }
             }
           }

@@ -1103,7 +1103,11 @@ export default function ExamMgmt() {
                                 <MathText html={cleanText} block className="text-gray-800 font-medium text-base leading-relaxed" />
                               );
                             })()}
-                            {q.images?.filter((img: any) => !img.filename?.toLowerCase().endsWith('.wmf') && !img.id?.toLowerCase().endsWith('.wmf') && img.contentType !== 'image/x-wmf').map((img: any, idx: number) => (
+                            {q.images?.filter((img: any) => {
+                              if (img.filename?.toLowerCase().endsWith('.wmf') || img.id?.toLowerCase().endsWith('.wmf') || img.contentType === 'image/x-wmf') return false;
+                              if (q.text && (q.text.includes(img.filename) || (img.base64 && q.text.includes(img.base64.slice(0, 32))))) return false;
+                              return true;
+                            }).map((img: any, idx: number) => (
                               <img 
                                 key={idx} 
                                 src={img.base64 ? `data:${img.contentType || 'image/png'};base64,${img.base64}` : `data:image/png;base64,${img.data}`} 

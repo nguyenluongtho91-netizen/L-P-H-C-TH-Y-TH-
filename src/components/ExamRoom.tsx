@@ -454,6 +454,7 @@ const QuestionCard: React.FC<any> = ({ question, displayNum, userAnswer, onChang
 
   const imageUrls = useMemo(() => {
     return questionImages.map((img: any) => {
+      if (question.text && (question.text.includes(img.filename) || (img.base64 && question.text.includes(img.base64.slice(0, 32))))) return null;
       const b64 = img.base64 || img.data;
       if (b64) {
         const contentType = img.contentType || img.type || 'image/png';
@@ -461,7 +462,7 @@ const QuestionCard: React.FC<any> = ({ question, displayNum, userAnswer, onChang
       }
       return null;
     }).filter(Boolean);
-  }, [questionImages]);
+  }, [questionImages, question.text]);
 
   const shuffledOptions = useMemo(() => {
     if (!question.options) return [];
