@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useExamStore } from '@/store/examStore';
 import LessonExamRoom from '@/components/LessonExamRoom';
+import CasioCalculator from '@/components/CasioCalculator';
 import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -59,6 +60,7 @@ export default function LiveClassroomPage() {
   const [soundVolume, setSoundVolumeState] = useState<number>(0.8);
   const [lockRaiseHand, setLockRaiseHand] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [showCasio, setShowCasio] = useState(false);
 
   // --- CHẾ ĐỘ GHI MÀN HÌNH BÀI GIẢNG (SCREEN RECORDER) ---
   const [isRecording, setIsRecording] = useState(false);
@@ -778,6 +780,20 @@ export default function LiveClassroomPage() {
 
         {/* Phải: Đổi tên, Giơ tay, Copy Link & Thông tin Giáo viên */}
         <div className="flex items-center gap-2">
+          {/* NÚT MÁY TÍNH CASIO FX-580 CHO THẦY VÀ HỌC SINH */}
+          <button
+            onClick={() => setShowCasio(!showCasio)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition shadow ${
+              showCasio
+                ? 'bg-amber-500 text-slate-950 font-black'
+                : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40'
+            }`}
+            title="Mở máy tính Casio fx-580VN X cầm tay nổi trên màn hình"
+          >
+            <span>🧮</span>
+            <span className="hidden sm:inline">Casio 580</span>
+          </button>
+
           {/* Tên học sinh và nút sửa nhanh */}
           {!isHost && (
             <button
@@ -1197,6 +1213,8 @@ export default function LiveClassroomPage() {
           </div>
         </div>
       )}
+      {/* CỬA SỔ MÁY TÍNH CASIO FX-580VN X NỔI */}
+      <CasioCalculator isOpen={showCasio} onClose={() => setShowCasio(false)} />
     </div>
   );
 }
