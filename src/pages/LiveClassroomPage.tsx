@@ -845,7 +845,10 @@ export default function LiveClassroomPage() {
 
           {/* NÚT CHẾ ĐỘ SƠ ĐỒ BÀN HỌC SINH */}
           <button
-            onClick={() => setLayoutMode('classroom')}
+            onClick={() => {
+              setLayoutMode('classroom');
+              try { jitsiApiRef.current?.executeCommand('setTileView', true); } catch {}
+            }}
             className={`px-3 py-1 rounded-lg transition flex items-center gap-1.5 font-bold ${
               layoutMode === 'classroom'
                 ? 'bg-gradient-to-r from-indigo-600 to-rose-600 text-white shadow-lg shadow-indigo-600/30'
@@ -1187,7 +1190,7 @@ export default function LiveClassroomPage() {
             layoutMode === 'video'
               ? 'w-full'
               : layoutMode === 'classroom'
-              ? 'hidden'
+              ? 'w-full md:w-1/2 border-r border-slate-800'
               : layoutMode === 'split'
               ? 'w-full md:w-1/2 border-r border-slate-800'
               : 'w-0 hidden md:block md:w-1/4 opacity-60 hover:opacity-100'
@@ -1198,7 +1201,7 @@ export default function LiveClassroomPage() {
 
         {/* CONTAINER 2: SƠ ĐỒ LỚP HỌC & CÁC DÃY BÀN HỌC SINH (SEATING CHART) */}
         {layoutMode === 'classroom' && (
-          <div className="flex-1 h-full overflow-hidden bg-slate-950">
+          <div className="w-full md:w-1/2 h-full overflow-hidden bg-slate-950">
             <ClassroomSeatingChart
               isHost={isHost}
               studentList={studentList}

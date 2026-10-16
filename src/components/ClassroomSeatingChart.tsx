@@ -459,6 +459,21 @@ export default function ClassroomSeatingChart({
                         {seat.name}
                       </div>
 
+                      {/* Nút bấm phóng to video camera học sinh */}
+                      {onSwitchToTileView && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSwitchToTileView();
+                          }}
+                          className="mt-1 px-2 py-0.5 rounded-md bg-cyan-600/80 hover:bg-cyan-500 text-white font-bold text-[10px] flex items-center gap-1 shadow transition active:scale-95"
+                          title="Phóng to camera trực tiếp của học sinh toàn màn hình"
+                        >
+                          <Maximize2 className="w-2.5 h-2.5" />
+                          <span>Xem Video 🔲</span>
+                        </button>
+                      )}
+
                       {/* Huy hiệu giơ tay nếu học sinh bấm giơ tay */}
                       {isHandRaised && (
                         <div className="mt-1.5 inline-flex items-center gap-1 bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full text-[10px] shadow-lg animate-bounce">
