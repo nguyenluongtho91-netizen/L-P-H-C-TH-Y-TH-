@@ -97,6 +97,16 @@ export default function LiveClassroomPage() {
 
   const currentRoomName = roomId ? `LopHocThayTho_${roomId}` : DEFAULT_ROOM_ID;
 
+  // Định dạng tên có kèm số BÀN học sinh hoặc BỤC GIẢNG Thầy Thọ
+  const getFormattedDisplayName = (name: string, host: boolean) => {
+    if (host) return '👨‍🏫 [BỤC GIẢNG] Thầy Lương Thọ';
+    const clean = name.trim() || 'Học sinh';
+    const idx = studentList.findIndex(s => s.name === clean || s.name.includes(clean));
+    const seatNum = idx >= 0 ? idx + 1 : 9;
+    return `🪑 [BÀN ${String(seatNum).padStart(2, '0')}] ${clean}`;
+  };
+
+
   // Dọn dẹp luồng ghi màn hình khi thoát trang
   useEffect(() => {
     return () => {
@@ -254,7 +264,7 @@ export default function LiveClassroomPage() {
       if (!jitsiContainerRef.current) return;
       jitsiContainerRef.current.innerHTML = '';
 
-      const displayName = isHost ? 'Thầy Lương Thọ (Giáo viên)' : (studentName.trim() || 'Học sinh');
+      const displayName = getFormattedDisplayName(studentName, isHost);
       
       if (typeof window !== 'undefined' && (window as any).JitsiMeetExternalAPI) {
         try {
@@ -754,7 +764,7 @@ export default function LiveClassroomPage() {
       setIsEditingName(false);
       toast.success(`Đã đổi tên hiển thị thành: ${tempName.trim()}`);
       try {
-        jitsiApiRef.current?.executeCommand('displayName', tempName.trim());
+        jitsiApiRef.current?.executeCommand('displayName', getFormattedDisplayName(tempName.trim(), isHost));
       } catch {}
     }
   };
@@ -1161,7 +1171,7 @@ export default function LiveClassroomPage() {
             layoutMode === 'video'
               ? 'w-full'
               : layoutMode === 'classroom'
-              ? 'w-full md:w-1/3 border-r border-slate-800'
+              ? 'hidden'
               : layoutMode === 'split'
               ? 'w-full md:w-1/2 border-r border-slate-800'
               : 'w-0 hidden md:block md:w-1/4 opacity-60 hover:opacity-100'
@@ -1178,6 +1188,7 @@ export default function LiveClassroomPage() {
               studentList={studentList}
               raisedHands={raisedHands}
               focusMode={focusMode}
+              currentStudentName={isHost ? 'Thầy Lương Thọ' : studentName}
               onLowerHand={(name) => {
                 setRaisedHands(prev => prev.filter(n => n !== name));
                 channelRef.current?.send({
@@ -1186,6 +1197,15 @@ export default function LiveClassroomPage() {
                   payload: { name }
                 });
                 toast.success(`Đã hạ tay học sinh "${name}"`);
+              }}
+              onSwitchToTileView={() => {
+                setLayoutMode('video');
+                try {
+                  jitsiApiRef.current?.executeCommand('setTileView', true);
+                  toast.success('🔲 Đã kích hoạt lưới camera xem tất cả học sinh theo số bàn!');
+                } catch {
+                  toast('Đã bật chế độ xem lưới camera');
+                }
               }}
             />
           </div>
