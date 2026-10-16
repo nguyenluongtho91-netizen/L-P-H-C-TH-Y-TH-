@@ -1178,6 +1178,268 @@
       z-index: 10;
     }
 
+    /* --- GAME 10: CẮT DÂY GỠ BOM --- */
+    .defuse-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 860px;
+      position: relative;
+    }
+    .c4-suitcase {
+      background: radial-gradient(circle at 50% 30%, #27272a 0%, #18181b 60%, #09090b 100%);
+      border: 4px solid #ef4444;
+      border-radius: 28px;
+      padding: 30px 24px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 0 50px rgba(239, 68, 68, 0.4), inset 0 0 25px rgba(0,0,0,0.8);
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .c4-timer-display {
+      font-family: 'Courier New', monospace;
+      font-size: 54px;
+      font-weight: 900;
+      color: #ef4444;
+      background: #000000;
+      padding: 10px 30px;
+      border-radius: 14px;
+      border: 2px solid #7f1d1d;
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px #ef4444;
+      margin-bottom: 16px;
+      box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.5);
+    }
+    .c4-wires-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      width: 100%;
+      margin: 15px 0 22px;
+    }
+    @media (max-width: 650px) {
+      .c4-wires-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .c4-wire-btn {
+      height: 90px;
+      border-radius: 18px;
+      border: 3px solid;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    }
+    .c4-wire-btn:hover {
+      transform: translateY(-3px) scale(1.03);
+    }
+    .c4-wire-red {
+      background: linear-gradient(180deg, #991b1b, #450a0a);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    .c4-wire-blue {
+      background: linear-gradient(180deg, #1e40af, #172554);
+      border-color: #3b82f6;
+      color: #bfdbfe;
+    }
+    .c4-wire-yellow {
+      background: linear-gradient(180deg, #854d0e, #451a03);
+      border-color: #eab308;
+      color: #fef08a;
+    }
+    .c4-wire-green {
+      background: linear-gradient(180deg, #065f46, #022c22);
+      border-color: #10b981;
+      color: #a7f3d0;
+    }
+    .c4-wire-btn.cut {
+      opacity: 0.35;
+      transform: scale(0.92);
+      cursor: not-allowed;
+      filter: grayscale(0.8);
+      border-style: dashed;
+    }
+    .c4-candidate-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 10px 24px;
+      border-radius: 16px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 90%;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    }
+
+    /* --- GAME 11: CÒ QUAY PLASMA --- */
+    .roulette-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 860px;
+      position: relative;
+    }
+    .revolver-cylinder-box {
+      background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090d16 80%);
+      border: 3px solid #8b5cf6;
+      border-radius: 28px;
+      padding: 30px 20px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 0 50px rgba(139, 92, 246, 0.35);
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .chambers-ring {
+      display: flex;
+      gap: 14px;
+      margin: 16px 0 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .chamber-hole {
+      width: 65px;
+      height: 65px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 3px solid #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 900;
+      color: #94a3b8;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+      transition: all 0.25s ease;
+    }
+    .chamber-hole.spinning {
+      border-color: #a855f7;
+      box-shadow: 0 0 20px #a855f7;
+      animation: pulse 0.15s infinite alternate;
+    }
+    .chamber-hole.empty {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+    .chamber-hole.bang {
+      border-color: #ef4444;
+      background: #ef4444;
+      color: #ffffff;
+      box-shadow: 0 0 35px #ef4444;
+      transform: scale(1.15);
+    }
+    .roulette-status-text {
+      font-size: 13px;
+      font-weight: 900;
+      color: #a78bfa;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .roulette-candidate {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      padding: 10px 24px;
+      border-radius: 16px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 90%;
+    }
+
+    /* --- GAME 12: GHẾ NÓNG THẨM VẤN --- */
+    .hotseat-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+      position: relative;
+    }
+    .interrogation-room {
+      background: radial-gradient(circle at 50% 30%, #1e293b 0%, #090d16 75%, #000000 100%);
+      border: 3px solid #eab308;
+      border-radius: 28px;
+      padding: 35px 20px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 0 50px rgba(234, 179, 8, 0.35);
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .spotlight-beam {
+      position: absolute;
+      top: -50px;
+      width: 240px;
+      height: 380px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(250, 204, 21, 0.45) 0%, rgba(250, 204, 21, 0.1) 60%, transparent 80%);
+      clip-path: polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%);
+      pointer-events: none;
+      transition: all 0.2s ease;
+      animation: spotSearch 2s infinite alternate ease-in-out;
+    }
+    @keyframes spotSearch {
+      0% { transform: translateX(-120px) rotate(-15deg); }
+      100% { transform: translateX(120px) rotate(15deg); }
+    }
+    .hotseat-icon {
+      font-size: 85px;
+      margin: 10px 0 16px;
+      filter: drop-shadow(0 0 25px rgba(250, 204, 21, 0.8));
+      z-index: 5;
+    }
+    .hotseat-status {
+      font-size: 13px;
+      font-weight: 900;
+      color: #facc15;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      z-index: 5;
+    }
+    .hotseat-student {
+      font-size: 28px;
+      font-weight: 900;
+      color: #ffffff;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #facc15;
+      padding: 12px 28px;
+      border-radius: 18px;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 85%;
+      z-index: 5;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.6);
+    }
+
     /* Sidebar */
     .sidebar {
       background: #0f172a;
@@ -1322,7 +1584,7 @@
     <div class="header-title">
       <div class="header-icon">🎲</div>
       <div>
-        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">9 Siêu Trò Gay Cấn & Đẳng Cấp — 10 Lớp Học</span></h1>
+        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">12 Siêu Trò Gay Cấn & Kịch Tính — 10 Lớp Học</span></h1>
         <p style="font-size: 12px; color: rgba(255,255,255,0.9); margin-top: 2px;">
           📐 GIÁO VIÊN TOÁN & 🧪 HÓA HỌC: NGUYỄN LƯƠNG THỌ — Khởi động tiết học bùng nổ đam mê khoa học
         </p>
@@ -1377,6 +1639,15 @@
       </button>
       <button class="tab-btn battle-tab" onclick="switchGame('battle')">
         <span>⚔️</span> 9. Đấu Trường Sinh Tồn
+      </button>
+      <button class="tab-btn defuse-tab" onclick="switchGame('defuse')">
+        <span>✂️</span> 10. Cắt Dây Gỡ Bom
+      </button>
+      <button class="tab-btn roulette-tab" onclick="switchGame('roulette')">
+        <span>🎯</span> 11. Cò Quay Plasma
+      </button>
+      <button class="tab-btn hotseat-tab" onclick="switchGame('hotseat')">
+        <span>🔦</span> 12. Ghế Nóng Thẩm Vấn
       </button>
     </div>
     <label class="exclude-option">
@@ -1575,6 +1846,79 @@
         <div class="battle-arena-grid" id="battleArenaGrid"></div>
         <button class="btn-spin" id="btnStartBattle" style="background: linear-gradient(135deg, #f43f5e, #be123c); color: #ffffff;" onclick="startBattle()">
           <span>⚔️🔥</span> BẮT ĐẦU VÒNG BO SINH TỬ
+        </button>
+      </div>
+
+      <!-- Trò 10: Cắt Dây Gỡ Bom -->
+      <div id="gameDefuse" class="defuse-stage">
+        <div style="font-size: 14px; font-weight: 800; color: #ef4444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
+          ✂️ CẮT DÂY GỠ BOM — CHỌN 1 SỢI DÂY QUYẾT ĐỊNH SINH TỬ!
+        </div>
+        <div class="c4-suitcase">
+          <div class="c4-timer-display" id="c4Timer">00:09.99</div>
+
+          <div class="c4-wires-grid">
+            <button class="c4-wire-btn c4-wire-red" id="wire0" onclick="cutWire(0)">
+              <span>✂️ DÂY ĐỎ</span>
+              <small style="font-size: 10px; opacity: 0.8;">Cắt dây này</small>
+            </button>
+            <button class="c4-wire-btn c4-wire-blue" id="wire1" onclick="cutWire(1)">
+              <span>✂️ DÂY XANH</span>
+              <small style="font-size: 10px; opacity: 0.8;">Cắt dây này</small>
+            </button>
+            <button class="c4-wire-btn c4-wire-yellow" id="wire2" onclick="cutWire(2)">
+              <span>✂️ DÂY VÀNG</span>
+              <small style="font-size: 10px; opacity: 0.8;">Cắt dây này</small>
+            </button>
+            <button class="c4-wire-btn c4-wire-green" id="wire3" onclick="cutWire(3)">
+              <span>✂️ DÂY LỤC</span>
+              <small style="font-size: 10px; opacity: 0.8;">Cắt dây này</small>
+            </button>
+          </div>
+
+          <div class="c4-candidate-name" id="c4CandidateName">CHỜ KÍCH HOẠT ĐỒNG HỒ GỠ BOM...</div>
+        </div>
+
+        <button class="btn-spin" id="btnStartDefuse" style="background: linear-gradient(135deg, #dc2626, #991b1b); color: #ffffff;" onclick="startDefuseAuto()">
+          <span>✂️💥</span> KÍCH HOẠT HẸN GIỜ GỠ BOM
+        </button>
+      </div>
+
+      <!-- Trò 11: Cò Quay Plasma -->
+      <div id="gameRoulette" class="roulette-stage">
+        <div style="font-size: 14px; font-weight: 800; color: #a855f7; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
+          🎯 CÒ QUAY PLASMA — 6 KHOANG NĂNG LƯỢNG NGHẸT THỞ!
+        </div>
+        <div class="revolver-cylinder-box">
+          <div class="roulette-status-text" id="rouletteStatus">Ổ QUAY ĐÃ LÊN ĐẠN — SẴN SÀNG</div>
+          <div class="chambers-ring">
+            <div class="chamber-hole" id="chamber0">1</div>
+            <div class="chamber-hole" id="chamber1">2</div>
+            <div class="chamber-hole" id="chamber2">3</div>
+            <div class="chamber-hole" id="chamber3">4</div>
+            <div class="chamber-hole" id="chamber4">5</div>
+            <div class="chamber-hole" id="chamber5">6</div>
+          </div>
+          <div class="roulette-candidate" id="rouletteCandidate">CHỜ BÓP CÒ...</div>
+        </div>
+        <button class="btn-spin" id="btnStartRoulette" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #ffffff;" onclick="startRoulette()">
+          <span>🎯⚡</span> XOAY Ổ ĐẠN & BÓP CÒ
+        </button>
+      </div>
+
+      <!-- Trò 12: Ghế Nóng Thẩm Vấn -->
+      <div id="gameHotseat" class="hotseat-stage">
+        <div style="font-size: 14px; font-weight: 800; color: #facc15; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
+          🔦 GHẾ NÓNG THẨM VẤN — SPOTLIGHT CHIẾU RỌI AI?
+        </div>
+        <div class="interrogation-room">
+          <div class="spotlight-beam" id="spotlightBeam"></div>
+          <div class="hotseat-icon">🪑</div>
+          <div class="hotseat-status" id="hotseatStatus">ĐÈN TRUY TÌM ĐANG QUÉT TRONG BÓNG TỐI...</div>
+          <div class="hotseat-student" id="hotseatStudent">SẴN SÀNG...</div>
+        </div>
+        <button class="btn-spin" id="btnStartHotseat" style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #090d16;" onclick="startHotseat()">
+          <span>🔦👀</span> BẬT SPOTLIGHT TRUY TÌM
         </button>
       </div>
 
@@ -1789,7 +2133,57 @@
           osc.stop(this.ctx.currentTime + 0.25);
         } catch {}
       }
-      sonarPing() {
+      wireCut() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(2200, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        } catch {}
+      }
+      clickEmpty() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(1600, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.03);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.03);
+        } catch {}
+      }
+      plasmaBlast() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.6);
+          gain.gain.setValueAtTime(0.7, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.6);
+        } catch {}
+      }
+            sonarPing() {
         try {
           this.init();
           if (!this.ctx) return;
@@ -2063,6 +2457,9 @@
       document.getElementById('gameChemical').style.display = game === 'chemical' ? 'flex' : 'none';
       document.getElementById('gameRocket').style.display = game === 'rocket' ? 'flex' : 'none';
       document.getElementById('gameBattle').style.display = game === 'battle' ? 'flex' : 'none';
+      document.getElementById('gameDefuse').style.display = game === 'defuse' ? 'flex' : 'none';
+      document.getElementById('gameRoulette').style.display = game === 'roulette' ? 'flex' : 'none';
+      document.getElementById('gameHotseat').style.display = game === 'hotseat' ? 'flex' : 'none';
 
       if (game === 'wheel') drawWheel();
       if (game === 'race') initRaceTracks();
@@ -2071,6 +2468,9 @@
       if (game === 'chemical') resetChemical();
       if (game === 'rocket') resetRocket();
       if (game === 'battle') initBattleArena();
+      if (game === 'defuse') resetDefuse();
+      if (game === 'roulette') resetRoulette();
+      if (game === 'hotseat') resetHotseat();
     }
 
     let currentWinner = '';
@@ -2097,9 +2497,21 @@
         else if (currentGame === 'chemical') startChemical();
         else if (currentGame === 'rocket') startRocket();
         else if (currentGame === 'battle') startBattle();
+        else if (currentGame === 'defuse') startDefuseAuto();
+        else if (currentGame === 'roulette') startRoulette();
+        else if (currentGame === 'hotseat') startHotseat();
+        else if (currentGame === 'defuse') startDefuseAuto();
+        else if (currentGame === 'roulette') startRoulette();
+        else if (currentGame === 'hotseat') startHotseat();
         else if (currentGame === 'chemical') startChemical();
         else if (currentGame === 'rocket') startRocket();
         else if (currentGame === 'battle') startBattle();
+        else if (currentGame === 'defuse') startDefuseAuto();
+        else if (currentGame === 'roulette') startRoulette();
+        else if (currentGame === 'hotseat') startHotseat();
+        else if (currentGame === 'defuse') startDefuseAuto();
+        else if (currentGame === 'roulette') startRoulette();
+        else if (currentGame === 'hotseat') startHotseat();
       }, 150);
     }
 
@@ -2877,6 +3289,210 @@
       }
 
       setTimeout(eliminateRound, 600);
+    }
+
+    // --- GAME 10: CẮT DÂY GỠ BOM ---
+    let defuseWinner = '';
+    let defuseCutCount = 0;
+    let defuseTimerId = null;
+
+    function resetDefuse() {
+      if (defuseTimerId) clearInterval(defuseTimerId);
+      document.getElementById('c4Timer').innerText = '00:09.99';
+      document.getElementById('c4Timer').style.color = '#ef4444';
+      document.getElementById('c4CandidateName').innerText = 'CHỜ KÍCH HOẠT ĐỒNG HỒ GỠ BOM...';
+      for (let i = 0; i < 4; i++) {
+        const wire = document.getElementById(`wire${i}`);
+        if (wire) wire.className = wire.className.replace(' cut', '');
+      }
+      defuseCutCount = 0;
+    }
+
+    function cutWire(wireIdx) {
+      if (!isSpinning && !defuseWinner) {
+        startDefuseAuto(wireIdx);
+        return;
+      }
+      const wire = document.getElementById(`wire${wireIdx}`);
+      if (!wire || wire.classList.contains('cut')) return;
+
+      wire.classList.add('cut');
+      audio.wireCut();
+      defuseCutCount++;
+
+      if (defuseCutCount >= 2 || Math.random() < 0.6) {
+        if (defuseTimerId) clearInterval(defuseTimerId);
+        document.getElementById('c4Timer').innerText = 'DEFUSED! ✅';
+        document.getElementById('c4Timer').style.color = '#10b981';
+
+        triggerFlash();
+        triggerScreenShake();
+        audio.thunderCrash();
+
+        const btn = document.getElementById('btnStartDefuse');
+        btn.disabled = false;
+        btn.innerHTML = '<span>✂️💥</span> KÍCH HOẠT HẸN GIỜ GỠ BOM';
+        isSpinning = false;
+        showWinner(defuseWinner, `✂️ GỠ BOM THÀNH CÔNG! Chuyên gia kỹ thuật quả cảm của ${CLASS_LABELS[currentClassKey]}!`);
+      } else {
+        audio.heartbeat();
+      }
+    }
+
+    function startDefuseAuto(preferredWire = -1) {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      resetDefuse();
+
+      const btn = document.getElementById('btnStartDefuse');
+      btn.disabled = true;
+      btn.innerText = 'ĐỒNG HỒ ĐANG ĐẾM NGƯỢC... ✂️';
+
+      defuseWinner = students[Math.floor(Math.random() * students.length)];
+      let msRemaining = 800; // 8 seconds
+
+      defuseTimerId = setInterval(() => {
+        msRemaining -= 6;
+        if (msRemaining > 0) {
+          const s = Math.floor(msRemaining / 100);
+          const ms = msRemaining % 100;
+          document.getElementById('c4Timer').innerText = `00:0${s}.${ms < 10 ? '0' + ms : ms}`;
+          document.getElementById('c4CandidateName').innerText = students[Math.floor(Math.random() * students.length)];
+          if (msRemaining % 25 === 0) audio.tick();
+        } else {
+          clearInterval(defuseTimerId);
+          // Tự động cắt sợi dây quyết định
+          const cutIdx = preferredWire >= 0 ? preferredWire : Math.floor(Math.random() * 4);
+          cutWire(cutIdx);
+        }
+      }, 60);
+
+      // Nếu người dùng nhấp trực tiếp vào dây
+      if (preferredWire >= 0) {
+        setTimeout(() => cutWire(preferredWire), 1500);
+      }
+    }
+
+    // --- GAME 11: CÒ QUAY PLASMA ---
+    function resetRoulette() {
+      document.getElementById('rouletteStatus').innerText = 'Ổ QUAY ĐÃ LÊN ĐẠN — SẴN SÀNG';
+      document.getElementById('rouletteCandidate').innerText = 'CHỜ BÓP CÒ...';
+      for (let i = 0; i < 6; i++) {
+        const c = document.getElementById(`chamber${i}`);
+        if (c) c.className = 'chamber-hole';
+      }
+    }
+
+    function startRoulette() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      resetRoulette();
+
+      const btn = document.getElementById('btnStartRoulette');
+      const status = document.getElementById('rouletteStatus');
+      const cand = document.getElementById('rouletteCandidate');
+
+      btn.disabled = true;
+      btn.innerText = 'ĐANG XOAY Ổ ĐẠN... 🎯';
+
+      const bangChamber = Math.floor(Math.random() * 6);
+      const chosen = students[Math.floor(Math.random() * students.length)];
+
+      let currentChamber = 0;
+      let spins = 0;
+      const totalSpins = 24 + bangChamber;
+
+      const spinInterval = setInterval(() => {
+        spins++;
+        audio.tick();
+
+        for (let i = 0; i < 6; i++) {
+          const ch = document.getElementById(`chamber${i}`);
+          if (ch) ch.className = 'chamber-hole';
+        }
+
+        const activeCh = document.getElementById(`chamber${currentChamber % 6}`);
+        if (activeCh) activeCh.classList.add('spinning');
+
+        cand.innerText = students[Math.floor(Math.random() * students.length)];
+        currentChamber++;
+
+        if (spins >= totalSpins) {
+          clearInterval(spinInterval);
+
+          const finalIdx = (currentChamber - 1) % 6;
+          const hitHole = document.getElementById(`chamber${finalIdx}`);
+          if (hitHole) {
+            hitHole.className = 'chamber-hole bang';
+            hitHole.innerText = '💥';
+          }
+
+          status.innerText = `💥 PHÁT SÚNG NĂNG LƯỢNG TRÚNG KHOANG ${finalIdx + 1}!`;
+          cand.innerText = chosen;
+
+          audio.plasmaBlast();
+          triggerFlash();
+          triggerScreenShake();
+
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>🎯⚡</span> XOAY Ổ ĐẠN & BÓP CÒ';
+            isSpinning = false;
+            showWinner(chosen, `🎯 TRÚNG KHOANG SỐ ${finalIdx + 1}! Người được chọn của định mệnh (${CLASS_LABELS[currentClassKey]})!`);
+          }, 450);
+        }
+      }, 90);
+    }
+
+    // --- GAME 12: GHẾ NÓNG THẨM VẤN ---
+    function resetHotseat() {
+      document.getElementById('hotseatStatus').innerText = 'ĐÈN TRUY TÌM ĐANG QUÉT TRONG BÓNG TỐI...';
+      document.getElementById('hotseatStudent').innerText = 'SẴN SÀNG...';
+    }
+
+    function startHotseat() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      resetHotseat();
+
+      const btn = document.getElementById('btnStartHotseat');
+      const status = document.getElementById('hotseatStatus');
+      const studText = document.getElementById('hotseatStudent');
+
+      btn.disabled = true;
+      btn.innerText = 'SPOTLIGHT ĐANG TRUY TÌM... 🔦';
+
+      const chosen = students[Math.floor(Math.random() * students.length)];
+      let step = 0;
+      const totalSteps = 38;
+
+      const timer = setInterval(() => {
+        step++;
+        studText.innerText = students[Math.floor(Math.random() * students.length)];
+        audio.heartbeat();
+
+        if (step % 4 === 0) {
+          status.innerText = ['👀 PHÁT HIỆN TỌA ĐỘ NGHI VẤN...', '🔦 ĐÈN RỌI QUÉT QUA DÃY BÀN...', '⚠️ MỤC TIÊU ĐANG TRONG TẦM NGẮM...'][Math.floor(Math.random() * 3)];
+        }
+
+        if (step >= totalSteps) {
+          clearInterval(timer);
+          studText.innerText = chosen;
+          status.innerText = '🎯 ĐÃ BẮT TRÚNG MỤC TIÊU LÊN GHẾ NÓNG!';
+
+          triggerFlash();
+          triggerScreenShake();
+          audio.fanfare();
+
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔦👀</span> BẬT SPOTLIGHT TRUY TÌM';
+          isSpinning = false;
+          showWinner(chosen, `🪑 LÊN GHẾ NÓNG! Spotlight đã chiếu thẳng vào bạn (${CLASS_LABELS[currentClassKey]})! Mời bạn giải bài!`);
+        }
+      }, 100);
     }
 
     // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
