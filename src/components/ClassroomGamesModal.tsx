@@ -132,7 +132,7 @@ export default function ClassroomGamesModal({
   studentList = [],
   onSpotlightStudent
 }: ClassroomGamesModalProps) {
-  const [activeTab, setActiveTab] = useState<'wheel' | 'mystery' | 'slot'>('wheel');
+  const [activeTab, setActiveTab] = useState<'wheel' | 'mystery' | 'slot' | 'race' | 'lightning' | 'chest'>('wheel');
   
   // Danh sách tên tham gia trò chơi
   const [names, setNames] = useState<string[]>(() => {
@@ -390,6 +390,145 @@ export default function ClassroomGamesModal({
     }, 90);
   };
 
+  // --- TRÒ CHƠI 4: ĐUA XE F1 THẦN TỐC ---
+  const [raceRacers, setRaceRacers] = useState<Array<{ name: string; progress: number; icon: string; color: string }>>([]);
+  const [isRacing, setIsRacing] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'race' && names.length > 0) {
+      const CAR_ICONS = ['🏎️', '🚗', '🚙', '🚖'];
+      const CAR_COLORS = [
+        'from-red-500 to-orange-500',
+        'from-amber-400 to-yellow-500',
+        'from-blue-500 to-cyan-400',
+        'from-purple-500 to-pink-500'
+      ];
+      const shuffled = [...names].sort(() => 0.5 - Math.random()).slice(0, 4);
+      setRaceRacers(shuffled.map((name, i) => ({
+        name,
+        progress: 5,
+        icon: CAR_ICONS[i % CAR_ICONS.length],
+        color: CAR_COLORS[i % CAR_COLORS.length]
+      })));
+    }
+  }, [activeTab, names]);
+
+  const handleStartRace = () => {
+    if (isRacing || raceRacers.length === 0) return;
+    setIsRacing(true);
+    setWinner(null);
+
+    const winnerIdx = Math.floor(Math.random() * raceRacers.length);
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      sfx.engineRev(1 + (step % 4) * 0.2);
+
+      let finished = false;
+      setRaceRacers(prev => prev.map((r, idx) => {
+        let boost = Math.random() * 3.5 + 1.5;
+        if (idx === winnerIdx && step > 20) boost += 2.0;
+        const newProg = Math.min(r.progress + boost, 100);
+        if (newProg >= 100 && idx === winnerIdx) finished = true;
+        return { ...r, progress: newProg };
+      }));
+
+      if (finished || step >= 45) {
+        clearInterval(timer);
+        const champion = raceRacers[winnerIdx].name;
+        setRaceRacers(prev => prev.map((r, idx) => idx === winnerIdx ? { ...r, progress: 100 } : r));
+        setIsRacing(false);
+        setWinner(champion);
+        sfx.fanfare();
+
+        if (removeAfterPick) {
+          setNames(prev => prev.filter(n => n !== champion));
+        }
+      }
+    }, 100);
+  };
+
+  // --- TRÒ CHƠI 5: TIA SÉT THOR ---
+  const [lightningCards, setLightningCards] = useState<string[]>([]);
+  const [activeLightningIdx, setActiveLightningIdx] = useState<number>(-1);
+  const [struckLightningIdx, setStruckLightningIdx] = useState<number>(-1);
+  const [isLightningStriking, setIsLightningStriking] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'lightning' && names.length > 0) {
+      const shuffled = [...names].sort(() => 0.5 - Math.random()).slice(0, Math.min(names.length, 9));
+      setLightningCards(shuffled);
+      setActiveLightningIdx(-1);
+      setStruckLightningIdx(-1);
+    }
+  }, [activeTab, names]);
+
+  const handleStartLightning = () => {
+    if (isLightningStriking || lightningCards.length === 0) return;
+    setIsLightningStriking(true);
+    setWinner(null);
+    setStruckLightningIdx(-1);
+
+    const winnerIdx = Math.floor(Math.random() * lightningCards.length);
+    let count = 0;
+    const totalCount = 35;
+
+    const timer = setInterval(() => {
+      count++;
+      sfx.zap();
+      setActiveLightningIdx(Math.floor(Math.random() * lightningCards.length));
+
+      if (count >= totalCount) {
+        clearInterval(timer);
+        setActiveLightningIdx(-1);
+        setStruckLightningIdx(winnerIdx);
+        sfx.thunderCrash();
+        const luckyOne = lightningCards[winnerIdx];
+        setIsLightningStriking(false);
+        setWinner(luckyOne);
+        sfx.fanfare();
+
+        if (removeAfterPick) {
+          setNames(prev => prev.filter(n => n !== luckyOne));
+        }
+      }
+    }, 80);
+  };
+
+  // --- TRÒ CHƠI 6: CHIẾC RƯƠNG BÍ ẨN ---
+  const [chestShaking, setChestShaking] = useState(false);
+  const [openedChestIdx, setOpenedChestIdx] = useState<number | null>(null);
+  const [chestRewardName, setChestRewardName] = useState<string>('');
+
+  const handleOpenChest = (idx: number) => {
+    if (chestShaking || names.length === 0) return;
+    setChestShaking(true);
+    setWinner(null);
+    setOpenedChestIdx(null);
+
+    let beats = 0;
+    const timer = setInterval(() => {
+      beats++;
+      sfx.heartbeat();
+
+      if (beats >= 18) {
+        clearInterval(timer);
+        setChestShaking(false);
+        setOpenedChestIdx(idx);
+        const luckyStudent = names[Math.floor(Math.random() * names.length)];
+        setChestRewardName(luckyStudent);
+        sfx.magicChime();
+        setWinner(luckyStudent);
+        sfx.fanfare();
+
+        if (removeAfterPick) {
+          setNames(prev => prev.filter(n => n !== luckyStudent));
+        }
+      }
+    }, 90);
+  };
+
   // Thêm tên học sinh thủ công
   const handleAddName = (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,6 +625,39 @@ export default function ClassroomGamesModal({
             >
               <span>🎰</span>
               <span>3. Máy Quay Jackpot</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('race'); setWinner(null); }}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition ${
+                activeTab === 'race'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🏎️</span>
+              <span>4. Đua Xe F1</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('lightning'); setWinner(null); }}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition ${
+                activeTab === 'lightning'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>⚡</span>
+              <span>5. Tia Sét Thor</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('chest'); setWinner(null); }}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition ${
+                activeTab === 'chest'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>🎁</span>
+              <span>6. Rương Bí Ẩn</span>
             </button>
           </div>
 
@@ -637,6 +809,134 @@ export default function ClassroomGamesModal({
                 </button>
               </div>
             )}
+          
+            {/* --- GAME 4: ĐUA XE F1 THẦN TỐC --- */}
+            {activeTab === 'race' && (
+              <div className="flex flex-col items-center justify-center w-full max-w-lg py-2">
+                <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">
+                  🏎️ ĐƯỜNG ĐUA F1 GRAND PRIX — XE NÀO VỀ ĐÍCH ĐẦU TIÊN?
+                </div>
+                <div className="w-full space-y-2.5 mb-5">
+                  {raceRacers.map((racer, idx) => (
+                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+                      <div className="flex justify-between text-xs font-bold mb-1.5">
+                        <span className="text-white flex items-center gap-1">
+                          <span>{racer.icon}</span> <b>Xe {idx + 1}:</b> {racer.name}
+                        </span>
+                        <span className="text-emerald-400 font-mono">{Math.floor(racer.progress)}%</span>
+                      </div>
+                      <div className="h-6 bg-slate-950 rounded-full relative overflow-hidden border border-slate-800">
+                        <div
+                          className={`h-full bg-gradient-to-r ${racer.color} transition-all duration-100 rounded-full flex items-center justify-end pr-1`}
+                          style={{ width: `${Math.max(racer.progress, 6)}%` }}
+                        >
+                          <span className="text-sm drop-shadow">{racer.icon}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleStartRace}
+                  disabled={isRacing || raceRacers.length === 0}
+                  className={`px-8 py-3.5 rounded-2xl font-black text-base shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                    isRacing || raceRacers.length === 0
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-emerald-500/30'
+                  }`}
+                >
+                  <span>🏎️💨</span>
+                  <span>{isRacing ? 'CÁC TAY ĐUA ĐANG BỨT TỐC...' : 'BẮT ĐẦU ĐUA XE 🏁'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* --- GAME 5: TIA SÉT THOR --- */}
+            {activeTab === 'lightning' && (
+              <div className="flex flex-col items-center justify-center w-full max-w-lg py-2">
+                <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">
+                  ⚡ BÃO SẤM SÉT THOR — TIA SÉT GIÁNG XUỐNG AI?
+                </div>
+                <div className="grid grid-cols-3 gap-2 w-full mb-5">
+                  {lightningCards.map((name, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl text-center text-xs font-black transition-all duration-75 border ${
+                        struckLightningIdx === idx
+                          ? 'bg-gradient-to-r from-red-600 to-amber-500 text-white border-yellow-300 scale-105 shadow-2xl shadow-yellow-500/50 animate-bounce'
+                          : activeLightningIdx === idx
+                          ? 'bg-amber-500/30 border-amber-400 text-amber-300 scale-105 shadow-lg shadow-amber-500/40'
+                          : 'bg-slate-900 border-slate-800 text-slate-300'
+                      }`}
+                    >
+                      <div className="text-base mb-0.5">⚡</div>
+                      <div className="truncate">{name}</div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleStartLightning}
+                  disabled={isLightningStriking || lightningCards.length === 0}
+                  className={`px-8 py-3.5 rounded-2xl font-black text-base shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                    isLightningStriking || lightningCards.length === 0
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-400/30'
+                  }`}
+                >
+                  <Zap className="w-5 h-5 fill-current" />
+                  <span>{isLightningStriking ? 'BÃO SẤM SÉT ĐANG QUÉT...' : 'TRIỆU HỒI SẤM SÉT ⚡'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* --- GAME 6: RƯƠNG BÍ ẨN --- */}
+            {activeTab === 'chest' && (
+              <div className="flex flex-col items-center justify-center w-full max-w-md py-2">
+                <div className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">
+                  🎁 4 CHIẾC RƯƠNG BÍ MẬT — CHỌN 1 RƯƠNG MAY MẮN
+                </div>
+                <div className="grid grid-cols-2 gap-3 w-full mb-5">
+                  {[
+                    { title: 'Rương Hoàng Kim 👑', color: 'from-amber-900/60 to-slate-900 border-amber-500/60' },
+                    { title: 'Rương Dung Nham 🔥', color: 'from-red-900/60 to-slate-900 border-red-500/60' },
+                    { title: 'Rương Băng Giá ❄️', color: 'from-cyan-900/60 to-slate-900 border-cyan-500/60' },
+                    { title: 'Rương Ma Thuật 🔮', color: 'from-purple-900/60 to-slate-900 border-purple-500/60' }
+                  ].map((chest, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleOpenChest(idx)}
+                      disabled={chestShaking}
+                      className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center transition-all bg-gradient-to-b ${chest.color} ${
+                        chestShaking ? 'animate-bounce' : 'hover:scale-105 active:scale-95'
+                      } ${openedChestIdx === idx ? 'ring-4 ring-amber-400 bg-amber-500/20' : ''}`}
+                    >
+                      <div className="text-4xl mb-2">{openedChestIdx === idx ? '🎁✨' : '📦'}</div>
+                      <div className="text-xs font-bold text-white mb-1">{chest.title}</div>
+                      <div className="text-[11px] text-slate-400 font-semibold truncate max-w-full">
+                        {openedChestIdx === idx ? (
+                          <span className="text-amber-400 font-black">{chestRewardName}</span>
+                        ) : (
+                          'Bấm để mở'
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleOpenChest(Math.floor(Math.random() * 4))}
+                  disabled={chestShaking || names.length === 0}
+                  className={`px-8 py-3.5 rounded-2xl font-black text-base shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                    chestShaking || names.length === 0
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-600/30'
+                  }`}
+                >
+                  <Gift className="w-5 h-5 fill-current" />
+                  <span>{chestShaking ? 'ĐANG MỞ RƯƠNG BÍ ẨN...' : 'MỞ NGẪU NHIÊN 1 RƯƠNG 🎁'}</span>
+                </button>
+              </div>
+            )}
+
           </div>
 
           {/* CỘT PHẢI: QUẢN LÝ DANH SÁCH HỌC SINH THAM GIA (1 CỘT) */}

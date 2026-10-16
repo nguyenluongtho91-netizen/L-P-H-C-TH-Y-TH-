@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trò Chơi Gọi Tên Học Sinh — Thầy Lương Thọ</title>
+  <title>Trò Chơi Gọi Tên Học Sinh Gay Cấn — Thầy Lương Thọ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
       --rose: #f43f5e;
       --indigo: #6366f1;
       --cyan: #06b6d4;
+      --green: #10b981;
     }
     * {
       box-sizing: border-box;
@@ -32,9 +33,33 @@
       overflow-x: hidden;
       user-select: none;
     }
+
+    /* Screen shake */
+    body.shaking {
+      animation: screenShake 0.4s ease-in-out;
+    }
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-8px, 6px); }
+      40% { transform: translate(8px, -6px); }
+      60% { transform: translate(-6px, -4px); }
+      80% { transform: translate(6px, 4px); }
+    }
+
+    /* Flash effect */
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 0.08s ease-out;
+    }
+
     header {
-      background: linear-gradient(135deg, #b45309 0%, #be123c 50%, #4338ca 100%);
-      padding: 16px 24px;
+      background: linear-gradient(135deg, #b45309 0%, #be123c 40%, #4338ca 75%, #047857 100%);
+      padding: 14px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -46,22 +71,24 @@
       gap: 12px;
     }
     .header-icon {
-      font-size: 32px;
+      font-size: 28px;
       background: rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
-      width: 52px;
-      height: 52px;
+      border-radius: 14px;
+      width: 48px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
     }
     h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 900;
-      letter-spacing: -0.5px;
       color: #ffffff;
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .badge-sub {
       font-size: 11px;
@@ -71,7 +98,6 @@
       padding: 2px 8px;
       border-radius: 999px;
       text-transform: uppercase;
-      margin-left: 8px;
     }
     .header-actions {
       display: flex;
@@ -85,7 +111,7 @@
       padding: 8px 14px;
       border-radius: 12px;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       transition: all 0.2s;
     }
@@ -94,33 +120,41 @@
       transform: scale(1.05);
     }
 
-    /* Tabs */
+    /* Tabs Bar */
     .tab-bar {
       background: #0f172a;
       border-bottom: 1px solid #1e293b;
-      padding: 10px 24px;
+      padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      overflow-x: auto;
     }
     .tab-group {
       display: flex;
-      gap: 8px;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
     }
     .tab-btn {
-      padding: 10px 18px;
-      border-radius: 14px;
-      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
       font-weight: 800;
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: #1e293b;
       color: #94a3b8;
       transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover {
+      color: #ffffff;
+      background: #334155;
     }
     .tab-btn.active.wheel-tab {
       background: #f59e0b;
@@ -137,8 +171,24 @@
       color: #ffffff;
       box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
     }
+    .tab-btn.active.race-tab {
+      background: #10b981;
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+    .tab-btn.active.lightning-tab {
+      background: #eab308;
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(234, 179, 8, 0.4);
+    }
+    .tab-btn.active.chest-tab {
+      background: #a855f7;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);
+    }
+
     .exclude-option {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       color: #cbd5e1;
       display: flex;
@@ -146,23 +196,24 @@
       gap: 6px;
       cursor: pointer;
       background: #1e293b;
-      padding: 8px 14px;
-      border-radius: 12px;
+      padding: 6px 12px;
+      border-radius: 10px;
       border: 1px solid #334155;
+      white-space: nowrap;
     }
 
     /* Main Container */
     .container {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 340px;
+      grid-template-columns: 1fr 320px;
       gap: 20px;
-      padding: 24px;
+      padding: 20px;
       max-width: 1400px;
       width: 100%;
       margin: 0 auto;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .container {
         grid-template-columns: 1fr;
       }
@@ -172,27 +223,27 @@
     .stage {
       background: #111827;
       border: 2px solid #1f2937;
-      border-radius: 28px;
-      padding: 24px;
+      border-radius: 24px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       position: relative;
-      min-height: 480px;
+      min-height: 490px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
     }
 
     /* Winner Popup */
     .winner-banner {
       position: absolute;
-      top: 16px;
-      left: 20px;
-      right: 20px;
+      top: 14px;
+      left: 16px;
+      right: 16px;
       background: linear-gradient(135deg, #f59e0b, #f43f5e, #6366f1);
       padding: 3px;
       border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
       z-index: 50;
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       display: none;
@@ -215,17 +266,57 @@
       font-weight: 900;
       color: #ffffff;
       margin: 6px 0;
-      text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+      text-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
     }
     .winner-desc {
       font-size: 12px;
       color: #94a3b8;
     }
 
-    /* Wheel specific */
+    /* Buttons */
+    .btn-spin {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0f172a;
+      font-size: 16px;
+      font-weight: 900;
+      padding: 12px 38px;
+      border-radius: 18px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+      transition: all 0.15s ease;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-spin:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6);
+    }
+    .btn-spin:active {
+      transform: translateY(1px);
+    }
+    .btn-spin:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* --- GAME 1: WHEEL --- */
+    .wheel-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .wheel-wrapper {
       position: relative;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
+      width: 360px;
+      height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .wheel-pointer {
       position: absolute;
@@ -247,43 +338,8 @@
       background: #0f172a;
       display: block;
     }
-    #confettiCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 99;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-    }
 
-    /* Buttons */
-    .btn-spin {
-      background: linear-gradient(135deg, #f59e0b, #ea580c);
-      color: #0f172a;
-      font-size: 18px;
-      font-weight: 900;
-      padding: 14px 44px;
-      border-radius: 20px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
-      transition: all 0.15s ease;
-      letter-spacing: 0.5px;
-    }
-    .btn-spin:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6);
-    }
-    .btn-spin:active {
-      transform: translateY(1px);
-    }
-
-    /* Bomb Game */
+    /* --- GAME 2: BOMB --- */
     .bomb-stage {
       display: none;
       flex-direction: column;
@@ -291,8 +347,8 @@
       text-align: center;
     }
     .bomb-icon {
-      font-size: 96px;
-      margin-bottom: 16px;
+      font-size: 88px;
+      margin-bottom: 14px;
       transition: all 0.15s;
     }
     .bomb-icon.ticking {
@@ -303,23 +359,23 @@
       font-size: 32px;
       font-weight: 900;
       color: #f43f5e;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       letter-spacing: 2px;
     }
     .bomb-display {
       background: #090d16;
       border: 2px solid #374151;
       border-radius: 18px;
-      padding: 16px 32px;
-      min-width: 320px;
-      font-size: 22px;
+      padding: 14px 30px;
+      min-width: 300px;
+      font-size: 20px;
       font-weight: 900;
       color: #ffffff;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
     }
 
-    /* Slot Machine Game */
+    /* --- GAME 3: SLOT --- */
     .slot-stage {
       display: none;
       flex-direction: column;
@@ -330,30 +386,30 @@
     .slot-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
+      gap: 12px;
       max-width: 520px;
       width: 100%;
       background: #090d16;
       border: 4px solid #6366f1;
-      border-radius: 24px;
-      padding: 20px;
-      margin-bottom: 24px;
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 22px;
       box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
     }
     .slot-box {
       background: #1e293b;
       border: 2px solid #334155;
-      border-radius: 16px;
-      height: 120px;
+      border-radius: 14px;
+      height: 110px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 8px;
+      padding: 6px;
       overflow: hidden;
     }
     .slot-star {
-      font-size: 28px;
+      font-size: 26px;
       margin-bottom: 4px;
     }
     .slot-name {
@@ -366,12 +422,192 @@
       white-space: nowrap;
     }
 
+    /* --- GAME 4: F1 RACE (ĐUA XE) --- */
+    .race-stage {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      max-width: 620px;
+    }
+    .race-track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .race-lane {
+      background: #090d16;
+      border: 2px solid #1f2937;
+      border-radius: 16px;
+      padding: 10px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .race-lane-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .race-lane-name {
+      color: #f3f4f6;
+    }
+    .race-lane-pct {
+      color: #10b981;
+    }
+    .race-lane-track {
+      height: 28px;
+      background: #1e293b;
+      border-radius: 14px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+    .race-finish-line {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 16px;
+      background: repeating-linear-gradient(45deg, #fff, #fff 4px, #000 4px, #000 8px);
+      z-index: 5;
+    }
+    .race-progress-bar {
+      height: 100%;
+      border-radius: 14px;
+      transition: width 0.08s linear;
+      position: relative;
+    }
+    .race-car-avatar {
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      z-index: 10;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+
+    /* --- GAME 5: LIGHTNING (TIA SÉT THOR) --- */
+    .lightning-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 620px;
+    }
+    .lightning-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .lightning-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .lightning-card {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 14px;
+      padding: 14px 10px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #cbd5e1;
+      transition: all 0.1s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .lightning-card.targeted {
+      border-color: #facc15;
+      background: #854d0e;
+      color: #fef08a;
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #facc15, inset 0 0 10px #fef08a;
+    }
+    .lightning-card.struck {
+      border-color: #ef4444;
+      background: linear-gradient(135deg, #ef4444, #f59e0b);
+      color: #ffffff;
+      transform: scale(1.1);
+      box-shadow: 0 0 35px #f59e0b, 0 0 15px #ef4444;
+      animation: pulse 0.15s infinite alternate;
+    }
+
+    /* --- GAME 6: CHESTS (RƯƠNG BÍ ẨN) --- */
+    .chest-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 580px;
+    }
+    .chest-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      width: 100%;
+      margin-bottom: 22px;
+    }
+    .chest-card {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 3px solid #475569;
+      border-radius: 20px;
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .chest-card:hover {
+      border-color: #a855f7;
+      transform: translateY(-4px);
+      box-shadow: 0 12px 25px rgba(168, 85, 247, 0.4);
+    }
+    .chest-icon {
+      font-size: 54px;
+      margin-bottom: 8px;
+      transition: transform 0.15s;
+    }
+    .chest-card.shaking .chest-icon {
+      animation: chestWobble 0.2s infinite alternate;
+    }
+    @keyframes chestWobble {
+      0% { transform: rotate(-8deg) scale(1.1); }
+      100% { transform: rotate(8deg) scale(1.1); }
+    }
+    .chest-card.opened {
+      border-color: #f59e0b;
+      background: linear-gradient(180deg, #451a03 0%, #090d16 100%);
+      box-shadow: 0 0 35px rgba(245, 158, 11, 0.6);
+    }
+    .chest-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #e2e8f0;
+      letter-spacing: 0.5px;
+    }
+    .chest-reward {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
     /* Sidebar / List Management */
     .sidebar {
       background: #111827;
       border: 2px solid #1f2937;
-      border-radius: 28px;
-      padding: 20px;
+      border-radius: 24px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
@@ -382,10 +618,10 @@
       align-items: center;
       padding-bottom: 12px;
       border-bottom: 1px solid #1f2937;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .sidebar-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -400,7 +636,7 @@
     }
     .add-form {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 12px;
     }
     .input-name {
@@ -408,8 +644,8 @@
       background: #090d16;
       border: 1px solid #374151;
       border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 13px;
+      padding: 9px 12px;
+      font-size: 12px;
       color: #ffffff;
       outline: none;
       transition: all 0.2s;
@@ -423,7 +659,7 @@
       color: #ffffff;
       border: none;
       border-radius: 12px;
-      padding: 0 16px;
+      padding: 0 14px;
       font-weight: 800;
       font-size: 14px;
       cursor: pointer;
@@ -435,15 +671,15 @@
     .name-list {
       flex: 1;
       overflow-y: auto;
-      max-height: 280px;
-      margin-bottom: 14px;
+      max-height: 270px;
+      margin-bottom: 12px;
       padding-right: 4px;
     }
     .name-item {
       background: #090d16;
       border: 1px solid #1f2937;
       border-radius: 10px;
-      padding: 8px 12px;
+      padding: 7px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -468,17 +704,17 @@
     .sidebar-actions {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       border-top: 1px solid #1f2937;
-      padding-top: 12px;
+      padding-top: 10px;
     }
     .btn-quick {
       background: #1e293b;
       border: 1px solid #334155;
       color: #cbd5e1;
-      padding: 9px;
-      border-radius: 12px;
-      font-size: 12px;
+      padding: 8px;
+      border-radius: 10px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       text-align: center;
@@ -489,7 +725,20 @@
       color: #ffffff;
     }
 
-
+    /* Confetti Canvas */
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+    }
 
     @keyframes popIn {
       0% { transform: scale(0.85); opacity: 0; }
@@ -502,15 +751,16 @@
   </style>
 </head>
 <body>
+  <div id="flashOverlay"></div>
   <canvas id="confettiCanvas"></canvas>
 
   <header>
     <div class="header-title">
       <div class="header-icon">🎲</div>
       <div>
-        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">Bản Offline Thầy Thọ</span></h1>
+        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — Thầy Thọ</span></h1>
         <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 2px;">
-          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học vui nhộn & gay cấn
+          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học bùng nổ năng lượng
         </p>
       </div>
     </div>
@@ -519,17 +769,26 @@
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
+  <!-- Navigation Tabs (6 Trò Chơi) -->
   <div class="tab-bar">
     <div class="tab-group">
       <button class="tab-btn active wheel-tab" onclick="switchGame('wheel')">
         <span>🎡</span> 1. Vòng Quay May Mắn
       </button>
       <button class="tab-btn bomb-tab" onclick="switchGame('bomb')">
-        <span>💣</span> 2. Quả Bom Đếm Ngược
+        <span>💣</span> 2. Quả Bom Nổ Chậm
       </button>
       <button class="tab-btn slot-tab" onclick="switchGame('slot')">
         <span>🎰</span> 3. Máy Quay Jackpot
+      </button>
+      <button class="tab-btn race-tab" onclick="switchGame('race')">
+        <span>🏎️</span> 4. Đua Xe F1 Thần Tốc
+      </button>
+      <button class="tab-btn lightning-tab" onclick="switchGame('lightning')">
+        <span>⚡</span> 5. Tia Sét Sấm Truyền
+      </button>
+      <button class="tab-btn chest-tab" onclick="switchGame('chest')">
+        <span>🎁</span> 6. Chiếc Rương Bí Ẩn
       </button>
     </div>
     <label class="exclude-option">
@@ -540,36 +799,38 @@
 
   <div class="container">
     <!-- Main Stage -->
-    <div class="stage">
+    <div class="stage" id="mainStage">
       <!-- Winner Banner -->
       <div class="winner-banner" id="winnerBanner">
         <div class="winner-inner">
           <div class="winner-tag">✨ XIN CHÚC MỪNG HỌC SINH ĐƯỢC CHỌN ✨</div>
           <div class="winner-name" id="winnerNameText">Nguyễn Văn An</div>
-          <div class="winner-desc">Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!</div>
+          <div class="winner-desc" id="winnerDescText">Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!</div>
         </div>
       </div>
 
-      <!-- Game 1: Wheel -->
-      <div id="gameWheel" class="wheel-stage" style="display: flex; flex-direction: column; align-items: center;">
+      <!-- Trò 1: Vòng quay may mắn -->
+      <div id="gameWheel" class="wheel-stage">
         <div class="wheel-wrapper">
           <div class="wheel-pointer"></div>
-          <canvas id="wheelCanvas" width="380" height="380"></canvas>
+          <canvas id="wheelCanvas" width="360" height="360"></canvas>
         </div>
-        <button class="btn-spin" id="btnSpinWheel" onclick="spinWheel()">QUAY NGAY 🎯</button>
+        <button class="btn-spin" id="btnSpinWheel" onclick="spinWheel()">
+          <span>🎯</span> QUAY NGAY
+        </button>
       </div>
 
-      <!-- Game 2: Bomb -->
+      <!-- Trò 2: Quả bom nổ chậm -->
       <div id="gameBomb" class="bomb-stage">
         <div class="bomb-icon" id="bombIcon">💣</div>
         <div class="bomb-countdown" id="bombCountdownText" style="display: none;">ĐẾM NGƯỢC: 3</div>
         <div class="bomb-display" id="bombNameText">???</div>
         <button class="btn-spin" id="btnStartBomb" style="background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff;" onclick="startBomb()">
-          KÍCH HOẠT BOM 💣
+          <span>💣</span> KÍCH HOẠT BOM
         </button>
       </div>
 
-      <!-- Game 3: Slot -->
+      <!-- Trò 3: Slot Jackpot -->
       <div id="gameSlot" class="slot-stage">
         <div style="font-size: 13px; font-weight: 800; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
           🎰 VÒNG QUAY MAY MẮN CASINO JACKPOT
@@ -589,9 +850,70 @@
           </div>
         </div>
         <button class="btn-spin" id="btnStartSlot" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff;" onclick="startSlot()">
-          KÉO CẦN QUAY SỐ 🎰
+          <span>🎰</span> KÉO CẦN QUAY SỐ
         </button>
       </div>
+
+      <!-- Trò 4: Đua xe F1 thần tốc -->
+      <div id="gameRace" class="race-stage">
+        <div style="font-size: 13px; font-weight: 800; color: #34d399; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+          🏎️ ĐƯỜNG ĐUA F1 GRAND PRIX — XE NÀO CÁN ĐÍCH ĐẦU TIÊN?
+        </div>
+        <div class="race-track-list" id="raceTrackList">
+          <!-- Các làn đua được sinh bằng JS -->
+        </div>
+        <div style="display: flex; justify-content: center; gap: 10px;">
+          <button class="btn-spin" id="btnStartRace" style="background: linear-gradient(135deg, #10b981, #059669); color: #090d16;" onclick="startRace()">
+            <span>🏎️💨</span> BẮT ĐẦU ĐUA XE
+          </button>
+        </div>
+      </div>
+
+      <!-- Trò 5: Tia sét Thor -->
+      <div id="gameLightning" class="lightning-stage">
+        <div style="font-size: 13px; font-weight: 800; color: #facc15; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+          ⚡ BÃO SẤM SÉT THOR — TIA SÉT GIÁNG XUỐNG AI?
+        </div>
+        <div class="lightning-grid" id="lightningGrid">
+          <!-- Các thẻ tên được sinh bằng JS -->
+        </div>
+        <button class="btn-spin" id="btnStartLightning" style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #090d16;" onclick="startLightning()">
+          <span>⚡</span> TRIỆU HỒI SẤM SÉT
+        </button>
+      </div>
+
+      <!-- Trò 6: Chiếc rương bí ẩn -->
+      <div id="gameChest" class="chest-stage">
+        <div style="font-size: 13px; font-weight: 800; color: #c084fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+          🎁 4 CHIẾC RƯƠNG BÍ MẬT — CHỌN 1 RƯƠNG MAY MẮN
+        </div>
+        <div class="chest-grid" id="chestGrid">
+          <div class="chest-card" id="chest0" onclick="chooseChest(0)">
+            <div class="chest-icon">📦</div>
+            <div class="chest-title">RƯƠNG HOÀNG KIM 👑</div>
+            <div class="chest-reward" id="chestReward0">Nhấp để mở</div>
+          </div>
+          <div class="chest-card" id="chest1" onclick="chooseChest(1)">
+            <div class="chest-icon">📦</div>
+            <div class="chest-title">RƯƠNG DUNG NHAM 🔥</div>
+            <div class="chest-reward" id="chestReward1">Nhấp để mở</div>
+          </div>
+          <div class="chest-card" id="chest2" onclick="chooseChest(2)">
+            <div class="chest-icon">📦</div>
+            <div class="chest-title">RƯƠNG BĂNG GIÁ ❄️</div>
+            <div class="chest-reward" id="chestReward2">Nhấp để mở</div>
+          </div>
+          <div class="chest-card" id="chest3" onclick="chooseChest(3)">
+            <div class="chest-icon">📦</div>
+            <div class="chest-title">RƯƠNG MA THUẬT 🔮</div>
+            <div class="chest-reward" id="chestReward3">Nhấp để mở</div>
+          </div>
+        </div>
+        <button class="btn-spin" id="btnStartChest" style="background: linear-gradient(135deg, #a855f7, #7e22ce); color: #fff;" onclick="startChestRandom()">
+          <span>🎁</span> MỞ NGẪU NHIÊN 1 RƯƠNG
+        </button>
+      </div>
+
     </div>
 
     <!-- Sidebar: Student List -->
@@ -681,6 +1003,75 @@
           osc.stop(this.ctx.currentTime + 0.04);
         } catch {}
       }
+      engineRev(pitch = 1) {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120 * pitch, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(260 * pitch, this.ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.1);
+        } catch {}
+      }
+      zap() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(900, this.ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(150, this.ctx.currentTime + 0.06);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.06);
+        } catch {}
+      }
+      thunderCrash() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.8);
+          gain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.8);
+        } catch {}
+      }
+      magicChime() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime + i * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.08 + 0.5);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(this.ctx.currentTime + i * 0.08);
+            osc.stop(this.ctx.currentTime + i * 0.08 + 0.5);
+          });
+        } catch {}
+      }
       fanfare() {
         try {
           this.init();
@@ -743,6 +1134,8 @@
       } catch {}
       renderList();
       if (currentGame === 'wheel') drawWheel();
+      if (currentGame === 'race') initRaceTracks();
+      if (currentGame === 'lightning') initLightningGrid();
     }
 
     function renderList() {
@@ -806,21 +1199,44 @@
       hideWinner();
 
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelector(`.${game}-tab`).classList.add('active');
+      const activeBtn = document.querySelector(`.${game}-tab`);
+      if (activeBtn) activeBtn.classList.add('active');
 
       document.getElementById('gameWheel').style.display = game === 'wheel' ? 'flex' : 'none';
       document.getElementById('gameBomb').style.display = game === 'bomb' ? 'flex' : 'none';
       document.getElementById('gameSlot').style.display = game === 'slot' ? 'flex' : 'none';
+      document.getElementById('gameRace').style.display = game === 'race' ? 'flex' : 'none';
+      document.getElementById('gameLightning').style.display = game === 'lightning' ? 'flex' : 'none';
+      document.getElementById('gameChest').style.display = game === 'chest' ? 'flex' : 'none';
 
       if (game === 'wheel') drawWheel();
+      if (game === 'race') initRaceTracks();
+      if (game === 'lightning') initLightningGrid();
+      if (game === 'chest') resetChests();
     }
 
     function hideWinner() {
       document.getElementById('winnerBanner').style.display = 'none';
     }
 
-    function showWinner(name) {
+    function triggerScreenShake() {
+      document.body.classList.add('shaking');
+      setTimeout(() => document.body.classList.remove('shaking'), 400);
+    }
+
+    function triggerFlash() {
+      const flash = document.getElementById('flashOverlay');
+      flash.style.opacity = '0.9';
+      setTimeout(() => { flash.style.opacity = '0'; }, 100);
+    }
+
+    function showWinner(name, customDesc = '') {
       document.getElementById('winnerNameText').innerText = name;
+      if (customDesc) {
+        document.getElementById('winnerDescText').innerText = customDesc;
+      } else {
+        document.getElementById('winnerDescText').innerText = 'Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!';
+      }
       document.getElementById('winnerBanner').style.display = 'block';
       audio.fanfare();
       launchConfetti();
@@ -835,7 +1251,7 @@
       }
     }
 
-    // --- VẼ VÒNG QUAY MAY MẮN ---
+    // --- GAME 1: VÒNG QUAY MAY MẮN ---
     function drawWheel() {
       const canvas = document.getElementById('wheelCanvas');
       if (!canvas) return;
@@ -844,7 +1260,7 @@
       const sliceAngle = (2 * Math.PI) / num;
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-      const radius = cx - 14;
+      const radius = cx - 12;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -865,17 +1281,17 @@
         ctx.rotate(angle + sliceAngle / 2);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.font = 'bold 12px sans-serif';
         ctx.shadowColor = 'rgba(0,0,0,0.8)';
         ctx.shadowBlur = 4;
         const displayName = name.length > 18 ? name.slice(0, 16) + '...' : name;
-        ctx.fillText(displayName, radius - 16, 5);
+        ctx.fillText(displayName, radius - 14, 4);
         ctx.restore();
       });
 
       // Tâm vòng quay
       ctx.beginPath();
-      ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+      ctx.arc(cx, cy, 26, 0, 2 * Math.PI);
       ctx.fillStyle = '#0f172a';
       ctx.fill();
       ctx.lineWidth = 4;
@@ -883,7 +1299,7 @@
       ctx.stroke();
 
       ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 15px sans-serif';
+      ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('🎯', cx, cy);
@@ -928,7 +1344,7 @@
           requestAnimationFrame(frame);
         } else {
           isSpinning = false;
-          btn.innerText = 'QUAY NGAY 🎯';
+          btn.innerHTML = '<span>🎯</span> QUAY NGAY';
           btn.disabled = false;
           showWinner(chosen);
         }
@@ -936,7 +1352,7 @@
       requestAnimationFrame(frame);
     }
 
-    // --- GAME 2: QUẢ BOM ĐẾM NGƯỢC ---
+    // --- GAME 2: QUẢ BOM NỔ CHẬM ---
     function startBomb() {
       if (isSpinning || students.length === 0) return;
       isSpinning = true;
@@ -971,10 +1387,12 @@
           icon.className = 'bomb-icon';
           icon.innerText = '💥';
           countText.style.display = 'none';
+          triggerScreenShake();
+          audio.thunderCrash();
           btn.disabled = false;
-          btn.innerText = 'KÍCH HOẠT BOM 💣';
+          btn.innerHTML = '<span>💣</span> KÍCH HOẠT BOM';
           isSpinning = false;
-          showWinner(chosen);
+          showWinner(chosen, '🔥 BÙM! Quả bom đã nổ trúng bạn — Mời bạn trả lời!');
 
           setTimeout(() => {
             icon.innerText = '💣';
@@ -1013,14 +1431,242 @@
           s2.innerText = chosen;
           s3.innerText = chosen;
           btn.disabled = false;
-          btn.innerText = 'KÉO CẦN QUAY SỐ 🎰';
+          btn.innerHTML = '<span>🎰</span> KÉO CẦN QUAY SỐ';
           isSpinning = false;
-          showWinner(chosen);
+          showWinner(chosen, '🎰 JACKPOT 777! Ba ô trúng thưởng trùng khớp hoàn hảo!');
         }
       }, 90);
     }
 
-    // --- PHÁO HOA CONFETTI ---
+    // --- GAME 4: F1 GRAND PRIX (ĐUA XE) ---
+    const CAR_ICONS = ['🏎️', '🚗', '🚙', '🚖'];
+    const CAR_COLORS = [
+      'linear-gradient(90deg, #ef4444, #f97316)',
+      'linear-gradient(90deg, #f59e0b, #eab308)',
+      'linear-gradient(90deg, #3b82f6, #06b6d4)',
+      'linear-gradient(90deg, #8b5cf6, #ec4899)'
+    ];
+    let raceRacers = [];
+
+    function initRaceTracks() {
+      const container = document.getElementById('raceTrackList');
+      container.innerHTML = '';
+      if (students.length === 0) return;
+
+      const shuffled = [...students].sort(() => 0.5 - Math.random());
+      raceRacers = shuffled.slice(0, 4).map((name, i) => ({
+        name,
+        progress: 0,
+        color: CAR_COLORS[i % CAR_COLORS.length],
+        icon: CAR_ICONS[i % CAR_ICONS.length]
+      }));
+
+      raceRacers.forEach((r, idx) => {
+        const lane = document.createElement('div');
+        lane.className = 'race-lane';
+        lane.innerHTML = `
+          <div class="race-lane-header">
+            <span class="race-lane-name">${r.icon} <b>Xe ${idx + 1}:</b> ${r.name}</span>
+            <span class="race-lane-pct" id="racePct${idx}">0%</span>
+          </div>
+          <div class="race-lane-track">
+            <div class="race-finish-line"></div>
+            <div class="race-progress-bar" id="raceBar${idx}" style="width: 5%; background: ${r.color};">
+              <span class="race-car-avatar">${r.icon}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(lane);
+      });
+    }
+
+    function startRace() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      initRaceTracks();
+
+      const btn = document.getElementById('btnStartRace');
+      btn.disabled = true;
+      btn.innerText = 'CÁC TAY ĐUA ĐANG BỨT TỐC... 🏁';
+
+      const winnerRacerIdx = Math.floor(Math.random() * raceRacers.length);
+
+      let step = 0;
+      const raceInterval = setInterval(() => {
+        step++;
+        audio.engineRev(1 + (step % 4) * 0.2);
+
+        let leaderReached100 = false;
+        raceRacers.forEach((r, idx) => {
+          let boost = Math.random() * 3.5 + 1.2;
+          if (idx === winnerRacerIdx && step > 20) boost += 1.8;
+          r.progress = Math.min(r.progress + boost, 100);
+
+          const bar = document.getElementById(`raceBar${idx}`);
+          const pct = document.getElementById(`racePct${idx}`);
+          if (bar) bar.style.width = Math.max(r.progress, 5) + '%';
+          if (pct) pct.innerText = Math.floor(r.progress) + '%';
+
+          if (r.progress >= 100 && idx === winnerRacerIdx) {
+            leaderReached100 = true;
+          }
+        });
+
+        if (leaderReached100 || step >= 45) {
+          clearInterval(raceInterval);
+          raceRacers[winnerRacerIdx].progress = 100;
+          const bar = document.getElementById(`raceBar${winnerRacerIdx}`);
+          const pct = document.getElementById(`racePct${winnerRacerIdx}`);
+          if (bar) bar.style.width = '100%';
+          if (pct) pct.innerText = '100% 🏁';
+
+          btn.disabled = false;
+          btn.innerHTML = '<span>🏎️💨</span> BẮT ĐẦU ĐUA XE';
+          isSpinning = false;
+          showWinner(raceRacers[winnerRacerIdx].name, `🏁 VỀ ĐÍCH ĐẦU TIÊN! Tay đua xuất sắc cán đích chặng F1!`);
+        }
+      }, 100);
+    }
+
+    // --- GAME 5: TIA SÉT THOR ---
+    let lightningCardsList = [];
+
+    function initLightningGrid() {
+      const grid = document.getElementById('lightningGrid');
+      grid.innerHTML = '';
+      if (students.length === 0) return;
+
+      const pickCount = Math.min(students.length, 9);
+      const shuffled = [...students].sort(() => 0.5 - Math.random());
+      lightningCardsList = shuffled.slice(0, pickCount);
+
+      lightningCardsList.forEach((name, i) => {
+        const card = document.createElement('div');
+        card.className = 'lightning-card';
+        card.id = `lcard${i}`;
+        card.innerHTML = `<span>⚡</span> ${name}`;
+        grid.appendChild(card);
+      });
+    }
+
+    function startLightning() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+      initLightningGrid();
+
+      const btn = document.getElementById('btnStartLightning');
+      btn.disabled = true;
+      btn.innerText = 'BÃO SẤM SÉT ĐANG QUÉT... ⚡';
+
+      const winnerIdx = Math.floor(Math.random() * lightningCardsList.length);
+      const chosen = lightningCardsList[winnerIdx];
+
+      let count = 0;
+      const totalRounds = 35;
+      let currentActive = 0;
+
+      const timer = setInterval(() => {
+        count++;
+        audio.zap();
+
+        document.querySelectorAll('.lightning-card').forEach(c => c.className = 'lightning-card');
+        currentActive = Math.floor(Math.random() * lightningCardsList.length);
+        const activeCard = document.getElementById(`lcard${currentActive}`);
+        if (activeCard) activeCard.classList.add('targeted');
+
+        if (count >= totalRounds) {
+          clearInterval(timer);
+          document.querySelectorAll('.lightning-card').forEach(c => c.className = 'lightning-card');
+          const finalCard = document.getElementById(`lcard${winnerIdx}`);
+          if (finalCard) finalCard.classList.add('struck');
+
+          audio.thunderCrash();
+          triggerFlash();
+          triggerScreenShake();
+
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡</span> TRIỆU HỒI SẤM SÉT';
+          isSpinning = false;
+          showWinner(chosen, '⚡ BÙM! Tia sét sấm truyền của Thor đã giáng trúng bạn!');
+        }
+      }, 80);
+    }
+
+    // --- GAME 6: RƯƠNG BÍ ẨN ---
+    const CHEST_TITLES = [
+      'RƯƠNG HOÀNG KIM 👑',
+      'RƯƠNG DUNG NHAM 🔥',
+      'RƯƠNG BĂNG GIÁ ❄️',
+      'RƯƠNG MA THUẬT 🔮'
+    ];
+
+    function resetChests() {
+      for (let i = 0; i < 4; i++) {
+        const card = document.getElementById(`chest${i}`);
+        const reward = document.getElementById(`chestReward${i}`);
+        if (card) {
+          card.className = 'chest-card';
+          card.querySelector('.chest-icon').innerText = '📦';
+        }
+        if (reward) reward.innerText = 'Nhấp để mở';
+      }
+    }
+
+    function chooseChest(idx) {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const btn = document.getElementById('btnStartChest');
+      btn.disabled = true;
+      btn.innerText = 'ĐANG MỞ RƯƠNG BÍ ẨN...';
+
+      for (let i = 0; i < 4; i++) {
+        const c = document.getElementById(`chest${i}`);
+        if (c) c.classList.add('shaking');
+      }
+
+      let tickCount = 0;
+      const shakeTimer = setInterval(() => {
+        tickCount++;
+        audio.heartbeat();
+        if (tickCount >= 18) {
+          clearInterval(shakeTimer);
+          for (let i = 0; i < 4; i++) {
+            const c = document.getElementById(`chest${i}`);
+            if (c) c.classList.remove('shaking');
+          }
+
+          const chosenStudent = students[Math.floor(Math.random() * students.length)];
+          const targetCard = document.getElementById(`chest${idx}`);
+          const targetReward = document.getElementById(`chestReward${idx}`);
+
+          if (targetCard) {
+            targetCard.classList.add('opened');
+            targetCard.querySelector('.chest-icon').innerText = '🎁✨';
+          }
+          if (targetReward) {
+            targetReward.innerHTML = `<b style="color: #facc15; font-size: 13px;">${chosenStudent}</b>`;
+          }
+
+          audio.magicChime();
+          triggerFlash();
+          btn.disabled = false;
+          btn.innerHTML = '<span>🎁</span> MỞ NGẪU NHIÊN 1 RƯƠNG';
+          isSpinning = false;
+          showWinner(chosenStudent, `🎁 Chiếc ${CHEST_TITLES[idx]} đã mở ra! Mời bạn trả lời!`);
+        }
+      }, 90);
+    }
+
+    function startChestRandom() {
+      const randomIdx = Math.floor(Math.random() * 4);
+      chooseChest(randomIdx);
+    }
+
+    // --- PHÁO HOA CONFETTI (CANVAS) ---
     function launchConfetti() {
       const canvas = document.getElementById('confettiCanvas');
       const ctx = canvas.getContext('2d');
@@ -1028,14 +1674,14 @@
       canvas.height = window.innerHeight;
 
       const particles = [];
-      const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#ffffff'];
+      const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#facc15', '#ffffff'];
 
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 140; i++) {
         particles.push({
           x: canvas.width / 2,
           y: canvas.height / 3,
-          vx: (Math.random() - 0.5) * 16,
-          vy: (Math.random() - 0.7) * 16,
+          vx: (Math.random() - 0.5) * 18,
+          vy: (Math.random() - 0.7) * 18,
           size: Math.random() * 8 + 4,
           color: colors[Math.floor(Math.random() * colors.length)],
           rotation: Math.random() * 360,
@@ -1049,7 +1695,7 @@
         particles.forEach(p => {
           p.x += p.vx;
           p.y += p.vy;
-          p.vy += 0.35; // trọng lực
+          p.vy += 0.35;
           p.rotation += p.rotSpeed;
 
           ctx.save();
@@ -1078,9 +1724,12 @@
       }
     }
 
-    // Khởi tạo
+    // Khởi tạo ban đầu
     renderList();
     drawWheel();
+    if (document.fonts) {
+      document.fonts.ready.then(() => drawWheel());
+    }
   </script>
 </body>
 </html>
