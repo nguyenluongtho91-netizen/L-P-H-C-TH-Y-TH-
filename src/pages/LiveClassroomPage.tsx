@@ -81,7 +81,6 @@ export default function LiveClassroomPage() {
       .on('broadcast', { event: 'raise_hand' }, ({ payload }) => {
         if (payload?.name) {
           setRaisedHands(prev => Array.from(new Set([...prev, payload.name])));
-          playSound('bell');
           toast(`✋ ${payload.name} giơ tay phát biểu!`, {
             id: 'raise-hand-notification',
             position: 'top-center',
@@ -231,7 +230,6 @@ export default function LiveClassroomPage() {
 
     const name = studentName.trim() || 'Học sinh';
     if (nextState) {
-      playSound('bell');
       channelRef.current?.send({
         type: 'broadcast',
         event: 'raise_hand',
