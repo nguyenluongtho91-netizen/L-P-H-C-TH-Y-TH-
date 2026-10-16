@@ -8,9 +8,9 @@ import LessonExamRoom from '@/components/LessonExamRoom';
 import { playSound, SOUND_EFFECTS, SoundEffectType } from '@/utils/soundEffects';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  Video, Mic, MicOff, Hand, Volume2, Shield, Lock, Unlock,
-  Copy, Check, Share2, Users, FileText, ArrowLeft, Maximize2,
-  Columns, Smartphone, Sparkles, RefreshCw, LogIn, Award, Bell
+  Video, MicOff, Hand, Volume2, Shield, Lock, Unlock,
+  Copy, Check, FileText, ArrowLeft, Maximize2,
+  Columns, Sparkles, LogIn
 } from 'lucide-react';
 
 const TEACHER_PHONE = '0345833133';
@@ -206,7 +206,7 @@ export default function LiveClassroomPage() {
 
     return () => {
       if (api) {
-        try { api.dispose(); } catch (err) {}
+        try { api.dispose(); } catch {}
       }
     };
   }, [hasJoined, isHost]);
@@ -702,7 +702,7 @@ export default function LiveClassroomPage() {
                 <LessonExamRoom
                   examId={activeExamId}
                   studentName={studentName || 'Học sinh'}
-                  onSubmitted={(percentage, breakdown) => {
+                  onSubmitted={(percentage) => {
                     toast.success(`Học sinh đã nộp bài thành công! Điểm: ${percentage}%`);
                     playSound('applause');
                   }}
