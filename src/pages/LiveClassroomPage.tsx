@@ -175,7 +175,7 @@ export default function LiveClassroomPage() {
       const displayName = isHost ? 'Thầy Lương Thọ (Giáo viên)' : (studentName.trim() || 'Học sinh');
       
       if (typeof window !== 'undefined' && (window as any).JitsiMeetExternalAPI) {
-        const domain = 'meet.jit.si';
+        const domain = 'meet.in-berlin.de';
         const options = {
           roomName: currentRoomName,
           width: '100%',
@@ -217,11 +217,11 @@ export default function LiveClassroomPage() {
       } else {
         // Fallback: Iframe chất lượng cao nếu external_api chưa load
         const iframe = document.createElement('iframe');
-        iframe.src = `https://meet.jit.si/${encodeURIComponent(currentRoomName)}#userInfo.displayName="${encodeURIComponent(displayName)}"&config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.startWithAudioMuted=${!isHost}&interfaceConfig.SHOW_JITSI_WATERMARK=false`;
+        iframe.src = `https://meet.in-berlin.de/${encodeURIComponent(currentRoomName)}#userInfo.displayName="${encodeURIComponent(displayName)}"&config.prejoinPageEnabled=false&config.disableDeepLinking=true&config.startWithAudioMuted=${!isHost}&interfaceConfig.SHOW_JITSI_WATERMARK=false`;
         iframe.style.width = '100%';
         iframe.style.height = '100%';
         iframe.style.border = 'none';
-        iframe.allow = 'camera; microphone; fullscreen; display-capture; autoplay; clipboard-write';
+        iframe.allow = 'camera *; microphone *; fullscreen *; display-capture *; autoplay *; clipboard-write *';
         jitsiContainerRef.current.appendChild(iframe);
       }
     };
@@ -229,7 +229,7 @@ export default function LiveClassroomPage() {
     // Load external_api.js nếu chưa có
     if (!(window as any).JitsiMeetExternalAPI) {
       const script = document.createElement('script');
-      script.src = 'https://meet.jit.si/external_api.js';
+      script.src = 'https://meet.in-berlin.de/external_api.js';
       script.async = true;
       script.onload = initJitsi;
       document.body.appendChild(script);
