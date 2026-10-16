@@ -90,10 +90,12 @@ export default function LiveClassroomPage() {
 
   // Định dạng tên có kèm số BÀN học sinh hoặc BỤC GIẢNG Thầy Thọ
   const getFormattedDisplayName = (name: string, host: boolean) => {
-    if (host) return '👨‍🏫 [BỤC GIẢNG] Thầy Lương Thọ';
+    if (host || name.includes('Thầy') || name.includes('Lương Thọ')) {
+      return '👨‍🏫 [BỤC GIẢNG] Thầy Lương Thọ';
+    }
     const clean = name.trim() || 'Học sinh';
     const idx = studentList.findIndex(s => s.name === clean || s.name.includes(clean));
-    const seatNum = idx >= 0 ? idx + 1 : 9;
+    const seatNum = idx >= 0 ? idx + 1 : 1;
     return `🪑 [BÀN ${String(seatNum).padStart(2, '0')}] ${clean}`;
   };
 
@@ -113,6 +115,9 @@ export default function LiveClassroomPage() {
     if (isAdmin?.() || isTeacher?.() || user?.email?.includes('tho') || profile?.role === 'teacher' || profile?.role === 'admin') {
       setIsHost(true);
       setStudentName('Thầy Lương Thọ');
+      try {
+        jitsiApiRef.current?.executeCommand('displayName', '👨‍🏫 [BỤC GIẢNG] Thầy Lương Thọ');
+      } catch {}
     } else {
       const savedName = localStorage.getItem('live_student_name');
       if (savedName) {
