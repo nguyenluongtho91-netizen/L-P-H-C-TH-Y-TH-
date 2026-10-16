@@ -332,7 +332,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      min-height: 740px;
+      min-height: 920px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.4);
       width: 100%;
     }
@@ -382,7 +382,7 @@
       color: #0f172a;
       font-size: 22px;
       font-weight: 900;
-      padding: 18px 64px;
+      padding: 22px 80px; font-size: 24px;
       border-radius: 26px;
       border: none;
       cursor: pointer;
@@ -416,36 +416,78 @@
     .wheel-wrapper {
       position: relative;
       margin-bottom: 26px;
-      width: 650px;
-      height: 650px;
+      width: 860px;
+      height: 860px;
       display: flex;
       align-items: center;
       justify-content: center;
-      max-width: min(74vh, 92vw);
-      max-height: min(74vh, 92vw);
+      max-width: min(86vh, 96vw);
+      max-height: min(86vh, 96vw);
+      transition: all 0.25s ease;
     }
     .wheel-pointer {
       position: absolute;
-      top: -24px;
+      top: -30px;
       left: 50%;
       transform: translateX(-50%);
       width: 0;
       height: 0;
-      border-left: 24px solid transparent;
-      border-right: 24px solid transparent;
-      border-top: 44px solid #f59e0b;
+      border-left: 28px solid transparent;
+      border-right: 28px solid transparent;
+      border-top: 54px solid #f59e0b;
       z-index: 20;
-      filter: drop-shadow(0 6px 12px rgba(0,0,0,0.7));
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.8));
     }
     #wheelCanvas {
       border-radius: 50%;
-      box-shadow: 0 0 55px rgba(0, 0, 0, 0.9);
-      border: 10px solid #1e293b;
+      box-shadow: 0 0 65px rgba(0, 0, 0, 0.95);
+      border: 12px solid #1e293b;
       background: #0f172a;
       display: block;
       width: 100%;
       height: 100%;
     }
+    /* Wheel Size Selector */
+    .wheel-size-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      background: #0f172a;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+    }
+    .wheel-size-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-size {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-size:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .btn-size.active {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0f172a;
+      border-color: #f59e0b;
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+    }
+
 
     /* --- GAME 2: BOMB (QUẢ BOM) --- */
     .bomb-stage {
@@ -735,7 +777,7 @@
       flex-direction: column;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
       height: 100%;
-      min-height: 560px;
+      min-height: 920px;
     }
     .sidebar-head {
       display: flex;
@@ -955,7 +997,7 @@
       <div id="gameWheel" class="wheel-stage">
         <div class="wheel-wrapper">
           <div class="wheel-pointer"></div>
-          <canvas id="wheelCanvas" width="680" height="680"></canvas>
+          <canvas id="wheelCanvas" width="900" height="900"></canvas>
         </div>
         <button class="btn-spin" id="btnSpinWheel" onclick="spinWheel()">
           <span>🎯</span> QUAY NGAY
@@ -1522,7 +1564,7 @@
       const sliceAngle = (2 * Math.PI) / num;
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-      const radius = cx - 18;
+      const radius = cx - 24;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1534,7 +1576,7 @@
         ctx.closePath();
         ctx.fillStyle = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
         ctx.fill();
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 4.5;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
@@ -1543,28 +1585,39 @@
         ctx.rotate(angle + sliceAngle / 2);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px Outfit, sans-serif';
-        ctx.shadowColor = 'rgba(0,0,0,0.9)';
-        ctx.shadowBlur = 5;
-        const displayName = name.length > 22 ? name.slice(0, 20) + '...' : name;
-        ctx.fillText(displayName, radius - 24, 6.5);
+        // Font chữ siêu to 22px Outfit
+        ctx.font = '900 22px Outfit, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.95)';
+        ctx.shadowBlur = 6;
+        const displayName = name.length > 24 ? name.slice(0, 22) + '...' : name;
+        ctx.fillText(displayName, radius - 30, 8);
         ctx.restore();
       });
 
-      // Tâm vòng quay lớn hơn
+      // Tâm vòng quay khổng lồ
       ctx.beginPath();
-      ctx.arc(cx, cy, 48, 0, 2 * Math.PI);
+      ctx.arc(cx, cy, 62, 0, 2 * Math.PI);
       ctx.fillStyle = '#0f172a';
       ctx.fill();
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 8;
       ctx.strokeStyle = '#f59e0b';
       ctx.stroke();
 
       ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 26px sans-serif';
+      ctx.font = 'bold 36px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('🎯', cx, cy);
+    }
+
+    function setWheelSize(px, btn) {
+      const box = document.getElementById('wheelWrapperBox');
+      if (box) {
+        box.style.width = px + 'px';
+        box.style.height = px + 'px';
+      }
+      document.querySelectorAll('.wheel-size-bar .btn-size').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
     }
 
     function spinWheel() {

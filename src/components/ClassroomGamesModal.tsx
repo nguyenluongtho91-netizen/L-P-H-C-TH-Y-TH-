@@ -274,7 +274,7 @@ export default function ClassroomGamesModal({
       ctx.rotate(angle + sliceAngle / 2);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px sans-serif';
+      ctx.font = 'bold 20px sans-serif';
       ctx.shadowColor = 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = 4;
       const displayName = name.length > 16 ? name.slice(0, 14) + '...' : name;
@@ -284,7 +284,7 @@ export default function ClassroomGamesModal({
 
     // Vẽ tâm vòng quay
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 42, 0, 2 * Math.PI);
+    ctx.arc(centerX, centerY, 56, 0, 2 * Math.PI);
     ctx.fillStyle = '#0f172a';
     ctx.fill();
     ctx.lineWidth = 4;
@@ -360,7 +360,7 @@ export default function ClassroomGamesModal({
           ctx.rotate(angle + sliceAngle / 2);
           ctx.textAlign = 'right';
           ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 16px sans-serif';
+          ctx.font = 'bold 20px sans-serif';
           const displayName = name.length > 16 ? name.slice(0, 14) + '...' : name;
           ctx.fillText(displayName, radius - 15, 4);
           ctx.restore();
@@ -368,7 +368,7 @@ export default function ClassroomGamesModal({
 
         // Tâm vòng quay
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 42, 0, 2 * Math.PI);
+        ctx.arc(centerX, centerY, 56, 0, 2 * Math.PI);
         ctx.fillStyle = '#0f172a';
         ctx.fill();
         ctx.lineWidth = 4;
@@ -834,7 +834,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={handleSpinWheel}
                   disabled={isSpinning || names.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     isSpinning || names.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-slate-950 shadow-amber-500/30'
@@ -877,7 +877,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={handleStartMystery}
                   disabled={mysteryPhase === 'ticking' || names.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     mysteryPhase === 'ticking' || names.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white shadow-rose-600/30'
@@ -916,7 +916,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={handleStartSlot}
                   disabled={isSlotSpinning || names.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     isSlotSpinning || names.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white shadow-indigo-600/30'
@@ -957,7 +957,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={handleStartRace}
                   disabled={isRacing || raceRacers.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     isRacing || raceRacers.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-emerald-500/30'
@@ -995,7 +995,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={handleStartLightning}
                   disabled={isLightningStriking || lightningCards.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     isLightningStriking || lightningCards.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-amber-400/30'
@@ -1043,7 +1043,7 @@ export default function ClassroomGamesModal({
                 <button
                   onClick={() => handleOpenChest(Math.floor(Math.random() * 4))}
                   disabled={chestShaking || names.length === 0}
-                  className={`px-12 py-4 rounded-3xl font-black text-xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
+                  className={`px-16 py-5 rounded-3xl font-black text-2xl shadow-2xl transition active:scale-95 flex items-center gap-2 ${
                     chestShaking || names.length === 0
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-600/30'
