@@ -26,13 +26,31 @@ export default function LiveClassroomPage() {
   const { user, profile, isTeacher, isAdmin } = useAuthStore() as any;
   const { exams, loadExams } = useExamStore();
 
-  // Vào thẳng phòng học ngay lập tức (Rút ngắn tối đa, không cần bấm trung gian)
-  const [hasJoined, setHasJoined] = useState(true);
+  // Vào thẳng phòng học: Học sinh chỉ cần nhập Họ và Tên là vào phòng ngay lập tức (không chờ đợi)
   const [studentName, setStudentName] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('live_student_name') || 'Học sinh';
+      return localStorage.getItem('live_student_name') || '';
     }
-    return 'Học sinh';
+    return '';
+  });
+
+  const [hasJoined, setHasJoined] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedRole = localStorage.getItem('user_role');
+      if (savedRole === 'teacher' || savedRole === 'admin') return true;
+      const savedName = localStorage.getItem('live_student_name');
+      // Nếu đã có tên cụ thể (không phải mặc định) thì có thể vào thẳng
+      if (savedName && savedName.trim() && savedName !== 'Học sinh') return true;
+    }
+    return false;
+  });
+
+  const [joinNameInput, setJoinNameInput] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('live_student_name');
+      return (saved && saved !== 'Học sinh') ? saved : '';
+    }
+    return '';
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
@@ -115,6 +133,7 @@ export default function LiveClassroomPage() {
     if (isAdmin?.() || isTeacher?.() || user?.email?.includes('tho') || profile?.role === 'teacher' || profile?.role === 'admin') {
       setIsHost(true);
       setStudentName('Thầy Lương Thọ');
+      setHasJoined(true);
       try {
         jitsiApiRef.current?.executeCommand('displayName', '👨‍🏫 [BỤC GIẢNG] Thầy Lương Thọ');
       } catch {}
@@ -764,7 +783,8 @@ export default function LiveClassroomPage() {
     const cleanInput = hostPinInput.trim();
     if (cleanInput === '67426728' || cleanInput === TEACHER_PHONE || cleanInput === 'thaytho') {
       setIsHost(true);
-      setStudentName('Thầy Lương Thọ (Giáo viên)');
+      setStudentName('Thầy Lương Thọ');
+      setHasJoined(true);
       setShowHostLogin(false);
       setHostPinInput('');
       toast.success('Xin chào Thầy Lương Thọ! Quyền Giáo viên và âm thanh đã được kích hoạt.', {
@@ -1154,6 +1174,75 @@ export default function LiveClassroomPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* --- MÀN HÌNH NHẬP HỌ TÊN VÀ VÀO THẲNG LỚP HỌC (KHÔNG PHẢI CHỜ ĐỢI) --- */}
+      {!hasJoined && !isHost && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-rose-600 flex items-center justify-center text-white text-3xl font-black mx-auto mb-4 shadow-xl shadow-indigo-600/30">
+              🎓
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white mb-1 tracking-tight">
+              Lớp Học Trực Tuyến Thầy Thọ
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 mb-6">
+              Nhập họ và tên để <span className="text-emerald-400 font-bold">vào thẳng phòng học ngay</span> (Không cần chờ đợi)
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const trimmed = joinNameInput.trim();
+                if (!trimmed) {
+                  toast.error('Vui lòng nhập họ và tên của bạn!');
+                  return;
+                }
+                if (trimmed.toLowerCase().includes('thầy thọ') || trimmed.toLowerCase().includes('lương thọ')) {
+                  setShowHostLogin(true);
+                  return;
+                }
+                setStudentName(trimmed);
+                localStorage.setItem('live_student_name', trimmed);
+                setHasJoined(true);
+                toast.success(`Chào mừng ${trimmed} đã vào lớp học!`, { icon: '👋' });
+              }}
+              className="space-y-4 text-left"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Họ và Tên Học Sinh:
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ví dụ: Nguyễn Văn An (10A1)..."
+                  value={joinNameInput}
+                  onChange={(e) => setJoinNameInput(e.target.value)}
+                  className="w-full px-4 py-3.5 rounded-2xl bg-slate-800 border-2 border-slate-700 text-white placeholder-slate-500 font-semibold text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition shadow-inner"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white font-black text-base shadow-xl shadow-indigo-600/30 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>🚀 Vào Lớp Học Ngay</span>
+              </button>
+            </form>
+
+            <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setShowHostLogin(true)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition"
+              >
+                <span>👨‍🏫 Bạn là Thầy Lương Thọ? Bấm vào đây</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
