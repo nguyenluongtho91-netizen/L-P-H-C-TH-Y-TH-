@@ -69,7 +69,7 @@ export default function LiveClassroomPage() {
 
     channel
       .on('broadcast', { event: 'sound' }, ({ payload }) => {
-        if (payload?.type) {
+        if (payload?.fromHost && payload?.type) {
           playSound(payload.type as SoundEffectType);
           toast(payload.label || 'Âm thanh từ Thầy Thọ!', {
             icon: payload.icon || '🔊',
@@ -218,7 +218,7 @@ export default function LiveClassroomPage() {
     channelRef.current?.send({
       type: 'broadcast',
       event: 'lower_all_hands',
-      payload: {}
+      payload: { fromHost: true }
     });
     toast.success('Đã hạ tay toàn bộ học sinh!', { duration: 2000 });
   };
@@ -250,8 +250,9 @@ export default function LiveClassroomPage() {
     }
   };
 
-  // Thầy Thọ phát âm thanh tương tác
+  // Thầy Thọ phát âm thanh tương tác (Độc quyền chỉ có Thầy Thọ mới phát được)
   const triggerSound = (type: SoundEffectType) => {
+    if (!isHost) return;
     const effect = SOUND_EFFECTS.find(s => s.type === type);
     playSound(type);
     channelRef.current?.send({
@@ -259,6 +260,7 @@ export default function LiveClassroomPage() {
       event: 'sound',
       payload: {
         type,
+        fromHost: true,
         label: effect?.label,
         icon: effect?.icon
       }
@@ -292,6 +294,7 @@ export default function LiveClassroomPage() {
       type: 'broadcast',
       event: 'broadcast_exam',
       payload: {
+        fromHost: true,
         examId,
         title: selected?.title || 'Bài tập trực tiếp'
       }
@@ -318,7 +321,7 @@ export default function LiveClassroomPage() {
     channelRef.current?.send({
       type: 'broadcast',
       event: 'room_settings',
-      payload: { requirePin: value, pin: roomPin }
+      payload: { fromHost: true, requirePin: value, pin: roomPin }
     });
     toast.success(value ? `Đã BẬT mật khẩu phòng: ${roomPin}` : 'Đã TẮT mật khẩu, học sinh vào tự do!');
   };
@@ -342,16 +345,17 @@ export default function LiveClassroomPage() {
     setHasJoined(true);
   };
 
-  // Đăng nhập quyền Giáo viên
+  // Đăng nhập quyền Giáo viên (Chỉ dành riêng cho Thầy Thọ)
   const handleHostLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hostPinInput.trim() === TEACHER_PHONE || hostPinInput.trim() === '2025' || hostPinInput.trim() === 'thaytho') {
+    const pin = hostPinInput.trim();
+    if (pin === '67426728' || pin === 'thaytho6742') {
       setIsHost(true);
       setStudentName('Thầy Lương Thọ');
       setShowHostLogin(false);
-      toast.success('Xin chào Thầy Thọ! Đã kích hoạt toàn quyền Quản trị phòng học.', { icon: '👨‍🏫' });
+      toast.success('Xin chào Thầy Thọ! Đã kích hoạt quyền Giáo viên duy nhất.', { icon: '👨‍🏫' });
     } else {
-      toast.error('Mã truy cập quyền giáo viên không chính xác!');
+      toast.error('Mật khẩu Giáo viên không chính xác!');
     }
   };
 
@@ -646,7 +650,7 @@ export default function LiveClassroomPage() {
                     <input
                       type="password"
                       required
-                      placeholder="Nhập 0345833133 hoặc PIN..."
+                      placeholder="Nhập mật khẩu Giáo viên (67426728)..."
                       value={hostPinInput}
                       onChange={(e) => setHostPinInput(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
