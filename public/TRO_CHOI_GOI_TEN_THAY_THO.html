@@ -240,11 +240,25 @@
       z-index: 20;
       filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
     }
-    canvas {
+    #wheelCanvas {
       border-radius: 50%;
       box-shadow: 0 0 35px rgba(0, 0, 0, 0.8);
       border: 6px solid #1e293b;
       background: #0f172a;
+      display: block;
+    }
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
     }
 
     /* Buttons */
@@ -475,16 +489,7 @@
       color: #ffffff;
     }
 
-    /* Confetti Canvas */
-    #confettiCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 99;
-    }
+
 
     @keyframes popIn {
       0% { transform: scale(0.85); opacity: 0; }
