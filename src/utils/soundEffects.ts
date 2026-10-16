@@ -144,3 +144,38 @@ class ClassroomSoundEffects {
 }
 
 export const soundEffects = new ClassroomSoundEffects();
+
+export type SoundEffectType = 'correct' | 'wrong' | 'bell' | 'drumroll' | 'applause' | 'fanfare' | 'tada';
+
+export const SOUND_EFFECTS: { type: SoundEffectType; label: string; icon: string; description: string }[] = [
+  { type: 'applause', label: 'Vỗ tay', icon: '👏', description: 'Tiếng vỗ tay khen ngợi' },
+  { type: 'fanfare',  label: 'Kèn mừng', icon: '🎉', description: 'Tiếng kèn chúc mừng' },
+  { type: 'bell',     label: 'Chuông', icon: '🔔', description: 'Tiếng chuông reo hết giờ' },
+  { type: 'correct',  label: 'Ting đúng', icon: '✅', description: 'Âm thanh trả lời đúng' },
+  { type: 'drumroll', label: 'Hồi hộp', icon: '🥁', description: 'Tiếng trống hồi hộp' },
+  { type: 'wrong',    label: 'Bíp sai', icon: '❌', description: 'Âm thanh trả lời sai' },
+];
+
+export function playSound(type: SoundEffectType) {
+  switch (type) {
+    case 'correct':
+      soundEffects.playCorrect();
+      break;
+    case 'wrong':
+      soundEffects.playWrong();
+      break;
+    case 'bell':
+      soundEffects.playBell();
+      break;
+    case 'drumroll':
+      soundEffects.playDrumroll();
+      break;
+    case 'applause':
+      soundEffects.playApplause();
+      break;
+    case 'fanfare':
+    case 'tada':
+      soundEffects.playFanfare();
+      break;
+  }
+}
