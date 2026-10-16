@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trò Chơi Gọi Tên Học Sinh — Thầy Lương Thọ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: #111827;
+      --border-color: #374151;
+      --primary: #f59e0b;
+      --rose: #f43f5e;
+      --indigo: #6366f1;
+      --cyan: #06b6d4;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    header {
+      background: linear-gradient(135deg, #b45309 0%, #be123c 50%, #4338ca 100%);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-icon {
+      font-size: 32px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .badge-sub {
+      font-size: 11px;
+      font-weight: 700;
+      background: #fef08a;
+      color: #854d0e;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      margin-left: 8px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-fs {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #ffffff;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-fs:hover {
+      background: rgba(0,0,0,0.6);
+      transform: scale(1.05);
+    }
+
+    /* Tabs */
+    .tab-bar {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-group {
+      display: flex;
+      gap: 8px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+    .tab-btn.active.wheel-tab {
+      background: #f59e0b;
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+    }
+    .tab-btn.active.bomb-tab {
+      background: #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);
+    }
+    .tab-btn.active.slot-tab {
+      background: #6366f1;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+    .exclude-option {
+      font-size: 12px;
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: #1e293b;
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+    }
+
+    /* Main Container */
+    .container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      padding: 24px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Game Stage */
+    .stage {
+      background: #111827;
+      border: 2px solid #1f2937;
+      border-radius: 28px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 480px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+
+    /* Winner Popup */
+    .winner-banner {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #f59e0b, #f43f5e, #6366f1);
+      padding: 3px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+      z-index: 50;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: none;
+    }
+    .winner-inner {
+      background: #090d16;
+      border-radius: 18px;
+      padding: 16px;
+      text-align: center;
+    }
+    .winner-tag {
+      font-size: 11px;
+      font-weight: 900;
+      color: #f59e0b;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .winner-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      margin: 6px 0;
+      text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+    }
+    .winner-desc {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Wheel specific */
+    .wheel-wrapper {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .wheel-pointer {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 30px solid #f59e0b;
+      z-index: 20;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+    }
+    canvas {
+      border-radius: 50%;
+      box-shadow: 0 0 35px rgba(0, 0, 0, 0.8);
+      border: 6px solid #1e293b;
+      background: #0f172a;
+    }
+
+    /* Buttons */
+    .btn-spin {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0f172a;
+      font-size: 18px;
+      font-weight: 900;
+      padding: 14px 44px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+      transition: all 0.15s ease;
+      letter-spacing: 0.5px;
+    }
+    .btn-spin:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6);
+    }
+    .btn-spin:active {
+      transform: translateY(1px);
+    }
+
+    /* Bomb Game */
+    .bomb-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .bomb-icon {
+      font-size: 96px;
+      margin-bottom: 16px;
+      transition: all 0.15s;
+    }
+    .bomb-icon.ticking {
+      transform: scale(1.15);
+      animation: pulse 0.15s infinite alternate;
+    }
+    .bomb-countdown {
+      font-size: 32px;
+      font-weight: 900;
+      color: #f43f5e;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+    .bomb-display {
+      background: #090d16;
+      border: 2px solid #374151;
+      border-radius: 18px;
+      padding: 16px 32px;
+      min-width: 320px;
+      font-size: 22px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 24px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* Slot Machine Game */
+    .slot-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+    .slot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      max-width: 520px;
+      width: 100%;
+      background: #090d16;
+      border: 4px solid #6366f1;
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+    }
+    .slot-box {
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 16px;
+      height: 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      overflow: hidden;
+    }
+    .slot-star {
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+    .slot-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Sidebar / List Management */
+    .sidebar {
+      background: #111827;
+      border: 2px solid #1f2937;
+      border-radius: 28px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .sidebar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1f2937;
+      margin-bottom: 14px;
+    }
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #e2e8f0;
+    }
+    .sidebar-count {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .sidebar-count b {
+      color: #f59e0b;
+    }
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .input-name {
+      flex: 1;
+      background: #090d16;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #ffffff;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .input-name:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    }
+    .btn-add {
+      background: #6366f1;
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 0 16px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-add:hover {
+      background: #4f46e5;
+    }
+    .name-list {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 280px;
+      margin-bottom: 14px;
+      padding-right: 4px;
+    }
+    .name-item {
+      background: #090d16;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 6px;
+      transition: all 0.15s;
+    }
+    .name-item:hover {
+      border-color: #374151;
+      background: #0f172a;
+    }
+    .btn-del {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-del:hover {
+      color: #ef4444;
+    }
+    .sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid #1f2937;
+      padding-top: 12px;
+    }
+    .btn-quick {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 9px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .btn-quick:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* Confetti Canvas */
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes pulse {
+      0% { transform: scale(1.05); }
+      100% { transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <header>
+    <div class="header-title">
+      <div class="header-icon">🎲</div>
+      <div>
+        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">Bản Offline Thầy Thọ</span></h1>
+        <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 2px;">
+          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học vui nhộn & gay cấn
+        </p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-fs" onclick="toggleFullScreen()">⛶ Toàn màn hình (F11)</button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="tab-bar">
+    <div class="tab-group">
+      <button class="tab-btn active wheel-tab" onclick="switchGame('wheel')">
+        <span>🎡</span> 1. Vòng Quay May Mắn
+      </button>
+      <button class="tab-btn bomb-tab" onclick="switchGame('bomb')">
+        <span>💣</span> 2. Quả Bom Đếm Ngược
+      </button>
+      <button class="tab-btn slot-tab" onclick="switchGame('slot')">
+        <span>🎰</span> 3. Máy Quay Jackpot
+      </button>
+    </div>
+    <label class="exclude-option">
+      <input type="checkbox" id="chkExclude">
+      <span>Loại bỏ sau khi gọi</span>
+    </label>
+  </div>
+
+  <div class="container">
+    <!-- Main Stage -->
+    <div class="stage">
+      <!-- Winner Banner -->
+      <div class="winner-banner" id="winnerBanner">
+        <div class="winner-inner">
+          <div class="winner-tag">✨ XIN CHÚC MỪNG HỌC SINH ĐƯỢC CHỌN ✨</div>
+          <div class="winner-name" id="winnerNameText">Nguyễn Văn An</div>
+          <div class="winner-desc">Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!</div>
+        </div>
+      </div>
+
+      <!-- Game 1: Wheel -->
+      <div id="gameWheel" class="wheel-stage" style="display: flex; flex-direction: column; align-items: center;">
+        <div class="wheel-wrapper">
+          <div class="wheel-pointer"></div>
+          <canvas id="wheelCanvas" width="380" height="380"></canvas>
+        </div>
+        <button class="btn-spin" id="btnSpinWheel" onclick="spinWheel()">QUAY NGAY 🎯</button>
+      </div>
+
+      <!-- Game 2: Bomb -->
+      <div id="gameBomb" class="bomb-stage">
+        <div class="bomb-icon" id="bombIcon">💣</div>
+        <div class="bomb-countdown" id="bombCountdownText" style="display: none;">ĐẾM NGƯỢC: 3</div>
+        <div class="bomb-display" id="bombNameText">???</div>
+        <button class="btn-spin" id="btnStartBomb" style="background: linear-gradient(135deg, #f43f5e, #be123c); color: #fff;" onclick="startBomb()">
+          KÍCH HOẠT BOM 💣
+        </button>
+      </div>
+
+      <!-- Game 3: Slot -->
+      <div id="gameSlot" class="slot-stage">
+        <div style="font-size: 13px; font-weight: 800; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+          🎰 VÒNG QUAY MAY MẮN CASINO JACKPOT
+        </div>
+        <div class="slot-grid">
+          <div class="slot-box">
+            <span class="slot-star">⭐</span>
+            <div class="slot-name" id="slot1">???</div>
+          </div>
+          <div class="slot-box">
+            <span class="slot-star">⭐</span>
+            <div class="slot-name" id="slot2">???</div>
+          </div>
+          <div class="slot-box">
+            <span class="slot-star">⭐</span>
+            <div class="slot-name" id="slot3">???</div>
+          </div>
+        </div>
+        <button class="btn-spin" id="btnStartSlot" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff;" onclick="startSlot()">
+          KÉO CẦN QUAY SỐ 🎰
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar: Student List -->
+    <div class="sidebar">
+      <div class="sidebar-head">
+        <div class="sidebar-title">Danh Sách Học Sinh</div>
+        <div class="sidebar-count"><b id="studentCount">0</b> bạn</div>
+      </div>
+
+      <form class="add-form" onsubmit="addStudent(event)">
+        <input type="text" id="txtName" class="input-name" placeholder="Thêm tên học sinh...">
+        <button type="submit" class="btn-add">+</button>
+      </form>
+
+      <div class="name-list" id="nameListContainer"></div>
+
+      <div class="sidebar-actions">
+        <button class="btn-quick" onclick="pasteBatchList()">📋 Dán cả danh sách lớp (Batch)</button>
+        <button class="btn-quick" onclick="resetDefaultClass()">🔄 Tải danh sách lớp 10 (Mẫu)</button>
+        <button class="btn-quick" style="color: #f87171;" onclick="clearAllNames()">🗑️ Xóa sạch danh sách</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- BỘ TẠO ÂM THANH WEB AUDIO API (100% OFFLINE) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      tick() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(650, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.035);
+          gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.035);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.035);
+        } catch {}
+      }
+      heartbeat() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(95, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(45, this.ctx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.12);
+        } catch {}
+      }
+      slotSound() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.04);
+        } catch {}
+      }
+      fanfare() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const freqs = [523.25, 659.25, 783.99, 1046.50];
+          freqs.forEach((f, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = f;
+            gain.gain.setValueAtTime(0.35, this.ctx.currentTime + idx * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.1 + 0.6);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(this.ctx.currentTime + idx * 0.1);
+            osc.stop(this.ctx.currentTime + idx * 0.1 + 0.6);
+          });
+        } catch {}
+      }
+    }
+    const audio = new SoundEngine();
+
+    // Danh sách học sinh mẫu ban đầu
+    const DEFAULT_STUDENTS = [
+      'Nguyễn Văn An (10A1)',
+      'Trần Thị Mai (10A1)',
+      'Lê Hoàng Nam (10A2)',
+      'Phạm Minh Đức (10A2)',
+      'Vũ Thùy Linh (10A1)',
+      'Đặng Tuấn Kiệt (10A3)',
+      'Hoàng Bảo Ngọc (10A2)',
+      'Bùi Gia Huy (10A1)',
+      'Nguyễn Hải Đăng (10A3)',
+      'Trần Ngọc Ánh (10A2)'
+    ];
+
+    const WHEEL_PALETTE = [
+      '#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4',
+      '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6'
+    ];
+
+    let students = [];
+    try {
+      const saved = localStorage.getItem('thaytho_offline_students');
+      if (saved) {
+        students = JSON.parse(saved);
+      }
+    } catch {}
+    if (!students || students.length === 0) {
+      students = [...DEFAULT_STUDENTS];
+    }
+
+    let currentGame = 'wheel';
+    let isSpinning = false;
+    let wheelAngle = 0;
+
+    function saveStudents() {
+      try {
+        localStorage.setItem('thaytho_offline_students', JSON.stringify(students));
+      } catch {}
+      renderList();
+      if (currentGame === 'wheel') drawWheel();
+    }
+
+    function renderList() {
+      const container = document.getElementById('nameListContainer');
+      container.innerHTML = '';
+      students.forEach((name, idx) => {
+        const item = document.createElement('div');
+        item.className = 'name-item';
+        item.innerHTML = `
+          <span><b>${idx + 1}.</b> ${name}</span>
+          <button class="btn-del" onclick="deleteStudent(${idx})" title="Xóa">✕</button>
+        `;
+        container.appendChild(item);
+      });
+      document.getElementById('studentCount').innerText = students.length;
+    }
+
+    function addStudent(e) {
+      e.preventDefault();
+      const txt = document.getElementById('txtName');
+      const val = txt.value.trim();
+      if (val && !students.includes(val)) {
+        students.push(val);
+        txt.value = '';
+        saveStudents();
+      }
+    }
+
+    function deleteStudent(idx) {
+      students.splice(idx, 1);
+      saveStudents();
+    }
+
+    function clearAllNames() {
+      if (confirm('Thầy có chắc muốn xóa toàn bộ danh sách không?')) {
+        students = [];
+        saveStudents();
+      }
+    }
+
+    function resetDefaultClass() {
+      students = [...DEFAULT_STUDENTS];
+      saveStudents();
+    }
+
+    function pasteBatchList() {
+      const text = prompt('Dán danh sách học sinh vào đây (mỗi học sinh một dòng):');
+      if (text) {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length > 0) {
+          students = lines;
+          saveStudents();
+          alert(`Đã nạp thành công ${lines.length} học sinh vào trò chơi!`);
+        }
+      }
+    }
+
+    function switchGame(game) {
+      if (isSpinning) return;
+      currentGame = game;
+      hideWinner();
+
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.${game}-tab`).classList.add('active');
+
+      document.getElementById('gameWheel').style.display = game === 'wheel' ? 'flex' : 'none';
+      document.getElementById('gameBomb').style.display = game === 'bomb' ? 'flex' : 'none';
+      document.getElementById('gameSlot').style.display = game === 'slot' ? 'flex' : 'none';
+
+      if (game === 'wheel') drawWheel();
+    }
+
+    function hideWinner() {
+      document.getElementById('winnerBanner').style.display = 'none';
+    }
+
+    function showWinner(name) {
+      document.getElementById('winnerNameText').innerText = name;
+      document.getElementById('winnerBanner').style.display = 'block';
+      audio.fanfare();
+      launchConfetti();
+
+      const exclude = document.getElementById('chkExclude').checked;
+      if (exclude) {
+        const idx = students.indexOf(name);
+        if (idx > -1) {
+          students.splice(idx, 1);
+          saveStudents();
+        }
+      }
+    }
+
+    // --- VẼ VÒNG QUAY MAY MẮN ---
+    function drawWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const num = Math.max(students.length, 1);
+      const sliceAngle = (2 * Math.PI) / num;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const radius = cx - 14;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      students.forEach((name, i) => {
+        const angle = wheelAngle + i * sliceAngle;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, angle, angle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        const displayName = name.length > 18 ? name.slice(0, 16) + '...' : name;
+        ctx.fillText(displayName, radius - 16, 5);
+        ctx.restore();
+      });
+
+      // Tâm vòng quay
+      ctx.beginPath();
+      ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🎯', cx, cy);
+    }
+
+    function spinWheel() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const btn = document.getElementById('btnSpinWheel');
+      btn.innerText = 'ĐANG QUAY TÍT...';
+      btn.disabled = true;
+
+      const winnerIdx = Math.floor(Math.random() * students.length);
+      const chosen = students[winnerIdx];
+      const sliceAngle = (2 * Math.PI) / students.length;
+
+      const targetAngle = 3 * Math.PI / 2 - (winnerIdx + 0.5) * sliceAngle;
+      const extraSpins = 6 + Math.floor(Math.random() * 3);
+      const totalRotation = extraSpins * 2 * Math.PI + (targetAngle - (wheelAngle % (2 * Math.PI)));
+
+      const duration = 4500;
+      const startTime = performance.now();
+      const startAngle = wheelAngle;
+      let lastTick = startAngle;
+
+      function frame(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        wheelAngle = startAngle + totalRotation * easeOut;
+
+        if (Math.abs(wheelAngle - lastTick) >= sliceAngle) {
+          audio.tick();
+          lastTick = wheelAngle;
+        }
+
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          isSpinning = false;
+          btn.innerText = 'QUAY NGAY 🎯';
+          btn.disabled = false;
+          showWinner(chosen);
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // --- GAME 2: QUẢ BOM ĐẾM NGƯỢC ---
+    function startBomb() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const icon = document.getElementById('bombIcon');
+      const countText = document.getElementById('bombCountdownText');
+      const nameText = document.getElementById('bombNameText');
+      const btn = document.getElementById('btnStartBomb');
+
+      icon.className = 'bomb-icon ticking';
+      countText.style.display = 'block';
+      countText.innerText = 'ĐẾM NGƯỢC: 3';
+      btn.disabled = true;
+      btn.innerText = 'HỒI HỘP ĐẾM NGƯỢC...';
+
+      let step = 0;
+      const totalSteps = 45;
+
+      const timer = setInterval(() => {
+        step++;
+        nameText.innerText = students[Math.floor(Math.random() * students.length)];
+        audio.heartbeat();
+
+        if (step === 15) countText.innerText = 'ĐẾM NGƯỢC: 2';
+        if (step === 30) countText.innerText = 'ĐẾM NGƯỢC: 1';
+
+        if (step >= totalSteps) {
+          clearInterval(timer);
+          const chosen = students[Math.floor(Math.random() * students.length)];
+          nameText.innerText = chosen;
+          icon.className = 'bomb-icon';
+          icon.innerText = '💥';
+          countText.style.display = 'none';
+          btn.disabled = false;
+          btn.innerText = 'KÍCH HOẠT BOM 💣';
+          isSpinning = false;
+          showWinner(chosen);
+
+          setTimeout(() => {
+            icon.innerText = '💣';
+          }, 3000);
+        }
+      }, 80);
+    }
+
+    // --- GAME 3: MÁY QUAY JACKPOT ---
+    function startSlot() {
+      if (isSpinning || students.length === 0) return;
+      isSpinning = true;
+      hideWinner();
+
+      const btn = document.getElementById('btnStartSlot');
+      btn.disabled = true;
+      btn.innerText = 'ĐANG QUAY JACKPOT...';
+
+      const s1 = document.getElementById('slot1');
+      const s2 = document.getElementById('slot2');
+      const s3 = document.getElementById('slot3');
+
+      const chosen = students[Math.floor(Math.random() * students.length)];
+      let step = 0;
+
+      const timer = setInterval(() => {
+        step++;
+        audio.slotSound();
+        s1.innerText = students[Math.floor(Math.random() * students.length)];
+        s2.innerText = students[Math.floor(Math.random() * students.length)];
+        s3.innerText = students[Math.floor(Math.random() * students.length)];
+
+        if (step >= 35) {
+          clearInterval(timer);
+          s1.innerText = chosen;
+          s2.innerText = chosen;
+          s3.innerText = chosen;
+          btn.disabled = false;
+          btn.innerText = 'KÉO CẦN QUAY SỐ 🎰';
+          isSpinning = false;
+          showWinner(chosen);
+        }
+      }, 90);
+    }
+
+    // --- PHÁO HOA CONFETTI ---
+    function launchConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = [];
+      const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#ffffff'];
+
+      for (let i = 0; i < 120; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 3,
+          vx: (Math.random() - 0.5) * 16,
+          vy: (Math.random() - 0.7) * 16,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 10
+        });
+      }
+
+      let frame = 0;
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35; // trọng lực
+          p.rotation += p.rotSpeed;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        });
+
+        frame++;
+        if (frame < 120) {
+          requestAnimationFrame(animate);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      animate();
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // Khởi tạo
+    renderList();
+    drawWheel();
+  </script>
+</body>
+</html>

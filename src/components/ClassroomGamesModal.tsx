@@ -432,12 +432,23 @@ export default function ClassroomGamesModal({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-white transition active:scale-95"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/TRO_CHOI_GOI_TEN_THAY_THO.html"
+              download="TRO_CHOI_GOI_TEN_THAY_THO.html"
+              className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1.5 shadow backdrop-blur-sm transition active:scale-95 no-underline"
+              title="Tải trọn bộ trò chơi này về máy tính để dùng Offline trực tiếp không cần mạng"
+            >
+              <span>📥</span>
+              <span className="hidden sm:inline">Tải về máy tính</span>
+            </a>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-white transition active:scale-95"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* --- THANH ĐIỀU HƯỚNG 3 TRÒ CHƠI --- */}
