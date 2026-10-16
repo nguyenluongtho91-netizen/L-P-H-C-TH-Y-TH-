@@ -19,6 +19,7 @@ import ExamMgmt from '@/pages/ExamMgmt'
 import ExamRoomsMgmt from '@/pages/ExamRoomsMgmt'
 import ExamResultsPage from '@/pages/ExamResultsPage'
 import StudentPortal from '@/pages/StudentPortal'
+import LiveClassroomPage from '@/pages/LiveClassroomPage'
 import ExamRoomPage from '@/pages/ExamRoomPage'
 import CreatePdfExamPage from '@/pages/CreatePdfExamPage'
 import CreateTexExamPage from '@/pages/CreateTexExamPage'
@@ -85,6 +86,11 @@ export default function App() {
       {/* 1. CỔNG CÔNG KHAI DÀNH CHO HỌC SINH VÀ ĐĂNG NHẬP */}
       <Route path="/login"    element={<Login />} />
       <Route path="/thi"      element={<StudentPortal />} />
+      {/* PHÒNG HỌC LIVE CỐ ĐỊNH THEO SỐ ĐIỆN THOẠI THẦY THỌ */}
+      <Route path="/0345833133"   element={<LiveClassroomPage />} />
+      <Route path="/0345.833.133" element={<LiveClassroomPage />} />
+      <Route path="/live"         element={<LiveClassroomPage />} />
+      <Route path="/live/:roomId" element={<LiveClassroomPage />} />
       <Route path="/progress" element={<StudentProgressPage />} />
 
       {/* 2. PHÒNG THI & XEM KHÓA HỌC (Giao diện tập trung) */}

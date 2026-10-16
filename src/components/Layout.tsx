@@ -2,6 +2,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import {
+  Video,
   LayoutDashboard, Users, BookOpen, CalendarCheck, Banknote,
   Mail, Settings, LogOut, FileText, MonitorPlay, ScanText,
   GraduationCap, Sigma, FilePlus, PlaySquare, Zap, FileType, CreditCard,
@@ -39,6 +40,7 @@ export default function Layout() {
         { path: '/create-pdf-exam',   icon: FilePlus,      label: 'Tạo đề PDF' },
         { path: '/create-tex-exam',   icon: Sigma,         label: 'Tạo đề LaTeX' },
         { path: '/create-worksheet',  icon: ClipboardList, label: 'Phiếu Bài Tập' },  // ← MỚI
+        { path: '/0345833133',        icon: Video,         label: '🔴 Phòng Live 0345.833.133' },
         { path: '/exam-rooms',        icon: MonitorPlay,   label: 'Phòng thi' },
         { path: '/phieu-grader',      icon: Zap,           label: 'Chấm Phiếu AI' },
       ],
