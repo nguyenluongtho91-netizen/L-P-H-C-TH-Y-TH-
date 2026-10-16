@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trò Chơi Gọi Tên Học Sinh 10 Lớp — Thầy Lương Thọ</title>
+  <title>Trò Chơi Gọi Tên Học Sinh — Toán & Hóa Thầy Lương Thọ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #070a12;
-      --card-bg: #0f172a;
+      --bg-dark: #050814;
+      --card-bg: #0b1120;
       --border-color: #1e293b;
       --primary: #f59e0b;
       --rose: #f43f5e;
       --indigo: #6366f1;
-      --cyan: #06b6d4;
+      --cyan: #38bdf8;
       --emerald: #10b981;
       --purple: #a855f7;
     }
@@ -36,7 +36,7 @@
       position: relative;
     }
 
-    /* Lưới toạ độ Toán học & Phòng Lab Hóa học chuyên nghiệp */
+    /* Lưới tọa độ Toán học & Phòng Lab Hóa học chuyên nghiệp */
     body::before {
       content: "";
       position: fixed;
@@ -61,9 +61,19 @@
       opacity: 0.85;
     }
 
-    header, .class-bar, .tab-bar, .container {
-      position: relative;
-      z-index: 10;
+    /* Confetti Canvas */
+    #confettiCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
     }
 
     /* Screen shake */
@@ -89,9 +99,14 @@
       transition: opacity 0.08s ease-out;
     }
 
+    header, .class-bar, .tab-bar, .container {
+      position: relative;
+      z-index: 10;
+    }
+
     /* Header */
     header {
-      background: linear-gradient(135deg, #9a3412 0%, #be123c 35%, #4338ca 70%, #065f46 100%);
+      background: linear-gradient(135deg, #0369a1 0%, #4338ca 35%, #be123c 70%, #9a3412 100%);
       padding: 12px 24px;
       display: flex;
       justify-content: space-between;
@@ -158,7 +173,7 @@
       transform: scale(1.04);
     }
 
-    /* --- THANH CHỌN 10 LỚP HỌC (LỚP 6 ĐẾN LỚP 12 + 7H, 8H, 9H) --- */
+    /* --- THANH CHỌN 10 LỚP HỌC --- */
     .class-bar {
       background: #0b1120;
       border-bottom: 2px solid #1e293b;
@@ -332,7 +347,7 @@
       white-space: nowrap;
     }
 
-    /* Main Container (GẦN TRÀN MÀN HÌNH) */
+    /* Main Container */
     .container {
       flex: 1;
       display: grid;
@@ -352,7 +367,7 @@
       }
     }
 
-    /* Game Stage (GẦN TRÀN MÀN HÌNH - RỘNG VÀ LỚN) */
+    /* Game Stage */
     .stage {
       background: rgba(15, 23, 42, 0.82);
       backdrop-filter: blur(20px);
@@ -428,18 +443,20 @@
     .btn-spin {
       background: linear-gradient(135deg, #f59e0b, #ea580c);
       color: #0f172a;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 900;
-      padding: 22px 80px; font-size: 24px;
-      border-radius: 26px;
+      padding: 20px 76px;
+      border-radius: 28px;
       border: none;
       cursor: pointer;
-      box-shadow: 0 12px 30px rgba(245, 158, 11, 0.55);
+      box-shadow: 0 14px 35px rgba(245, 158, 11, 0.55);
       transition: all 0.15s ease;
       letter-spacing: 1px;
       display: flex;
       align-items: center;
       gap: 12px;
+      position: relative;
+      z-index: 10;
     }
     .btn-spin:hover {
       transform: translateY(-3px) scale(1.02);
@@ -454,13 +471,56 @@
       transform: none !important;
     }
 
-    /* --- GAME 1: WHEEL (VÒNG QUAY) --- */
+    /* --- GAME 1: WHEEL (VÒNG QUAY SIÊU CỰC ĐẠI 860px) --- */
     .wheel-stage {
       display: flex;
       flex-direction: column;
       align-items: center;
       width: 100%;
+      position: relative;
+      z-index: 5;
     }
+    .wheel-size-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      background: #0f172a;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+      flex-wrap: wrap;
+    }
+    .wheel-size-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-size {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-size:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .btn-size.active {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0f172a;
+      border-color: #f59e0b;
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+    }
+
     .wheel-wrapper {
       position: relative;
       margin-bottom: 26px;
@@ -495,49 +555,8 @@
       width: 100%;
       height: 100%;
     }
-    /* Wheel Size Selector */
-    .wheel-size-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      background: #0f172a;
-      padding: 6px 14px;
-      border-radius: 999px;
-      border: 1px solid #1e293b;
-    }
-    .wheel-size-label {
-      font-size: 12px;
-      font-weight: 800;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .btn-size {
-      background: #1e293b;
-      color: #94a3b8;
-      border: 1px solid #334155;
-      padding: 5px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-size:hover {
-      background: #334155;
-      color: #fff;
-    }
-    .btn-size.active {
-      background: linear-gradient(135deg, #f59e0b, #ea580c);
-      color: #0f172a;
-      border-color: #f59e0b;
-      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
-    }
 
-
-    /* --- GAME 2: BOMB (QUẢ BOM) --- */
+    /* --- GAME 2: BOMB --- */
     .bomb-stage {
       display: none;
       flex-direction: column;
@@ -546,7 +565,7 @@
       width: 100%;
     }
     .bomb-icon {
-      font-size: 110px;
+      font-size: 120px;
       margin-bottom: 16px;
       transition: all 0.15s;
     }
@@ -555,7 +574,7 @@
       animation: pulse 0.15s infinite alternate;
     }
     .bomb-countdown {
-      font-size: 36px;
+      font-size: 38px;
       font-weight: 900;
       color: #f43f5e;
       margin-bottom: 16px;
@@ -565,17 +584,17 @@
       background: #090d16;
       border: 3px solid #374151;
       border-radius: 20px;
-      padding: 18px 40px;
-      min-width: 360px;
+      padding: 18px 44px;
+      min-width: 380px;
       max-width: 90%;
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 900;
       color: #ffffff;
       margin-bottom: 24px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
     }
 
-    /* --- GAME 3: SLOT JACKPOT --- */
+    /* --- GAME 3: SLOT --- */
     .slot-stage {
       display: none;
       flex-direction: column;
@@ -587,7 +606,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      max-width: 720px;
+      max-width: 760px;
       width: 100%;
       background: #090d16;
       border: 5px solid #6366f1;
@@ -622,7 +641,7 @@
       white-space: nowrap;
     }
 
-    /* --- GAME 4: F1 RACE (ĐƯỜNG ĐUA TRÀN RỘNG) --- */
+    /* --- GAME 4: F1 RACE --- */
     .race-stage {
       display: none;
       flex-direction: column;
@@ -693,7 +712,7 @@
       filter: drop-shadow(0 2px 5px rgba(0,0,0,0.9));
     }
 
-    /* --- GAME 5: TIA SÉT THOR (LƯỚI RỘNG) --- */
+    /* --- GAME 5: TIA SÉT THOR --- */
     .lightning-stage {
       display: none;
       flex-direction: column;
@@ -752,7 +771,7 @@
       animation: pulse 0.15s infinite alternate;
     }
 
-    /* --- GAME 6: RƯƠNG BÍ ẨN (LỚN VÀ RỰC RỠ) --- */
+    /* --- GAME 6: RƯƠNG BÍ ẨN --- */
     .chest-stage {
       display: none;
       flex-direction: column;
@@ -815,7 +834,7 @@
       margin-top: 6px;
     }
 
-    /* Sidebar / List Management */
+    /* Sidebar */
     .sidebar {
       background: #0f172a;
       border: 2px solid #1e293b;
@@ -825,7 +844,7 @@
       flex-direction: column;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
       height: 100%;
-      min-height: 920px;
+      min-height: 560px;
     }
     .sidebar-head {
       display: flex;
@@ -940,21 +959,6 @@
       color: #ffffff;
     }
 
-    /* Confetti Canvas */
-    #confettiCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 99;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-    }
-
     @keyframes popIn {
       0% { transform: scale(0.85); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
@@ -967,6 +971,7 @@
 </head>
 <body>
   <div id="flashOverlay"></div>
+  <canvas id="mathChemCanvas"></canvas>
   <canvas id="confettiCanvas"></canvas>
 
   <header>
@@ -974,7 +979,7 @@
       <div class="header-icon">🎲</div>
       <div>
         <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — 10 Lớp Học</span></h1>
-        <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 2px;">
+        <p style="font-size: 12px; color: rgba(255,255,255,0.9); margin-top: 2px;">
           📐 GIÁO VIÊN TOÁN & 🧪 HÓA HỌC: NGUYỄN LƯƠNG THỌ — Khởi động tiết học bùng nổ đam mê khoa học
         </p>
       </div>
@@ -985,7 +990,7 @@
     </div>
   </header>
 
-  <!-- --- THANH CHỌN 10 LỚP HỌC (LỚP 6, 7, 7H, 8, 8H, 9, 9H, 10, 11, 12) --- -->
+  <!-- --- THANH CHỌN 10 LỚP HỌC --- -->
   <div class="class-bar">
     <div class="class-title-group">
       <div class="class-label">
@@ -993,9 +998,7 @@
         <span>CHỌN LỚP:</span>
       </div>
     </div>
-    <div class="class-pills" id="classPillsContainer">
-      <!-- 10 Nút Lớp học sẽ được sinh bằng JS -->
-    </div>
+    <div class="class-pills" id="classPillsContainer"></div>
     <div class="class-info-tag" id="classInfoTag">
       Đang chọn: <b id="currentClassName">LỚP 10</b> (<span id="currentClassCount">12</span> bạn)
     </div>
@@ -1030,7 +1033,7 @@
   </div>
 
   <div class="container" id="mainContainer">
-    <!-- Main Stage (GẦN TRÀN MÀN HÌNH) -->
+    <!-- Main Stage -->
     <div class="stage" id="mainStage">
       <!-- Winner Banner -->
       <div class="winner-banner" id="winnerBanner">
@@ -1041,9 +1044,16 @@
         </div>
       </div>
 
-      <!-- Trò 1: Vòng quay may mắn -->
+      <!-- Trò 1: Vòng quay may mắn (SIÊU CỰC ĐẠI 860px) -->
       <div id="gameWheel" class="wheel-stage">
-        <div class="wheel-wrapper">
+        <div class="wheel-size-bar">
+          <span class="wheel-size-label">📐 Cỡ Vòng Quay:</span>
+          <button class="btn-size" onclick="setWheelSize(620, this)">Vừa (620px)</button>
+          <button class="btn-size" onclick="setWheelSize(750, this)">To (750px)</button>
+          <button class="btn-size active" onclick="setWheelSize(860, this)">🌟 CỰC ĐẠI (860px)</button>
+          <button class="btn-size" style="background: #1e3a8a; color: #38bdf8;" onclick="toggleSidebar()">⛶ Tràn 100% màn hình</button>
+        </div>
+        <div class="wheel-wrapper" id="wheelWrapperBox">
           <div class="wheel-pointer"></div>
           <canvas id="wheelCanvas" width="900" height="900"></canvas>
         </div>
@@ -1086,14 +1096,12 @@
         </button>
       </div>
 
-      <!-- Trò 4: Đua xe F1 thần tốc (Rộng lớn, bám sát màn hình) -->
+      <!-- Trò 4: Đua xe F1 thần tốc -->
       <div id="gameRace" class="race-stage">
         <div style="font-size: 14px; font-weight: 800; color: #34d399; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           🏎️ ĐƯỜNG ĐUA F1 GRAND PRIX — XE NÀO CÁN ĐÍCH ĐẦU TIÊN?
         </div>
-        <div class="race-track-list" id="raceTrackList">
-          <!-- Các làn đua -->
-        </div>
+        <div class="race-track-list" id="raceTrackList"></div>
         <div style="display: flex; justify-content: center;">
           <button class="btn-spin" id="btnStartRace" style="background: linear-gradient(135deg, #10b981, #059669); color: #090d16;" onclick="startRace()">
             <span>🏎️💨</span> BẮT ĐẦU ĐUA XE
@@ -1101,20 +1109,18 @@
         </div>
       </div>
 
-      <!-- Trò 5: Tia sét Thor (Lưới rộng khắp sân khấu) -->
+      <!-- Trò 5: Tia sét Thor -->
       <div id="gameLightning" class="lightning-stage">
         <div style="font-size: 14px; font-weight: 800; color: #facc15; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           ⚡ BÃO SẤM SÉT THOR — TIA SÉT GIÁNG XUỐNG AI?
         </div>
-        <div class="lightning-grid" id="lightningGrid">
-          <!-- Các thẻ tên -->
-        </div>
+        <div class="lightning-grid" id="lightningGrid"></div>
         <button class="btn-spin" id="btnStartLightning" style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #090d16;" onclick="startLightning()">
           <span>⚡</span> TRIỆU HỒI SẤM SÉT
         </button>
       </div>
 
-      <!-- Trò 6: Chiếc rương bí ẩn (Lớn) -->
+      <!-- Trò 6: Chiếc rương bí ẩn -->
       <div id="gameChest" class="chest-stage">
         <div style="font-size: 14px; font-weight: 800; color: #c084fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           🎁 4 CHIẾC RƯƠNG BÍ MẬT — CHỌN 1 RƯƠNG MAY MẮN
@@ -1148,7 +1154,7 @@
 
     </div>
 
-    <!-- Sidebar: Student List (Có thể ẩn/hiện để tràn 100% màn hình) -->
+    <!-- Sidebar -->
     <div class="sidebar" id="sidebarContainer">
       <div class="sidebar-head">
         <div class="sidebar-title">Danh Sách Học Sinh</div>
@@ -1394,14 +1400,12 @@
       ]
     };
 
-    // Nạp dữ liệu từ localStorage
     let allClassData = {};
     try {
       const savedClasses = localStorage.getItem('thaytho_all_classes_v2');
       if (savedClasses) allClassData = JSON.parse(savedClasses);
     } catch {}
 
-    // Đảm bảo cả 10 lớp đều có danh sách
     CLASS_KEYS.forEach(k => {
       if (!allClassData[k] || allClassData[k].length === 0) {
         allClassData[k] = [...DEFAULT_CLASS_DATA[k]];
@@ -1416,7 +1420,6 @@
       }
     } catch {}
 
-    // Học sinh của lớp hiện tại
     let students = allClassData[currentClassKey] || [];
 
     const WHEEL_PALETTE = [
@@ -1433,160 +1436,13 @@
         localStorage.setItem('thaytho_all_classes_v2', JSON.stringify(allClassData));
         localStorage.setItem('thaytho_current_class_key', currentClassKey);
       } catch {}
-      
-    // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
-    const MATH_CHEM_SYMBOLS = [
-      '∫ f(x)dx', 'π ≈ 3.14', '∑', '√x', 'lim x→∞', 'E = mc²', 'ΔrH°₂₉₈', 'C₆H₆',
-      'H₂O', 'CO₂', 'Fe²⁺', 'CuSO₄', 'NaCl', 'pH = -log[H⁺]', 'sin²x + cos²x = 1',
-      'λ', 'Ω', 'Δ', '∞', 'log_a(b)', 'C₂H₅OH', 'H₂SO₄', 'CH₄', 'KMnO₄', 'f'(x)'
-    ];
-
-    function initMathChemBackground() {
-      const canvas = document.getElementById('mathChemCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-
-      function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-      resize();
-      window.addEventListener('resize', resize);
-
-      // 1. Các hạt liên kết phân tử hóa học (Molecular Nodes)
-      const nodes = [];
-      const nodeCount = Math.floor(Math.min(window.innerWidth / 30, 45));
-      for (let i = 0; i < nodeCount; i++) {
-        nodes.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.7,
-          vy: (Math.random() - 0.5) * 0.7,
-          radius: Math.random() * 2.5 + 1.5,
-          color: Math.random() > 0.5 ? '#38bdf8' : '#a855f7'
-        });
-      }
-
-      // 2. Ký hiệu Toán & Hóa trôi bồng bềnh
-      const floatingItems = [];
-      const colors = ['rgba(56, 189, 248, 0.45)', 'rgba(250, 204, 21, 0.45)', 'rgba(52, 211, 153, 0.45)', 'rgba(192, 132, 252, 0.45)', 'rgba(251, 113, 133, 0.45)'];
-      for (let i = 0; i < 24; i++) {
-        floatingItems.push({
-          text: MATH_CHEM_SYMBOLS[i % MATH_CHEM_SYMBOLS.length],
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          vy: -(Math.random() * 0.45 + 0.2),
-          vx: (Math.random() - 0.5) * 0.25,
-          size: Math.floor(Math.random() * 6 + 14),
-          color: colors[i % colors.length],
-          rot: Math.random() * 360,
-          rotSpeed: (Math.random() - 0.5) * 0.3
-        });
-      }
-
-      let atomAngle = 0;
-
-      function renderBg() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Vẽ mô hình nguyên tử hóa học quay chậm ở góc nền
-        atomAngle += 0.008;
-        const atomCenterX = canvas.width * 0.12;
-        const atomCenterY = canvas.height * 0.82;
-        
-        ctx.save();
-        ctx.translate(atomCenterX, atomCenterY);
-        // Hạt nhân
-        ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, 2 * Math.PI);
-        ctx.fillStyle = '#f59e0b';
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 15;
-        ctx.fill();
-        // 3 Quỹ đạo electron elip
-        for (let j = 0; j < 3; j++) {
-          ctx.save();
-          ctx.rotate(atomAngle + (j * Math.PI) / 3);
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 60, 22, 0, 0, 2 * Math.PI);
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          // Electron
-          const ex = Math.cos(atomAngle * 2 + j) * 60;
-          const ey = Math.sin(atomAngle * 2 + j) * 22;
-          ctx.beginPath();
-          ctx.arc(ex, ey, 3.5, 0, 2 * Math.PI);
-          ctx.fillStyle = '#38bdf8';
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 8;
-          ctx.fill();
-          ctx.restore();
-        }
-        ctx.restore();
-
-        // Vẽ các liên kết phân tử hóa học (Molecular lattice)
-        for (let i = 0; i < nodes.length; i++) {
-          const n1 = nodes[i];
-          n1.x += n1.vx;
-          n1.y += n1.vy;
-          if (n1.x < 0 || n1.x > canvas.width) n1.vx *= -1;
-          if (n1.y < 0 || n1.y > canvas.height) n1.vy *= -1;
-
-          ctx.beginPath();
-          ctx.arc(n1.x, n1.y, n1.radius, 0, 2 * Math.PI);
-          ctx.fillStyle = n1.color;
-          ctx.fill();
-
-          for (let j = i + 1; j < nodes.length; j++) {
-            const n2 = nodes[j];
-            const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
-            if (dist < 110) {
-              ctx.beginPath();
-              ctx.moveTo(n1.x, n1.y);
-              ctx.lineTo(n2.x, n2.y);
-              ctx.strokeStyle = `rgba(56, 189, 248, ${0.18 * (1 - dist / 110)})`;
-              ctx.lineWidth = 1;
-              ctx.stroke();
-            }
-          }
-        }
-
-        // Vẽ các ký hiệu Toán & Hóa học lơ lửng
-        floatingItems.forEach(item => {
-          item.y += item.vy;
-          item.x += item.vx;
-          item.rot += item.rotSpeed;
-          if (item.y < -30) {
-            item.y = canvas.height + 30;
-            item.x = Math.random() * canvas.width;
-          }
-
-          ctx.save();
-          ctx.translate(item.x, item.y);
-          ctx.rotate((item.rot * Math.PI) / 180);
-          ctx.font = `bold ${item.size}px Outfit, monospace, sans-serif`;
-          ctx.fillStyle = item.color;
-          ctx.shadowColor = item.color;
-          ctx.shadowBlur = 8;
-          ctx.fillText(item.text, 0, 0);
-          ctx.restore();
-        });
-
-        requestAnimationFrame(renderBg);
-      }
-      renderBg();
-    }
-
-    initMathChemBackground();
-    renderClassPills();
+      renderClassPills();
       renderList();
       if (currentGame === 'wheel') drawWheel();
       if (currentGame === 'race') initRaceTracks();
       if (currentGame === 'lightning') initLightningGrid();
     }
 
-    // --- RENDER 10 NÚT CHỌN LỚP ---
     function renderClassPills() {
       const container = document.getElementById('classPillsContainer');
       container.innerHTML = '';
@@ -1605,8 +1461,10 @@
         container.appendChild(btn);
       });
 
-      document.getElementById('currentClassName').innerText = CLASS_LABELS[currentClassKey].toUpperCase();
-      document.getElementById('currentClassCount').innerText = students.length;
+      const nameEl = document.getElementById('currentClassName');
+      const countEl = document.getElementById('currentClassCount');
+      if (nameEl) nameEl.innerText = CLASS_LABELS[currentClassKey].toUpperCase();
+      if (countEl) countEl.innerText = students.length;
     }
 
     function selectClass(key) {
@@ -1629,8 +1487,10 @@
         `;
         container.appendChild(item);
       });
-      document.getElementById('studentCount').innerText = students.length;
-      document.getElementById('currentClassCount').innerText = students.length;
+      const stCount = document.getElementById('studentCount');
+      const curCount = document.getElementById('currentClassCount');
+      if (stCount) stCount.innerText = students.length;
+      if (curCount) curCount.innerText = students.length;
     }
 
     function addStudent(e) {
@@ -1749,7 +1609,17 @@
       }
     }
 
-    // --- GAME 1: VÒNG QUAY MAY MẮN ---
+    // --- GAME 1: VÒNG QUAY MAY MẮN (SIÊU CỰC ĐẠI) ---
+    function setWheelSize(px, btn) {
+      const box = document.getElementById('wheelWrapperBox');
+      if (box) {
+        box.style.width = px + 'px';
+        box.style.height = px + 'px';
+      }
+      document.querySelectorAll('.wheel-size-bar .btn-size').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
     function drawWheel() {
       const canvas = document.getElementById('wheelCanvas');
       if (!canvas) return;
@@ -1779,7 +1649,6 @@
         ctx.rotate(angle + sliceAngle / 2);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffffff';
-        // Font chữ siêu to 22px Outfit
         ctx.font = '900 22px Outfit, sans-serif';
         ctx.shadowColor = 'rgba(0,0,0,0.95)';
         ctx.shadowBlur = 6;
@@ -1802,16 +1671,6 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('🎯', cx, cy);
-    }
-
-    function setWheelSize(px, btn) {
-      const box = document.getElementById('wheelWrapperBox');
-      if (box) {
-        box.style.width = px + 'px';
-        box.style.height = px + 'px';
-      }
-      document.querySelectorAll('.wheel-size-bar .btn-size').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
     }
 
     function spinWheel() {
@@ -1947,7 +1806,7 @@
       }, 90);
     }
 
-    // --- GAME 4: F1 GRAND PRIX (ĐƯỜNG ĐUA RỘNG) ---
+    // --- GAME 4: F1 GRAND PRIX ---
     const CAR_ICONS = ['🏎️', '🚗', '🚙', '🚖'];
     const CAR_COLORS = [
       'linear-gradient(90deg, #ef4444, #f97316)',
@@ -2038,7 +1897,7 @@
       }, 100);
     }
 
-    // --- GAME 5: TIA SÉT THOR (LƯỚI RỘNG) ---
+    // --- GAME 5: TIA SÉT THOR ---
     let lightningCardsList = [];
 
     function initLightningGrid() {
@@ -2233,13 +2092,11 @@
       }
     }
 
-    // Khởi tạo ban đầu
-    
     // --- HIỆU ỨNG PHÔNG NỀN CHUYÊN NGHIỆP: TOÁN HỌC & HÓA HỌC THẦY LƯƠNG THỌ ---
     const MATH_CHEM_SYMBOLS = [
       '∫ f(x)dx', 'π ≈ 3.14', '∑', '√x', 'lim x→∞', 'E = mc²', 'ΔrH°₂₉₈', 'C₆H₆',
       'H₂O', 'CO₂', 'Fe²⁺', 'CuSO₄', 'NaCl', 'pH = -log[H⁺]', 'sin²x + cos²x = 1',
-      'λ', 'Ω', 'Δ', '∞', 'log_a(b)', 'C₂H₅OH', 'H₂SO₄', 'CH₄', 'KMnO₄', 'f'(x)'
+      'λ', 'Ω', 'Δ', '∞', 'log_a(b)', 'C₂H₅OH', 'H₂SO₄', 'CH₄', 'KMnO₄', 'f(x)'
     ];
 
     function initMathChemBackground() {
@@ -2254,9 +2111,9 @@
       resize();
       window.addEventListener('resize', resize);
 
-      // 1. Các hạt liên kết phân tử hóa học (Molecular Nodes)
+      // Các hạt liên kết phân tử hóa học (Molecular Nodes)
       const nodes = [];
-      const nodeCount = Math.floor(Math.min(window.innerWidth / 30, 45));
+      const nodeCount = Math.floor(Math.min(window.innerWidth / 32, 45));
       for (let i = 0; i < nodeCount; i++) {
         nodes.push({
           x: Math.random() * canvas.width,
@@ -2268,10 +2125,10 @@
         });
       }
 
-      // 2. Ký hiệu Toán & Hóa trôi bồng bềnh
+      // Ký hiệu Toán & Hóa trôi bồng bềnh
       const floatingItems = [];
       const colors = ['rgba(56, 189, 248, 0.45)', 'rgba(250, 204, 21, 0.45)', 'rgba(52, 211, 153, 0.45)', 'rgba(192, 132, 252, 0.45)', 'rgba(251, 113, 133, 0.45)'];
-      for (let i = 0; i < 24; i++) {
+      for (let i = 0; i < 22; i++) {
         floatingItems.push({
           text: MATH_CHEM_SYMBOLS[i % MATH_CHEM_SYMBOLS.length],
           x: Math.random() * canvas.width,
@@ -2290,21 +2147,19 @@
       function renderBg() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Vẽ mô hình nguyên tử hóa học quay chậm ở góc nền
+        // Mô hình nguyên tử hóa học quay chậm ở góc nền
         atomAngle += 0.008;
         const atomCenterX = canvas.width * 0.12;
         const atomCenterY = canvas.height * 0.82;
         
         ctx.save();
         ctx.translate(atomCenterX, atomCenterY);
-        // Hạt nhân
         ctx.beginPath();
         ctx.arc(0, 0, 10, 0, 2 * Math.PI);
         ctx.fillStyle = '#f59e0b';
         ctx.shadowColor = '#f59e0b';
         ctx.shadowBlur = 15;
         ctx.fill();
-        // 3 Quỹ đạo electron elip
         for (let j = 0; j < 3; j++) {
           ctx.save();
           ctx.rotate(atomAngle + (j * Math.PI) / 3);
@@ -2313,7 +2168,6 @@
           ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
           ctx.lineWidth = 1.5;
           ctx.stroke();
-          // Electron
           const ex = Math.cos(atomAngle * 2 + j) * 60;
           const ey = Math.sin(atomAngle * 2 + j) * 22;
           ctx.beginPath();
@@ -2326,7 +2180,7 @@
         }
         ctx.restore();
 
-        // Vẽ các liên kết phân tử hóa học (Molecular lattice)
+        // Liên kết phân tử hóa học
         for (let i = 0; i < nodes.length; i++) {
           const n1 = nodes[i];
           n1.x += n1.vx;
@@ -2353,7 +2207,7 @@
           }
         }
 
-        // Vẽ các ký hiệu Toán & Hóa học lơ lửng
+        // Ký hiệu Toán & Hóa học lơ lửng
         floatingItems.forEach(item => {
           item.y += item.vy;
           item.x += item.vx;
@@ -2379,6 +2233,7 @@
       renderBg();
     }
 
+    // --- KHỞI TẠO TOÀN DIỆN ---
     initMathChemBackground();
     renderClassPills();
     renderList();
