@@ -414,12 +414,12 @@ export const parseWordToExam = async (file: File): Promise<ExamData> => {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(documentXml, 'application/xml');
 
-  // 3) Extract paragraphs (text + images + underline + formulas)
-  const paragraphs = extractParagraphsWithUnderline(xmlDoc, imageRelMap, wmfFormulaMap);
-  console.log('📝 Total paragraphs:', paragraphs.length);
+  // 3) Extract paragraphs (text + images + underline + formulas) & answer tables
+  const { paragraphs, tableAnswers } = extractParagraphsWithUnderline(xmlDoc, imageRelMap, wmfFormulaMap, images);
+  console.log('📝 Total paragraphs & tables:', paragraphs.length);
 
   // 4) Parse questions
-  const examData = parseAllQuestions(paragraphs, images);
+  const examData = parseAllQuestions(paragraphs, images, tableAnswers);
 
   // 5) Metadata
   examData.title = file.name.replace(/\.docx$/i, '');
@@ -506,7 +506,9 @@ async function extractImagesAndFormulas(
           id: `img_${images.length}`,
           filename,
           base64: data,
+          data: data,
           contentType: contentTypes[ext] || 'image/png',
+          type: contentTypes[ext] || 'image/png',
           rId
         });
       }
@@ -644,163 +646,498 @@ function ommlNodeToLatex(node: Element): string {
 }
 
 // ============================================================
-// EXTRACT PARAGRAPHS (WITH TABS, FORMULAS & HIGHLIGHT)
+// TABLE DETECTION & HTML TABLE GENERATOR (AZOTA PRO STANDARD)
+// ============================================================
+
+interface TableAnswerMap {
+  part1: Map<number, string>;
+  part2: Map<number, string>;
+  part3: Map<number, string>;
+}
+
+function isAnswerKeyTable(tbl: Element): boolean {
+  const text = (tbl.textContent || '').replace(/\s+/g, ' ').toLowerCase();
+  const hasCau = /c\s*âu|c\s*au/i.test(text);
+  const hasDa = /đ\s*áp\s*án|d\s*ap\s*an|đ\s*a\b/i.test(text);
+  const hasDs = (/đ\s*úng|d\s*ung/i.test(text)) && text.includes('sai');
+
+  return (hasCau && hasDa) || (hasDs && (hasCau || hasDa));
+}
+
+function isHeaderBannerTable(tbl: Element): boolean {
+  const text = (tbl.textContent || '').replace(/\s+/g, ' ').toLowerCase();
+  const isBanner = ['kì thi', 'ki thi', 'đề thi tham khảo', 'đề tham khảo', 'bộ giáo dục', 'sở giáo dục', 'thời gian làm bài'].some(w => text.includes(w));
+  const rowCount = tbl.getElementsByTagName('w:tr').length;
+  return isBanner && rowCount <= 2;
+}
+
+function isLayoutTable(tbl: Element): boolean {
+  const cells = Array.from(tbl.getElementsByTagName('w:tc'));
+  for (const cell of cells) {
+    const txt = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    if (/^C(?:âu|au)\s*\d+/i.test(txt)) return true;
+  }
+  return false;
+}
+
+function parseAnswerKeyTables(tblElements: Element[]): TableAnswerMap {
+  const p1Map = new Map<number, string>();
+  const p2Map = new Map<number, string>();
+  const p3Map = new Map<number, string>();
+
+  for (const tbl of tblElements) {
+    if (!isAnswerKeyTable(tbl)) continue;
+
+    const rows = Array.from(tbl.getElementsByTagName('w:tr'));
+    if (rows.length < 2) continue;
+
+    const matrix: string[][] = [];
+    for (const r of rows) {
+      const cells = Array.from(r.getElementsByTagName('w:tc'));
+      const rowVals: string[] = [];
+      for (const c of cells) {
+        const txts = Array.from(c.getElementsByTagName('w:t')).map(t => t.textContent || '');
+        rowVals.push(txts.join('').replace(/\s+/g, ' ').trim());
+      }
+      matrix.push(rowVals);
+    }
+
+    const allTxt = matrix.map(r => r.join(' ')).join(' ').toLowerCase();
+
+    // 1) Part 1 (Multiple choice A/B/C/D)
+    const hasAbcd = matrix.slice(1).some(r => r.some(c => /^[A-D]$/i.test(c.trim())));
+    if (hasAbcd && (/c\s*âu/i.test(allTxt) || /đ\s*áp\s*án/i.test(allTxt))) {
+      const header = matrix[0].map(c => c.toLowerCase());
+      const qCols: number[] = [];
+      for (let i = 0; i < header.length; i++) {
+        if (/c\s*âu|c\s*au/i.test(header[i])) qCols.push(i);
+      }
+
+      for (let r = 1; r < matrix.length; r++) {
+        const row = matrix[r];
+        for (const qCol of qCols) {
+          if (qCol + 1 < row.length) {
+            const qNumM = row[qCol].match(/\b(\d+)\b/);
+            const ansM = row[qCol + 1].match(/\b([A-Da-d])\b/);
+            if (qNumM && ansM) {
+              p1Map.set(parseInt(qNumM[1]), ansM[1].toUpperCase());
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    // 2) Part 2 (True/False Đúng/Sai)
+    if (allTxt.includes('đúng') || allTxt.includes('sai') || allTxt.includes('dung')) {
+      const qRowIdx = matrix[0].some(c => /c\s*âu|c\s*au/i.test(c)) ? 0 : 1;
+      const ansRowIdx = qRowIdx === 0 ? 1 : 0;
+      if (matrix.length > ansRowIdx) {
+        for (let colIdx = 1; colIdx < matrix[qRowIdx].length; colIdx++) {
+          const qNumM = matrix[qRowIdx][colIdx].match(/\b(\d+)\b/);
+          if (qNumM) {
+            const qNum = parseInt(qNumM[1]);
+            const ansCell = colIdx < matrix[ansRowIdx].length ? matrix[ansRowIdx][colIdx] : '';
+            const trueStmts: string[] = [];
+            const regex = /([a-d])\s*[\)\.]\s*(Đúng|Sai|Dung)/gi;
+            let m: RegExpExecArray | null;
+            while ((m = regex.exec(ansCell)) !== null) {
+              const letter = m[1].toLowerCase();
+              const val = m[2].toLowerCase();
+              if (val.includes('đúng') || val.includes('dung')) {
+                trueStmts.push(letter);
+              }
+            }
+            if (trueStmts.length > 0) {
+              p2Map.set(qNum, trueStmts.sort().join(','));
+            }
+          }
+        }
+      }
+      continue;
+    }
+
+    // 3) Part 3 (Short answer numbers)
+    if (/c\s*âu|c\s*au/i.test(allTxt)) {
+      const hasNums = matrix.length > 1 && matrix[1].slice(1).some(c => /^\d+$/.test(c.replace(/\s+/g, '')));
+      if (hasNums) {
+        for (let colIdx = 1; colIdx < matrix[0].length; colIdx++) {
+          const qNumM = matrix[0][colIdx].match(/\b(\d+)\b/);
+          if (qNumM) {
+            const qNum = parseInt(qNumM[1]);
+            const ansVal = colIdx < matrix[1].length ? matrix[1][colIdx].replace(/\s+/g, '').trim() : '';
+            if (ansVal) {
+              p3Map.set(qNum, ansVal);
+            }
+          }
+        }
+      }
+      continue;
+    }
+  }
+
+  return { part1: p1Map, part2: p2Map, part3: p3Map };
+}
+
+function extractTableAsHtml(
+  tbl: Element,
+  imageRelMap: Map<string, string>,
+  wmfFormulaMap: Map<string, string>,
+  images: ImageData[]
+): { html: string; imageRIds: string[] } {
+  const tableImageRIds: string[] = [];
+  const rows = Array.from(tbl.getElementsByTagName('w:tr'));
+  if (rows.length === 0) return { html: '', imageRIds: [] };
+
+  const htmlRows: string[] = [];
+
+  for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+    const r = rows[rIdx];
+    const cells = Array.from(r.getElementsByTagName('w:tc'));
+    if (cells.length === 0) continue;
+
+    const isHeader = rIdx === 0;
+    const cellTag = isHeader ? 'th' : 'td';
+    const htmlCells: string[] = [];
+
+    for (let cIdx = 0; cIdx < cells.length; cIdx++) {
+      const c = cells[cIdx];
+      let cellText = '';
+
+      const paras = Array.from(c.getElementsByTagName('w:p'));
+      for (const p of paras) {
+        let pText = '';
+        const runs = Array.from(p.getElementsByTagName('w:r'));
+
+        for (const run of runs) {
+          const rPr = run.getElementsByTagName('w:rPr')[0];
+          const vertAlign = rPr?.getElementsByTagName('w:vertAlign')[0]?.getAttribute('w:val');
+          const isBold = rPr ? rPr.getElementsByTagName('w:b').length > 0 : false;
+          const isItalic = rPr ? rPr.getElementsByTagName('w:i').length > 0 : false;
+
+          let runText = '';
+
+          // WMF image / formula
+          const vImgs = Array.from(run.getElementsByTagName('v:imagedata'));
+          for (const vImg of vImgs) {
+            const rid = vImg.getAttribute('r:id') || vImg.getAttribute('o:relid');
+            if (rid) {
+              const fname = imageRelMap.get(rid) || '';
+              const formula = wmfFormulaMap.get(fname);
+              if (formula) {
+                runText += ` ${formula} `;
+              } else {
+                tableImageRIds.push(rid);
+                const img = images.find(im => im.filename === fname || im.rId === rid);
+                if (img) {
+                  const b64 = img.base64 || (img as any).data;
+                  const src = b64.startsWith('data:') ? b64 : `data:${img.contentType || (img as any).type || 'image/png'};base64,${b64}`;
+                  runText += `<img src="${src}" alt="Ảnh" class="max-h-28 mx-auto my-1 object-contain inline-block rounded" />`;
+                }
+              }
+            }
+          }
+
+          // Drawing blip
+          const blips = Array.from(run.getElementsByTagName('a:blip'));
+          for (const blip of blips) {
+            const rid = blip.getAttribute('r:embed');
+            if (rid) {
+              tableImageRIds.push(rid);
+              const fname = imageRelMap.get(rid) || '';
+              const img = images.find(im => im.filename === fname || im.rId === rid);
+              if (img) {
+                const b64 = img.base64 || (img as any).data;
+                const src = b64.startsWith('data:') ? b64 : `data:${img.contentType || (img as any).type || 'image/png'};base64,${b64}`;
+                runText += `<img src="${src}" alt="Ảnh" class="max-h-28 mx-auto my-1 object-contain inline-block rounded" />`;
+              }
+            }
+          }
+
+          // Text nodes
+          const tNodes = Array.from(run.getElementsByTagName('w:t'));
+          let rawT = tNodes.map(tn => tn.textContent || '').join('');
+          if (vertAlign === 'subscript' && rawT.trim()) {
+            rawT = `<sub>${rawT}</sub>`;
+          } else if (vertAlign === 'superscript' && rawT.trim()) {
+            rawT = `<sup>${rawT}</sup>`;
+          }
+          if (isBold && !isHeader && rawT.trim()) {
+            rawT = `<b>${rawT}</b>`;
+          }
+          if (isItalic && rawT.trim()) {
+            rawT = `<i>${rawT}</i>`;
+          }
+          runText += rawT;
+
+          // OMML math inside run
+          const mMath = run.getElementsByTagName('m:oMath')[0];
+          if (mMath) {
+            const ltx = ommlNodeToLatex(mMath);
+            if (ltx.trim()) runText += ` $${ltx.trim()}$ `;
+          }
+
+          pText += runText;
+        }
+
+        // Top level OMML inside paragraph
+        const topMaths = Array.from(p.getElementsByTagName('m:oMath'));
+        for (const tm of topMaths) {
+          if (tm.parentElement?.nodeName.toLowerCase() !== 'w:r') {
+            const ltx = ommlNodeToLatex(tm);
+            if (ltx.trim()) pText += ` $${ltx.trim()}$ `;
+          }
+        }
+
+        if (cellText && pText.trim()) {
+          cellText += '<br/>' + pText.trim();
+        } else {
+          cellText += pText.trim();
+        }
+      }
+
+      cellText = cellText.trim();
+      const isCenter = /[\$\%]|kcal|\bV\b|\bg\b|\bmg\b|<img/i.test(cellText) || (cIdx > 0 && cellText.length < 15);
+      const alignClass = isCenter ? 'text-center' : 'text-left';
+      const bgClass = isHeader
+        ? 'bg-slate-100 dark:bg-slate-800 font-semibold text-slate-800 dark:text-slate-100'
+        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200';
+
+      htmlCells.push(
+        `<${cellTag} class="border border-slate-300 dark:border-slate-600 px-3 py-2 ${alignClass} ${bgClass} text-sm align-middle">${cellText}</${cellTag}>`
+      );
+    }
+
+    htmlRows.push(`<tr>${htmlCells.join('')}</tr>`);
+  }
+
+  const html = `<div class="overflow-x-auto my-3"><table class="min-w-full border-collapse border border-slate-300 dark:border-slate-600 shadow-sm rounded-lg overflow-hidden bg-white dark:bg-slate-900"><tbody>${htmlRows.join('')}</tbody></table></div>`;
+  return { html, imageRIds: tableImageRIds };
+}
+
+function getBodyBlocks(elem: Element): Element[] {
+  const blocks: Element[] = [];
+  const children = Array.from(elem.childNodes);
+  for (const c of children) {
+    if (c.nodeType !== 1) continue;
+    const el = c as Element;
+    const name = (el.nodeName || '').toLowerCase().replace(/^w:/, '');
+    if (name === 'p' || name === 'tbl') {
+      blocks.push(el);
+    } else if (name === 'sdt' || name === 'sdtcontent') {
+      blocks.push(...getBodyBlocks(el));
+    }
+  }
+  return blocks;
+}
+
+function processSingleParagraph(
+  p: Element,
+  imageRelMap: Map<string, string>,
+  wmfFormulaMap: Map<string, string>
+): ParagraphData | null {
+  let text = '';
+  const imageRIds: string[] = [];
+  let hasUnderline = false;
+  const underlinedSegments: string[] = [];
+
+  const allBlips = p.getElementsByTagName('a:blip');
+  for (let k = 0; k < allBlips.length; k++) {
+    const embed = allBlips[k].getAttribute('r:embed');
+    if (embed && !imageRIds.includes(embed)) imageRIds.push(embed);
+  }
+
+  const allVImgs = p.getElementsByTagName('v:imagedata');
+  for (let k = 0; k < allVImgs.length; k++) {
+    const rid = allVImgs[k].getAttribute('r:id') || allVImgs[k].getAttribute('o:relid');
+    if (rid) {
+      const fname = imageRelMap.get(rid) || '';
+      if (!wmfFormulaMap.has(fname) && !imageRIds.includes(rid)) {
+        imageRIds.push(rid);
+      }
+    }
+  }
+
+  const childNodes = Array.from(p.childNodes);
+
+  for (let j = 0; j < childNodes.length; j++) {
+    const node = childNodes[j] as Element;
+    if (node.nodeType !== 1) continue;
+
+    const nodeName = (node.nodeName || '').toLowerCase();
+
+    // OMML math
+    if (nodeName === 'm:omath' || nodeName === 'm:omathpara') {
+      const latex = ommlNodeToLatex(node);
+      if (latex.trim()) {
+        text += ` $${latex.trim()}$ `;
+      }
+      continue;
+    }
+
+    // Run element (w:r)
+    if (nodeName === 'w:r') {
+      const rPr = node.getElementsByTagName('w:rPr')[0];
+      const isUnderlined = rPr ? rPr.getElementsByTagName('w:u').length > 0 : false;
+      const isHighlighted = rPr ? rPr.getElementsByTagName('w:highlight').length > 0 : false;
+      const colorNode = rPr?.getElementsByTagName('w:color')[0];
+      const colorVal = colorNode?.getAttribute('w:val')?.toLowerCase();
+      const isRedColor = colorVal === 'ff0000' || colorVal === 'red';
+
+      const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0];
+      const vertAlign = vertAlignNode?.getAttribute('w:val');
+
+      let runText = '';
+
+      // Check for tabs
+      const tabs = node.getElementsByTagName('w:tab');
+      if (tabs.length > 0) {
+        runText += '    '.repeat(tabs.length);
+      }
+
+      // Check for inline WMF formulas
+      const vImgs = node.getElementsByTagName('v:imagedata');
+      for (let k = 0; k < vImgs.length; k++) {
+        const rid = vImgs[k].getAttribute('r:id') || vImgs[k].getAttribute('o:relid');
+        if (rid) {
+          const fname = imageRelMap.get(rid) || '';
+          const form = wmfFormulaMap.get(fname);
+          if (form) runText += ` ${form} `;
+        }
+      }
+
+      // w:t
+      const wTextNodes = node.getElementsByTagName('w:t');
+      for (let k = 0; k < wTextNodes.length; k++) runText += wTextNodes[k].textContent || '';
+
+      // OMML inline
+      const mMath = node.getElementsByTagName('m:oMath')[0];
+      if (mMath) {
+        const ltx = ommlNodeToLatex(mMath);
+        if (ltx.trim()) runText += ` $${ltx.trim()}$ `;
+      } else {
+        const mTextNodes = node.getElementsByTagName('m:t');
+        for (let k = 0; k < mTextNodes.length; k++) runText += mTextNodes[k].textContent || '';
+      }
+
+      // line breaks
+      const brs = node.getElementsByTagName('w:br');
+      if (brs.length > 0) runText += '\n'.repeat(brs.length);
+
+      // Subscripts / Superscripts
+      if (vertAlign === 'subscript' && runText.trim()) {
+        runText = `<sub>${runText}</sub>`;
+      } else if (vertAlign === 'superscript' && runText.trim()) {
+        runText = `<sup>${runText}</sup>`;
+      }
+
+      if ((isUnderlined || isHighlighted || isRedColor) && runText.trim()) {
+        hasUnderline = true;
+        underlinedSegments.push(runText.trim());
+      }
+
+      text += runText;
+    }
+  }
+
+  // Reaction arrows
+  text = text.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
+  text = text.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
+  text = text.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
+  text = text.replace(/\s*<=>\s*/g, ' $\\rightleftharpoons$ ');
+  text = text.replace(/\s*⇌\s*/g, ' $\\rightleftharpoons$ ');
+  text = text.replace(/\s*→\s*/g, ' $\\rightarrow$ ');
+
+  text = normalizeVietnamese(text.trim());
+  text = normalizeLatex(text);
+
+  // Markdown underline
+  const markdownUnderlinePattern = /\[([A-Da-d])\]\{\.underline\}/g;
+  let mdMatch: RegExpExecArray | null;
+  while ((mdMatch = markdownUnderlinePattern.exec(text)) !== null) {
+    hasUnderline = true;
+    underlinedSegments.push(mdMatch[1]);
+  }
+  text = text.replace(/\[([A-Da-d])\]\{\.underline\}/g, '$1');
+
+  text = text.replace(/[ \t]*\n[ \t]*/g, '\n').trim();
+
+  if (text || imageRIds.length > 0) {
+    return { text, imageRIds, hasUnderline, underlinedSegments };
+  }
+  return null;
+}
+
+// ============================================================
+// EXTRACT PARAGRAPHS & TABLES (AZOTA PARITY)
 // ============================================================
 
 function extractParagraphsWithUnderline(
   xmlDoc: Document,
   imageRelMap: Map<string, string>,
-  wmfFormulaMap: Map<string, string>
-): ParagraphData[] {
+  wmfFormulaMap: Map<string, string>,
+  images: ImageData[]
+): { paragraphs: ParagraphData[]; tableAnswers: TableAnswerMap } {
   const paragraphs: ParagraphData[] = [];
-  const pElements = xmlDoc.getElementsByTagName('w:p');
 
-  for (let i = 0; i < pElements.length; i++) {
-    const p = pElements[i];
+  // Parse all answer key tables in document
+  const allTbls = Array.from(xmlDoc.getElementsByTagName('w:tbl'));
+  const tableAnswers = parseAnswerKeyTables(allTbls);
+  console.log(`📋 Auto-detected answer tables: P1=${tableAnswers.part1.size}, P2=${tableAnswers.part2.size}, P3=${tableAnswers.part3.size}`);
 
-    let text = '';
-    const imageRIds: string[] = [];
-    let hasUnderline = false;
-    const underlinedSegments: string[] = [];
+  // Traverse body blocks in strict sequential order
+  const body = xmlDoc.getElementsByTagName('w:body')[0] || xmlDoc.documentElement;
+  const blocks = getBodyBlocks(body);
 
-    // Collect drawing/pict images in paragraph
-    const allBlips = p.getElementsByTagName('a:blip');
-    for (let k = 0; k < allBlips.length; k++) {
-      const embed = allBlips[k].getAttribute('r:embed');
-      if (embed && !imageRIds.includes(embed)) imageRIds.push(embed);
-    }
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const name = (block.nodeName || '').toLowerCase().replace(/^w:/, '');
 
-    const allVImgs = p.getElementsByTagName('v:imagedata');
-    for (let k = 0; k < allVImgs.length; k++) {
-      const rid = allVImgs[k].getAttribute('r:id') || allVImgs[k].getAttribute('o:relid');
-      if (rid) {
-        const fname = imageRelMap.get(rid) || '';
-        // If this image was decoded into a chemical formula, don't keep as image
-        if (wmfFormulaMap.has(fname)) {
-          // Handled inline in runs
-        } else if (!imageRIds.includes(rid)) {
-          imageRIds.push(rid);
-        }
+    if (name === 'tbl') {
+      if (isAnswerKeyTable(block)) {
+        // Skip answer key tables from paragraph flow (they are parsed into tableAnswers)
+        continue;
       }
-    }
 
-    const childNodes = Array.from(p.childNodes);
+      if (isHeaderBannerTable(block)) {
+        // Skip document header banners (e.g. "KÌ THI TỐT NGHIỆP THPT")
+        continue;
+      }
 
-    for (let j = 0; j < childNodes.length; j++) {
-      const node = childNodes[j] as Element;
-      if (node.nodeType !== 1) continue;
-
-      const nodeName = (node.nodeName || '').toLowerCase();
-
-      // OMML math
-      if (nodeName === 'm:omath' || nodeName === 'm:omathpara') {
-        const latex = ommlNodeToLatex(node);
-        if (latex.trim()) {
-          text += ` $${latex.trim()}$ `;
+      if (isLayoutTable(block)) {
+        // Layout table with question stems and side-by-side images
+        const innerPs = Array.from(block.getElementsByTagName('w:p'));
+        for (const ip of innerPs) {
+          const pData = processSingleParagraph(ip, imageRelMap, wmfFormulaMap);
+          if (pData) paragraphs.push(pData);
         }
         continue;
       }
 
-      // Run element (w:r)
-      if (nodeName === 'w:r') {
-        const rPr = node.getElementsByTagName('w:rPr')[0];
-        const isUnderlined = rPr ? rPr.getElementsByTagName('w:u').length > 0 : false;
-        const isHighlighted = rPr ? rPr.getElementsByTagName('w:highlight').length > 0 : false;
-        const colorNode = rPr?.getElementsByTagName('w:color')[0];
-        const colorVal = colorNode?.getAttribute('w:val')?.toLowerCase();
-        const isRedColor = colorVal === 'ff0000' || colorVal === 'red';
-
-        const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0];
-        const vertAlign = vertAlignNode?.getAttribute('w:val');
-
-        let runText = '';
-
-        // Check for tabs
-        const tabs = node.getElementsByTagName('w:tab');
-        if (tabs.length > 0) {
-          runText += '    '.repeat(tabs.length);
-        }
-
-        // Check for inline WMF formulas
-        const vImgs = node.getElementsByTagName('v:imagedata');
-        for (let k = 0; k < vImgs.length; k++) {
-          const rid = vImgs[k].getAttribute('r:id') || vImgs[k].getAttribute('o:relid');
-          if (rid) {
-            const fname = imageRelMap.get(rid) || '';
-            const form = wmfFormulaMap.get(fname);
-            if (form) runText += ` ${form} `;
-          }
-        }
-
-        // w:t
-        const wTextNodes = node.getElementsByTagName('w:t');
-        for (let k = 0; k < wTextNodes.length; k++) runText += wTextNodes[k].textContent || '';
-
-        // OMML inline
-        const mMath = node.getElementsByTagName('m:oMath')[0];
-        if (mMath) {
-          const ltx = ommlNodeToLatex(mMath);
-          if (ltx.trim()) runText += ` $${ltx.trim()}$ `;
-        } else {
-          const mTextNodes = node.getElementsByTagName('m:t');
-          for (let k = 0; k < mTextNodes.length; k++) runText += mTextNodes[k].textContent || '';
-        }
-
-        // line breaks
-        const brs = node.getElementsByTagName('w:br');
-        if (brs.length > 0) runText += '\n'.repeat(brs.length);
-
-        // Subscripts / Superscripts
-        if (vertAlign === 'subscript' && runText.trim()) {
-          runText = `<sub>${runText}</sub>`;
-        } else if (vertAlign === 'superscript' && runText.trim()) {
-          runText = `<sup>${runText}</sup>`;
-        }
-
-        if ((isUnderlined || isHighlighted || isRedColor) && runText.trim()) {
-          hasUnderline = true;
-          underlinedSegments.push(runText.trim());
-        }
-
-        text += runText;
+      // Standard content table (nutrition facts, electrode potentials, electrolysis, data tables)
+      const { html, imageRIds } = extractTableAsHtml(block, imageRelMap, wmfFormulaMap, images);
+      if (html) {
+        paragraphs.push({
+          text: html,
+          imageRIds,
+          hasUnderline: false,
+          underlinedSegments: []
+        });
       }
-    }
-
-    // Reaction arrows
-    text = text.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
-    text = text.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
-    text = text.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
-    text = text.replace(/\s*<=>\s*/g, ' $\\rightleftharpoons$ ');
-    text = text.replace(/\s*⇌\s*/g, ' $\\rightleftharpoons$ ');
-    text = text.replace(/\s*→\s*/g, ' $\\rightarrow$ ');
-
-    text = normalizeVietnamese(text.trim());
-    text = normalizeLatex(text);
-
-    // Markdown underline
-    const markdownUnderlinePattern = /\[([A-Da-d])\]\{\.underline\}/g;
-    let mdMatch: RegExpExecArray | null;
-    while ((mdMatch = markdownUnderlinePattern.exec(text)) !== null) {
-      hasUnderline = true;
-      underlinedSegments.push(mdMatch[1]);
-    }
-    text = text.replace(/\[([A-Da-d])\]\{\.underline\}/g, '$1');
-
-    text = text.replace(/[ \t]*\n[ \t]*/g, '\n').trim();
-
-    if (text || imageRIds.length > 0) {
-      paragraphs.push({ text, imageRIds, hasUnderline, underlinedSegments });
+    } else if (name === 'p') {
+      const pData = processSingleParagraph(block, imageRelMap, wmfFormulaMap);
+      if (pData) paragraphs.push(pData);
     }
   }
 
-  return paragraphs;
+  return { paragraphs, tableAnswers };
 }
 
 // ============================================================
 // PARSE ALL QUESTIONS
 // ============================================================
 
-function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): ExamData {
+function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[], tableAnswers?: TableAnswerMap): ExamData {
   const examData: ExamData = {
     title: '',
     timeLimit: 90,
@@ -814,9 +1151,9 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[]): Ex
   const sectionInfo = detectSections(fullText, paragraphs);
   console.log('📊 Section info:', sectionInfo);
 
-  const part1Questions = parsePart1WithUnderline(paragraphs, sectionInfo.part1Start, sectionInfo.part2Start, images);
-  const part2Questions = parsePart2(paragraphs, sectionInfo.part2Start, sectionInfo.part3Start, images);
-  const part3Questions = parsePart3(paragraphs, sectionInfo.part3Start, sectionInfo.part3End, images);
+  const part1Questions = parsePart1WithUnderline(paragraphs, sectionInfo.part1Start, sectionInfo.part2Start, images, tableAnswers?.part1);
+  const part2Questions = parsePart2(paragraphs, sectionInfo.part2Start, sectionInfo.part3Start, images, tableAnswers?.part2);
+  const part3Questions = parsePart3(paragraphs, sectionInfo.part3Start, sectionInfo.part3End, images, tableAnswers?.part3);
 
   console.log(
     `📊 Parsed: PHẦN 1=${part1Questions.length}, PHẦN 2=${part2Questions.length}, PHẦN 3=${part3Questions.length}`
@@ -1032,7 +1369,8 @@ function parsePart1WithUnderline(
   paragraphs: ParagraphData[],
   startIdx: number,
   endIdx: number,
-  images: ImageData[]
+  images: ImageData[],
+  tableAnswers?: Map<number, string>
 ): ParsedQuestion[] {
   if (startIdx < 0 || endIdx <= startIdx) return [];
 
@@ -1208,6 +1546,15 @@ function parsePart1WithUnderline(
     if (currentQ.text) questions.push(currentQ);
   }
 
+  // Auto-apply table answers if available
+  if (tableAnswers) {
+    for (const q of questions) {
+      if (tableAnswers.has(q.number)) {
+        q.correctAnswer = tableAnswers.get(q.number)!;
+      }
+    }
+  }
+
   questions.sort((a, b) => a.number - b.number);
   return questions;
 }
@@ -1216,7 +1563,7 @@ function parsePart1WithUnderline(
 // PARSE PART 2: TRUE/FALSE (WITH MULTI-COLUMN STATEMENTS)
 // ============================================================
 
-function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[]): ParsedQuestion[] {
+function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[], tableAnswers?: Map<number, string>): ParsedQuestion[] {
   if (startIdx < 0 || endIdx <= startIdx || startIdx >= paragraphs.length) return [];
 
   const questions: ParsedQuestion[] = [];
@@ -1381,12 +1728,14 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     }
 
     // Collect stem only before statements
-    if (collectingContent && text && !inSolution && !startedStatements) {
-      if (/^H(?:ình|inh)\s*\d+/i.test(text)) {
-        if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
-        continue;
+    if (collectingContent && !inSolution && !startedStatements) {
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
+      if (text) {
+        if (!/^H(?:ình|inh)\s*\d+/i.test(text)) {
+          contentBuffer.push(text);
+        }
       }
-      contentBuffer.push(text);
+      continue;
     }
 
     // Collect solution
@@ -1411,6 +1760,15 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
     if (currentQ.text) questions.push(currentQ);
   }
 
+  // Auto-apply table answers if available
+  if (tableAnswers) {
+    for (const q of questions) {
+      if (tableAnswers.has(q.number)) {
+        q.correctAnswer = tableAnswers.get(q.number)!;
+      }
+    }
+  }
+
   questions.sort((a, b) => a.number - b.number);
   return questions;
 }
@@ -1419,7 +1777,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 // PARSE PART 3: SHORT ANSWER & WRITING
 // ============================================================
 
-function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[]): ParsedQuestion[] {
+function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: number, images: ImageData[], tableAnswers?: Map<number, string>): ParsedQuestion[] {
   if (startIdx < 0 || startIdx >= paragraphs.length || endIdx <= startIdx) return [];
 
   const questions: ParsedQuestion[] = [];
@@ -1487,12 +1845,14 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       continue;
     }
 
-    if (collectingContent && text) {
-      if (/^H(?:ình|inh)\s*\d+/i.test(text)) {
-        if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
-        continue;
+    if (collectingContent) {
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
+      if (text) {
+        if (!/^H(?:ình|inh)\s*\d+/i.test(text)) {
+          contentBuffer.push(text);
+        }
       }
-      contentBuffer.push(text);
+      continue;
     }
 
     // Solution
@@ -1513,6 +1873,15 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
       currentQ.part = 4;
     }
     if (currentQ.text) questions.push(currentQ);
+  }
+
+  // Auto-apply table answers if available
+  if (tableAnswers) {
+    for (const q of questions) {
+      if (tableAnswers.has(q.number)) {
+        q.correctAnswer = tableAnswers.get(q.number)!;
+      }
+    }
   }
 
   questions.sort((a, b) => a.number - b.number);

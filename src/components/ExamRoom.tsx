@@ -454,9 +454,10 @@ const QuestionCard: React.FC<any> = ({ question, displayNum, userAnswer, onChang
 
   const imageUrls = useMemo(() => {
     return questionImages.map((img: any) => {
-      if (img.base64) {
-        const contentType = img.contentType || 'image/png';
-        return img.base64.startsWith('data:') ? img.base64 : `data:${contentType};base64,${img.base64}`;
+      const b64 = img.base64 || img.data;
+      if (b64) {
+        const contentType = img.contentType || img.type || 'image/png';
+        return b64.startsWith('data:') ? b64 : `data:${contentType};base64,${b64}`;
       }
       return null;
     }).filter(Boolean);
