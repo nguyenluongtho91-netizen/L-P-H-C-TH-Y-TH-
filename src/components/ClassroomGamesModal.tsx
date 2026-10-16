@@ -126,12 +126,94 @@ const WHEEL_COLORS = [
   '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6'
 ];
 
+
+const CLASS_KEYS = ['online', '6', '7', '7H', '8', '8H', '9', '9H', '10', '11', '12'] as const;
+const CLASS_NAMES: Record<string, string> = {
+  'online': 'Phòng Online',
+  '6': 'Lớp 6',
+  '7': 'Lớp 7',
+  '7H': 'Lớp 7H (Hóa)',
+  '8': 'Lớp 8',
+  '8H': 'Lớp 8H (Hóa)',
+  '9': 'Lớp 9',
+  '9H': 'Lớp 9H (Hóa)',
+  '10': 'Lớp 10',
+  '11': 'Lớp 11',
+  '12': 'Lớp 12'
+};
+
+const DEFAULT_CLASS_DATA: Record<string, string[]> = {
+  '6': [
+    'Nguyễn Tuấn Khang (6A1)', 'Trần Quỳnh Anh (6A1)', 'Lê Gia Hưng (6A2)', 'Phạm Thảo Linh (6A2)',
+    'Vũ Đức Minh (6A1)', 'Hoàng Ngọc Ánh (6A3)', 'Đỗ Nhật Quang (6A2)', 'Bùi Hoàng Long (6A1)',
+    'Đinh Minh Trang (6A3)', 'Ngô Khánh Linh (6A2)', 'Mai Thế Vinh (6A1)', 'Phan Thanh Tú (6A3)'
+  ],
+  '7': [
+    'Nguyễn Văn Đức (7A1)', 'Trần Thùy Dương (7A1)', 'Lê Bảo Nam (7A2)', 'Phạm Quang Minh (7A2)',
+    'Vũ Mỹ Uyên (7A1)', 'Hoàng Tuấn Anh (7A3)', 'Đỗ Gia Huy (7A2)', 'Bùi Thanh Mai (7A1)',
+    'Đinh Quốc Trung (7A3)', 'Ngô Thục Trinh (7A2)', 'Mai Công Thành (7A1)', 'Phan Ánh Nguyệt (7A3)'
+  ],
+  '7H': [
+    'Nguyễn Hà My (7H)', 'Trần Gia Bảo (7H)', 'Lê Đình Khôi (7H)', 'Phạm Minh Hạnh (7H)',
+    'Vũ Trung Hiếu (7H)', 'Hoàng Bích Ngân (7H)', 'Đỗ Việt Dũng (7H)', 'Bùi Thúy An (7H)',
+    'Đinh Xuân Bách (7H)', 'Ngô Phương Linh (7H)', 'Mai Anh Quân (7H)', 'Phan Diệu Linh (7H)'
+  ],
+  '8': [
+    'Nguyễn Thành Long (8A1)', 'Trần Ngọc Bích (8A1)', 'Lê Hoàng Phong (8A2)', 'Phạm Diệu Thảo (8A2)',
+    'Vũ Hải Đăng (8A1)', 'Hoàng Trọng Nghĩa (8A3)', 'Đỗ Mai Trang (8A2)', 'Bùi Thế Hiển (8A1)',
+    'Đinh Huyền Trang (8A3)', 'Ngô Quang Huy (8A2)', 'Mai Nhật Lam (8A1)', 'Phan Thùy Trang (8A3)'
+  ],
+  '8H': [
+    'Nguyễn Duy Khang (8H)', 'Trần Thanh Vân (8H)', 'Lê Nguyên Khôi (8H)', 'Phạm Ngọc Trâm (8H)',
+    'Vũ Anh Dũng (8H)', 'Hoàng Lan Chi (8H)', 'Đỗ Mạnh Hùng (8H)', 'Bùi Diễm Quỳnh (8H)',
+    'Đinh Minh Trí (8H)', 'Ngô Tú Uyên (8H)', 'Mai Tuấn Kiệt (8H)', 'Phan Như Quỳnh (8H)'
+  ],
+  '9': [
+    'Nguyễn Quang Dũng (9A1)', 'Trần Minh Hằng (9A1)', 'Lê Đình Phúc (9A2)', 'Phạm Hồng Nhung (9A2)',
+    'Vũ Quốc Khánh (9A1)', 'Hoàng Kim Ngân (9A3)', 'Đỗ Hữu Thắng (9A2)', 'Bùi Thanh Trúc (9A1)',
+    'Đinh Vĩnh Khang (9A3)', 'Ngô Diệu Hương (9A2)', 'Mai Trung Kiên (9A1)', 'Phan Yến Nhi (9A3)'
+  ],
+  '9H': [
+    'Nguyễn Đức Thắng (9H)', 'Trần Ánh Hồng (9H)', 'Lê Quốc Toàn (9H)', 'Phạm Diệu Nga (9H)',
+    'Vũ Hoàng Quân (9H)', 'Hoàng Thục Đoan (9H)', 'Đỗ Trọng Hiếu (9H)', 'Bùi Thùy Trâm (9H)',
+    'Đinh Tùng Lâm (9H)', 'Ngô Bích Thảo (9H)', 'Mai Gia Khiêm (9H)', 'Phan Ngọc Hà (9H)'
+  ],
+  '10': [
+    'Nguyễn Văn An (10A1)', 'Trần Thị Mai (10A1)', 'Lê Hoàng Nam (10A2)', 'Phạm Minh Đức (10A2)',
+    'Vũ Thùy Linh (10A1)', 'Đặng Tuấn Kiệt (10A3)', 'Hoàng Bảo Ngọc (10A2)', 'Bùi Gia Huy (10A1)',
+    'Nguyễn Hải Đăng (10A3)', 'Trần Ngọc Ánh (10A2)', 'Đỗ Quang Hải (10A1)', 'Lê Minh Khôi (10A3)'
+  ],
+  '11': [
+    'Nguyễn Đức Thịnh (11A1)', 'Trần Hồng Gấm (11A1)', 'Lê Xuân Trường (11A2)', 'Phạm Thùy Chi (11A2)',
+    'Vũ Đình Trọng (11A1)', 'Hoàng Khánh Chi (11A3)', 'Đỗ Bá Đạt (11A2)', 'Bùi Mỹ Lệ (11A1)',
+    'Đinh Thành Nam (11A3)', 'Ngô Lan Hương (11A2)', 'Mai Hữu Phước (11A1)', 'Phan Thu Thảo (11A3)'
+  ],
+  '12': [
+    'Nguyễn Tuấn Anh (12A1)', 'Trần Mai Hoa (12A1)', 'Lê Minh Nhật (12A2)', 'Phạm Quỳnh Giang (12A2)',
+    'Vũ Cao Thắng (12A1)', 'Hoàng Thảo My (12A3)', 'Đỗ Đức Thọ (12A2)', 'Bùi Ánh Tuyết (12A1)',
+    'Đinh Phúc Lâm (12A3)', 'Ngô Thúy Quỳnh (12A2)', 'Mai Hoàng Bách (12A1)', 'Phan Bảo Hân (12A3)'
+  ]
+};
+
 export default function ClassroomGamesModal({
   isOpen,
   onClose,
   studentList = [],
   onSpotlightStudent
 }: ClassroomGamesModalProps) {
+  const [currentClassKey, setCurrentClassKey] = useState<string>('10');
+
+  const handleSelectClass = (key: string) => {
+    setCurrentClassKey(key);
+    setWinner(null);
+    if (key === 'online') {
+      const actual = studentList.filter(s => !s.name?.includes('Thầy') && !s.isHost).map(s => s.name);
+      setNames(actual.length >= 2 ? actual : DEFAULT_CLASS_DATA['10']);
+    } else {
+      setNames(DEFAULT_CLASS_DATA[key] || []);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'wheel' | 'mystery' | 'slot' | 'race' | 'lightning' | 'chest'>('wheel');
   
   // Danh sách tên tham gia trò chơi
@@ -551,7 +633,7 @@ export default function ClassroomGamesModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
-      <div className="bg-slate-900 border-2 border-amber-500/50 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl shadow-amber-500/20 overflow-hidden relative">
+      <div className="bg-slate-900 border-2 border-amber-500/50 rounded-3xl max-w-6xl w-[98vw] max-h-[96vh] flex flex-col shadow-2xl shadow-amber-500/20 overflow-hidden relative">
         
         {/* --- HEADER MODAL TRÒ CHƠI --- */}
         <div className="bg-gradient-to-r from-amber-600 via-rose-600 to-indigo-700 p-4 sm:px-6 flex items-center justify-between text-white shrink-0">
@@ -587,6 +669,42 @@ export default function ClassroomGamesModal({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+                {/* --- THANH CHỌN 10 LỚP HỌC (LỚP 6 ĐẾN LỚP 12 + 7H, 8H, 9H) --- */}
+        <div className="bg-slate-950 border-b border-slate-800 px-4 py-2 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 text-xs font-black text-sky-400 uppercase tracking-wider">
+            <span>🏫</span>
+            <span className="hidden sm:inline">CHỌN LỚP:</span>
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            {CLASS_KEYS.map((k) => {
+              const isHoa = k.endsWith('H');
+              const isCurrent = currentClassKey === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => handleSelectClass(k)}
+                  className={`px-3 py-1 rounded-xl text-xs font-black transition flex items-center gap-1 whitespace-nowrap ${
+                    isCurrent
+                      ? isHoa
+                        ? 'bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-500/30 ring-1 ring-amber-300'
+                        : 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-sky-300'
+                      : isHoa
+                      ? 'bg-red-950/60 text-red-300 hover:bg-red-900/60 border border-red-800/60'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                  }`}
+                >
+                  <span>{CLASS_NAMES[k]}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-300 bg-slate-900 px-3 py-1 rounded-xl border border-slate-800 shrink-0 font-bold">
+            <span>Đang chọn:</span>
+            <span className="text-sky-400 font-black">{CLASS_NAMES[currentClassKey]}</span>
+            <span className="text-slate-500">({names.length} bạn)</span>
           </div>
         </div>
 

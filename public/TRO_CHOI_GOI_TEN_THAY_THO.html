@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trò Chơi Gọi Tên Học Sinh Gay Cấn — Thầy Lương Thọ</title>
+  <title>Trò Chơi Gọi Tên Học Sinh 10 Lớp — Thầy Lương Thọ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #090d16;
-      --card-bg: #111827;
-      --border-color: #374151;
+      --bg-dark: #070a12;
+      --card-bg: #0f172a;
+      --border-color: #1e293b;
       --primary: #f59e0b;
       --rose: #f43f5e;
       --indigo: #6366f1;
       --cyan: #06b6d4;
-      --green: #10b981;
+      --emerald: #10b981;
+      --purple: #a855f7;
     }
     * {
       box-sizing: border-box;
@@ -40,10 +41,10 @@
     }
     @keyframes screenShake {
       0%, 100% { transform: translate(0, 0); }
-      20% { transform: translate(-8px, 6px); }
-      40% { transform: translate(8px, -6px); }
-      60% { transform: translate(-6px, -4px); }
-      80% { transform: translate(6px, 4px); }
+      20% { transform: translate(-10px, 8px); }
+      40% { transform: translate(10px, -8px); }
+      60% { transform: translate(-8px, -6px); }
+      80% { transform: translate(8px, 6px); }
     }
 
     /* Flash effect */
@@ -57,13 +58,16 @@
       transition: opacity 0.08s ease-out;
     }
 
+    /* Header */
     header {
-      background: linear-gradient(135deg, #b45309 0%, #be123c 40%, #4338ca 75%, #047857 100%);
-      padding: 14px 24px;
+      background: linear-gradient(135deg, #9a3412 0%, #be123c 35%, #4338ca 70%, #065f46 100%);
+      padding: 12px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .header-title {
       display: flex;
@@ -85,14 +89,14 @@
       font-size: 20px;
       font-weight: 900;
       color: #ffffff;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4);
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .badge-sub {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       background: #fef08a;
       color: #854d0e;
       padding: 2px 8px;
@@ -102,29 +106,124 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
-    .btn-fs {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.2);
+    .btn-hdr {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.25);
       color: #ffffff;
-      padding: 8px 14px;
+      padding: 7px 14px;
       border-radius: 12px;
       font-weight: 700;
       font-size: 12px;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn-fs:hover {
-      background: rgba(0,0,0,0.6);
-      transform: scale(1.05);
+    .btn-hdr:hover {
+      background: rgba(0,0,0,0.65);
+      transform: scale(1.04);
     }
 
-    /* Tabs Bar */
+    /* --- THANH CHỌN 10 LỚP HỌC (LỚP 6 ĐẾN LỚP 12 + 7H, 8H, 9H) --- */
+    .class-bar {
+      background: #0b1120;
+      border-bottom: 2px solid #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      overflow-x: auto;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,0.05);
+    }
+    .class-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .class-label {
+      font-size: 12px;
+      font-weight: 900;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .class-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 2px 0;
+    }
+    .class-pill {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1.5px solid #334155;
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .class-pill:hover {
+      color: #ffffff;
+      background: #334155;
+      border-color: #64748b;
+      transform: translateY(-1px);
+    }
+    .class-pill.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+      border-color: #60a5fa;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+      transform: translateY(-1px);
+    }
+    .class-pill.active.pill-hoa {
+      background: linear-gradient(135deg, #d97706, #dc2626);
+      border-color: #f87171;
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+    }
+    .class-pill-badge {
+      font-size: 10px;
+      background: rgba(0,0,0,0.35);
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    .class-info-tag {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #cbd5e1;
+      background: #172554;
+      border: 1px solid #1e40af;
+      padding: 6px 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .class-info-tag b {
+      color: #38bdf8;
+    }
+
+    /* Tabs Bar (6 Trò Chơi) */
     .tab-bar {
       background: #0f172a;
       border-bottom: 1px solid #1e293b;
-      padding: 10px 20px;
+      padding: 8px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -202,36 +301,40 @@
       white-space: nowrap;
     }
 
-    /* Main Container */
+    /* Main Container (GẦN TRÀN MÀN HÌNH) */
     .container {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 320px;
-      gap: 20px;
-      padding: 20px;
-      max-width: 1400px;
+      grid-template-columns: 1fr 310px;
+      gap: 16px;
+      padding: 14px 18px;
       width: 100%;
-      margin: 0 auto;
+      margin: 0;
+      transition: all 0.3s ease;
     }
-    @media (max-width: 960px) {
+    .container.sidebar-hidden {
+      grid-template-columns: 1fr;
+    }
+    @media (max-width: 990px) {
       .container {
         grid-template-columns: 1fr;
       }
     }
 
-    /* Game Stage */
+    /* Game Stage (GẦN TRÀN MÀN HÌNH - RỘNG VÀ LỚN) */
     .stage {
-      background: #111827;
-      border: 2px solid #1f2937;
-      border-radius: 24px;
-      padding: 20px;
+      background: #0b1120;
+      border: 2px solid #1e293b;
+      border-radius: 26px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       position: relative;
-      min-height: 490px;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      min-height: 560px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.4);
+      width: 100%;
     }
 
     /* Winner Popup */
@@ -243,7 +346,7 @@
       background: linear-gradient(135deg, #f59e0b, #f43f5e, #6366f1);
       padding: 3px;
       border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.8);
       z-index: 50;
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       display: none;
@@ -262,14 +365,14 @@
       text-transform: uppercase;
     }
     .winner-name {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 900;
       color: #ffffff;
       margin: 6px 0;
-      text-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
+      text-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
     }
     .winner-desc {
-      font-size: 12px;
+      font-size: 13px;
       color: #94a3b8;
     }
 
@@ -277,22 +380,22 @@
     .btn-spin {
       background: linear-gradient(135deg, #f59e0b, #ea580c);
       color: #0f172a;
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 900;
-      padding: 12px 38px;
-      border-radius: 18px;
+      padding: 14px 44px;
+      border-radius: 20px;
       border: none;
       cursor: pointer;
-      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
+      box-shadow: 0 10px 25px rgba(245, 158, 11, 0.45);
       transition: all 0.15s ease;
       letter-spacing: 0.5px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
     .btn-spin:hover {
       transform: translateY(-2px);
-      box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6);
+      box-shadow: 0 15px 35px rgba(245, 158, 11, 0.65);
     }
     .btn-spin:active {
       transform: translateY(1px);
@@ -303,79 +406,86 @@
       transform: none !important;
     }
 
-    /* --- GAME 1: WHEEL --- */
+    /* --- GAME 1: WHEEL (VÒNG QUAY) --- */
     .wheel-stage {
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
     .wheel-wrapper {
       position: relative;
-      margin-bottom: 20px;
-      width: 360px;
-      height: 360px;
+      margin-bottom: 22px;
+      width: 420px;
+      height: 420px;
       display: flex;
       align-items: center;
       justify-content: center;
+      max-width: 90vw;
+      max-height: 90vw;
     }
     .wheel-pointer {
       position: absolute;
-      top: -14px;
+      top: -16px;
       left: 50%;
       transform: translateX(-50%);
       width: 0;
       height: 0;
-      border-left: 16px solid transparent;
-      border-right: 16px solid transparent;
-      border-top: 30px solid #f59e0b;
+      border-left: 18px solid transparent;
+      border-right: 18px solid transparent;
+      border-top: 34px solid #f59e0b;
       z-index: 20;
       filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
     }
     #wheelCanvas {
       border-radius: 50%;
-      box-shadow: 0 0 35px rgba(0, 0, 0, 0.8);
-      border: 6px solid #1e293b;
+      box-shadow: 0 0 45px rgba(0, 0, 0, 0.85);
+      border: 8px solid #1e293b;
       background: #0f172a;
       display: block;
+      width: 420px;
+      height: 420px;
     }
 
-    /* --- GAME 2: BOMB --- */
+    /* --- GAME 2: BOMB (QUẢ BOM) --- */
     .bomb-stage {
       display: none;
       flex-direction: column;
       align-items: center;
       text-align: center;
+      width: 100%;
     }
     .bomb-icon {
-      font-size: 88px;
-      margin-bottom: 14px;
+      font-size: 110px;
+      margin-bottom: 16px;
       transition: all 0.15s;
     }
     .bomb-icon.ticking {
-      transform: scale(1.15);
+      transform: scale(1.2);
       animation: pulse 0.15s infinite alternate;
     }
     .bomb-countdown {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 900;
       color: #f43f5e;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
       letter-spacing: 2px;
     }
     .bomb-display {
       background: #090d16;
-      border: 2px solid #374151;
-      border-radius: 18px;
-      padding: 14px 30px;
-      min-width: 300px;
-      font-size: 20px;
+      border: 3px solid #374151;
+      border-radius: 20px;
+      padding: 18px 40px;
+      min-width: 360px;
+      max-width: 90%;
+      font-size: 24px;
       font-weight: 900;
       color: #ffffff;
-      margin-bottom: 20px;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+      margin-bottom: 24px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
     }
 
-    /* --- GAME 3: SLOT --- */
+    /* --- GAME 3: SLOT JACKPOT --- */
     .slot-stage {
       display: none;
       flex-direction: column;
@@ -386,34 +496,34 @@
     .slot-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      max-width: 520px;
+      gap: 16px;
+      max-width: 720px;
       width: 100%;
       background: #090d16;
-      border: 4px solid #6366f1;
-      border-radius: 20px;
-      padding: 18px;
-      margin-bottom: 22px;
-      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+      border: 5px solid #6366f1;
+      border-radius: 24px;
+      padding: 22px;
+      margin-bottom: 26px;
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
     }
     .slot-box {
       background: #1e293b;
       border: 2px solid #334155;
-      border-radius: 14px;
-      height: 110px;
+      border-radius: 16px;
+      height: 140px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 6px;
+      padding: 10px;
       overflow: hidden;
     }
     .slot-star {
-      font-size: 26px;
-      margin-bottom: 4px;
+      font-size: 36px;
+      margin-bottom: 6px;
     }
     .slot-name {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 800;
       color: #ffffff;
       max-width: 100%;
@@ -422,90 +532,98 @@
       white-space: nowrap;
     }
 
-    /* --- GAME 4: F1 RACE (ĐUA XE) --- */
+    /* --- GAME 4: F1 RACE (ĐƯỜNG ĐUA TRÀN RỘNG) --- */
     .race-stage {
       display: none;
       flex-direction: column;
       width: 100%;
-      max-width: 620px;
+      max-width: 1100px;
     }
     .race-track-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
     .race-lane {
       background: #090d16;
       border: 2px solid #1f2937;
-      border-radius: 16px;
-      padding: 10px 14px;
+      border-radius: 18px;
+      padding: 12px 18px;
       position: relative;
       overflow: hidden;
     }
     .race-lane-header {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 800;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     .race-lane-name {
       color: #f3f4f6;
+      font-size: 14px;
     }
     .race-lane-pct {
       color: #10b981;
+      font-size: 15px;
+      font-family: monospace;
     }
     .race-lane-track {
-      height: 28px;
+      height: 38px;
       background: #1e293b;
-      border-radius: 14px;
+      border-radius: 20px;
       position: relative;
       overflow: hidden;
-      border: 1px solid #334155;
+      border: 1.5px solid #334155;
     }
     .race-finish-line {
       position: absolute;
       right: 0;
       top: 0;
       bottom: 0;
-      width: 16px;
-      background: repeating-linear-gradient(45deg, #fff, #fff 4px, #000 4px, #000 8px);
+      width: 22px;
+      background: repeating-linear-gradient(45deg, #fff, #fff 5px, #000 5px, #000 10px);
       z-index: 5;
     }
     .race-progress-bar {
       height: 100%;
-      border-radius: 14px;
+      border-radius: 20px;
       transition: width 0.08s linear;
       position: relative;
     }
     .race-car-avatar {
       position: absolute;
-      right: -12px;
+      right: -14px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 20px;
+      font-size: 26px;
       z-index: 10;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.9));
     }
 
-    /* --- GAME 5: LIGHTNING (TIA SÉT THOR) --- */
+    /* --- GAME 5: TIA SÉT THOR (LƯỚI RỘNG) --- */
     .lightning-stage {
       display: none;
       flex-direction: column;
       align-items: center;
       width: 100%;
-      max-width: 620px;
+      max-width: 1100px;
     }
     .lightning-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
       width: 100%;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
-    @media (max-width: 600px) {
+    @media (max-width: 800px) {
+      .lightning-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    @media (max-width: 550px) {
       .lightning-grid {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -513,8 +631,8 @@
     .lightning-card {
       background: #0f172a;
       border: 2px solid #334155;
-      border-radius: 14px;
-      padding: 14px 10px;
+      border-radius: 16px;
+      padding: 16px 12px;
       text-align: center;
       font-weight: 800;
       font-size: 13px;
@@ -522,43 +640,48 @@
       transition: all 0.1s ease;
       position: relative;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
     .lightning-card.targeted {
       border-color: #facc15;
       background: #854d0e;
       color: #fef08a;
-      transform: scale(1.05);
-      box-shadow: 0 0 20px #facc15, inset 0 0 10px #fef08a;
+      transform: scale(1.06);
+      box-shadow: 0 0 25px #facc15, inset 0 0 12px #fef08a;
     }
     .lightning-card.struck {
       border-color: #ef4444;
       background: linear-gradient(135deg, #ef4444, #f59e0b);
       color: #ffffff;
-      transform: scale(1.1);
-      box-shadow: 0 0 35px #f59e0b, 0 0 15px #ef4444;
+      transform: scale(1.12);
+      box-shadow: 0 0 40px #f59e0b, 0 0 20px #ef4444;
       animation: pulse 0.15s infinite alternate;
     }
 
-    /* --- GAME 6: CHESTS (RƯƠNG BÍ ẨN) --- */
+    /* --- GAME 6: RƯƠNG BÍ ẨN (LỚN VÀ RỰC RỠ) --- */
     .chest-stage {
       display: none;
       flex-direction: column;
       align-items: center;
       width: 100%;
-      max-width: 580px;
+      max-width: 800px;
     }
     .chest-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+      gap: 18px;
       width: 100%;
-      margin-bottom: 22px;
+      margin-bottom: 26px;
     }
     .chest-card {
       background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
       border: 3px solid #475569;
-      border-radius: 20px;
-      padding: 20px 14px;
+      border-radius: 24px;
+      padding: 26px 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -566,58 +689,60 @@
       cursor: pointer;
       transition: all 0.2s ease;
       position: relative;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
     .chest-card:hover {
       border-color: #a855f7;
       transform: translateY(-4px);
-      box-shadow: 0 12px 25px rgba(168, 85, 247, 0.4);
+      box-shadow: 0 14px 30px rgba(168, 85, 247, 0.45);
     }
     .chest-icon {
-      font-size: 54px;
-      margin-bottom: 8px;
+      font-size: 64px;
+      margin-bottom: 10px;
       transition: transform 0.15s;
     }
     .chest-card.shaking .chest-icon {
       animation: chestWobble 0.2s infinite alternate;
     }
     @keyframes chestWobble {
-      0% { transform: rotate(-8deg) scale(1.1); }
-      100% { transform: rotate(8deg) scale(1.1); }
+      0% { transform: rotate(-10deg) scale(1.15); }
+      100% { transform: rotate(10deg) scale(1.15); }
     }
     .chest-card.opened {
       border-color: #f59e0b;
       background: linear-gradient(180deg, #451a03 0%, #090d16 100%);
-      box-shadow: 0 0 35px rgba(245, 158, 11, 0.6);
+      box-shadow: 0 0 40px rgba(245, 158, 11, 0.7);
     }
     .chest-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 800;
       color: #e2e8f0;
       letter-spacing: 0.5px;
     }
     .chest-reward {
-      font-size: 11px;
+      font-size: 12px;
       color: #94a3b8;
-      margin-top: 4px;
+      margin-top: 6px;
     }
 
     /* Sidebar / List Management */
     .sidebar {
-      background: #111827;
-      border: 2px solid #1f2937;
+      background: #0f172a;
+      border: 2px solid #1e293b;
       border-radius: 24px;
       padding: 18px;
       display: flex;
       flex-direction: column;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      height: 100%;
+      min-height: 560px;
     }
     .sidebar-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding-bottom: 12px;
-      border-bottom: 1px solid #1f2937;
+      border-bottom: 1px solid #1e293b;
       margin-bottom: 12px;
     }
     .sidebar-title {
@@ -671,13 +796,13 @@
     .name-list {
       flex: 1;
       overflow-y: auto;
-      max-height: 270px;
+      max-height: 320px;
       margin-bottom: 12px;
       padding-right: 4px;
     }
     .name-item {
       background: #090d16;
-      border: 1px solid #1f2937;
+      border: 1px solid #1e293b;
       border-radius: 10px;
       padding: 7px 10px;
       display: flex;
@@ -689,7 +814,7 @@
     }
     .name-item:hover {
       border-color: #374151;
-      background: #0f172a;
+      background: #111827;
     }
     .btn-del {
       background: none;
@@ -705,7 +830,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      border-top: 1px solid #1f2937;
+      border-top: 1px solid #1e293b;
       padding-top: 10px;
     }
     .btn-quick {
@@ -758,16 +883,33 @@
     <div class="header-title">
       <div class="header-icon">🎲</div>
       <div>
-        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — Thầy Thọ</span></h1>
+        <h1>TRÒ CHƠI GỌI TÊN HỌC SINH <span class="badge-sub">6 Trò Gay Cấn — 10 Lớp Học</span></h1>
         <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 2px;">
-          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học bùng nổ năng lượng
+          Giáo viên: Nguyễn Lương Thọ — Khởi động tiết học tràn đầy năng lượng & gay cấn
         </p>
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-fs" onclick="toggleFullScreen()">⛶ Toàn màn hình (F11)</button>
+      <button class="btn-hdr" onclick="toggleSidebar()">📋 Ẩn/Hiện Danh Sách</button>
+      <button class="btn-hdr" onclick="toggleFullScreen()">⛶ Toàn màn hình (F11)</button>
     </div>
   </header>
+
+  <!-- --- THANH CHỌN 10 LỚP HỌC (LỚP 6, 7, 7H, 8, 8H, 9, 9H, 10, 11, 12) --- -->
+  <div class="class-bar">
+    <div class="class-title-group">
+      <div class="class-label">
+        <span>🏫</span>
+        <span>CHỌN LỚP:</span>
+      </div>
+    </div>
+    <div class="class-pills" id="classPillsContainer">
+      <!-- 10 Nút Lớp học sẽ được sinh bằng JS -->
+    </div>
+    <div class="class-info-tag" id="classInfoTag">
+      Đang chọn: <b id="currentClassName">LỚP 10</b> (<span id="currentClassCount">12</span> bạn)
+    </div>
+  </div>
 
   <!-- Navigation Tabs (6 Trò Chơi) -->
   <div class="tab-bar">
@@ -797,8 +939,8 @@
     </label>
   </div>
 
-  <div class="container">
-    <!-- Main Stage -->
+  <div class="container" id="mainContainer">
+    <!-- Main Stage (GẦN TRÀN MÀN HÌNH) -->
     <div class="stage" id="mainStage">
       <!-- Winner Banner -->
       <div class="winner-banner" id="winnerBanner">
@@ -813,7 +955,7 @@
       <div id="gameWheel" class="wheel-stage">
         <div class="wheel-wrapper">
           <div class="wheel-pointer"></div>
-          <canvas id="wheelCanvas" width="360" height="360"></canvas>
+          <canvas id="wheelCanvas" width="420" height="420"></canvas>
         </div>
         <button class="btn-spin" id="btnSpinWheel" onclick="spinWheel()">
           <span>🎯</span> QUAY NGAY
@@ -832,7 +974,7 @@
 
       <!-- Trò 3: Slot Jackpot -->
       <div id="gameSlot" class="slot-stage">
-        <div style="font-size: 13px; font-weight: 800; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+        <div style="font-size: 14px; font-weight: 800; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;">
           🎰 VÒNG QUAY MAY MẮN CASINO JACKPOT
         </div>
         <div class="slot-grid">
@@ -854,37 +996,37 @@
         </button>
       </div>
 
-      <!-- Trò 4: Đua xe F1 thần tốc -->
+      <!-- Trò 4: Đua xe F1 thần tốc (Rộng lớn, bám sát màn hình) -->
       <div id="gameRace" class="race-stage">
-        <div style="font-size: 13px; font-weight: 800; color: #34d399; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+        <div style="font-size: 14px; font-weight: 800; color: #34d399; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           🏎️ ĐƯỜNG ĐUA F1 GRAND PRIX — XE NÀO CÁN ĐÍCH ĐẦU TIÊN?
         </div>
         <div class="race-track-list" id="raceTrackList">
-          <!-- Các làn đua được sinh bằng JS -->
+          <!-- Các làn đua -->
         </div>
-        <div style="display: flex; justify-content: center; gap: 10px;">
+        <div style="display: flex; justify-content: center;">
           <button class="btn-spin" id="btnStartRace" style="background: linear-gradient(135deg, #10b981, #059669); color: #090d16;" onclick="startRace()">
             <span>🏎️💨</span> BẮT ĐẦU ĐUA XE
           </button>
         </div>
       </div>
 
-      <!-- Trò 5: Tia sét Thor -->
+      <!-- Trò 5: Tia sét Thor (Lưới rộng khắp sân khấu) -->
       <div id="gameLightning" class="lightning-stage">
-        <div style="font-size: 13px; font-weight: 800; color: #facc15; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+        <div style="font-size: 14px; font-weight: 800; color: #facc15; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           ⚡ BÃO SẤM SÉT THOR — TIA SÉT GIÁNG XUỐNG AI?
         </div>
         <div class="lightning-grid" id="lightningGrid">
-          <!-- Các thẻ tên được sinh bằng JS -->
+          <!-- Các thẻ tên -->
         </div>
         <button class="btn-spin" id="btnStartLightning" style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #090d16;" onclick="startLightning()">
           <span>⚡</span> TRIỆU HỒI SẤM SÉT
         </button>
       </div>
 
-      <!-- Trò 6: Chiếc rương bí ẩn -->
+      <!-- Trò 6: Chiếc rương bí ẩn (Lớn) -->
       <div id="gameChest" class="chest-stage">
-        <div style="font-size: 13px; font-weight: 800; color: #c084fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; text-align: center;">
+        <div style="font-size: 14px; font-weight: 800; color: #c084fc; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; text-align: center;">
           🎁 4 CHIẾC RƯƠNG BÍ MẬT — CHỌN 1 RƯƠNG MAY MẮN
         </div>
         <div class="chest-grid" id="chestGrid">
@@ -916,8 +1058,8 @@
 
     </div>
 
-    <!-- Sidebar: Student List -->
-    <div class="sidebar">
+    <!-- Sidebar: Student List (Có thể ẩn/hiện để tràn 100% màn hình) -->
+    <div class="sidebar" id="sidebarContainer">
       <div class="sidebar-head">
         <div class="sidebar-title">Danh Sách Học Sinh</div>
         <div class="sidebar-count"><b id="studentCount">0</b> bạn</div>
@@ -931,9 +1073,9 @@
       <div class="name-list" id="nameListContainer"></div>
 
       <div class="sidebar-actions">
-        <button class="btn-quick" onclick="pasteBatchList()">📋 Dán cả danh sách lớp (Batch)</button>
-        <button class="btn-quick" onclick="resetDefaultClass()">🔄 Tải danh sách lớp 10 (Mẫu)</button>
-        <button class="btn-quick" style="color: #f87171;" onclick="clearAllNames()">🗑️ Xóa sạch danh sách</button>
+        <button class="btn-quick" onclick="pasteBatchList()">📋 Dán danh sách lớp này (Batch)</button>
+        <button class="btn-quick" onclick="resetDefaultCurrentClass()">🔄 Nạp lại danh sách mẫu</button>
+        <button class="btn-quick" style="color: #f87171;" onclick="clearAllNames()">🗑️ Xóa danh sách lớp này</button>
       </div>
     </div>
   </div>
@@ -1094,48 +1236,149 @@
     }
     const audio = new SoundEngine();
 
-    // Danh sách học sinh mẫu ban đầu
-    const DEFAULT_STUDENTS = [
-      'Nguyễn Văn An (10A1)',
-      'Trần Thị Mai (10A1)',
-      'Lê Hoàng Nam (10A2)',
-      'Phạm Minh Đức (10A2)',
-      'Vũ Thùy Linh (10A1)',
-      'Đặng Tuấn Kiệt (10A3)',
-      'Hoàng Bảo Ngọc (10A2)',
-      'Bùi Gia Huy (10A1)',
-      'Nguyễn Hải Đăng (10A3)',
-      'Trần Ngọc Ánh (10A2)'
-    ];
+    // --- CẤU HÌNH 10 LỚP HỌC (LỚP 6, 7, 7H, 8, 8H, 9, 9H, 10, 11, 12) ---
+    const CLASS_KEYS = ['6', '7', '7H', '8', '8H', '9', '9H', '10', '11', '12'];
+    const CLASS_LABELS = {
+      '6': 'Lớp 6',
+      '7': 'Lớp 7',
+      '7H': 'Lớp 7H (Hóa)',
+      '8': 'Lớp 8',
+      '8H': 'Lớp 8H (Hóa)',
+      '9': 'Lớp 9',
+      '9H': 'Lớp 9H (Hóa)',
+      '10': 'Lớp 10',
+      '11': 'Lớp 11',
+      '12': 'Lớp 12'
+    };
+
+    const DEFAULT_CLASS_DATA = {
+      '6': [
+        'Nguyễn Tuấn Khang (6A1)', 'Trần Quỳnh Anh (6A1)', 'Lê Gia Hưng (6A2)', 'Phạm Thảo Linh (6A2)',
+        'Vũ Đức Minh (6A1)', 'Hoàng Ngọc Ánh (6A3)', 'Đỗ Nhật Quang (6A2)', 'Bùi Hoàng Long (6A1)',
+        'Đinh Minh Trang (6A3)', 'Ngô Khánh Linh (6A2)', 'Mai Thế Vinh (6A1)', 'Phan Thanh Tú (6A3)'
+      ],
+      '7': [
+        'Nguyễn Văn Đức (7A1)', 'Trần Thùy Dương (7A1)', 'Lê Bảo Nam (7A2)', 'Phạm Quang Minh (7A2)',
+        'Vũ Mỹ Uyên (7A1)', 'Hoàng Tuấn Anh (7A3)', 'Đỗ Gia Huy (7A2)', 'Bùi Thanh Mai (7A1)',
+        'Đinh Quốc Trung (7A3)', 'Ngô Thục Trinh (7A2)', 'Mai Công Thành (7A1)', 'Phan Ánh Nguyệt (7A3)'
+      ],
+      '7H': [
+        'Nguyễn Hà My (7H)', 'Trần Gia Bảo (7H)', 'Lê Đình Khôi (7H)', 'Phạm Minh Hạnh (7H)',
+        'Vũ Trung Hiếu (7H)', 'Hoàng Bích Ngân (7H)', 'Đỗ Việt Dũng (7H)', 'Bùi Thúy An (7H)',
+        'Đinh Xuân Bách (7H)', 'Ngô Phương Linh (7H)', 'Mai Anh Quân (7H)', 'Phan Diệu Linh (7H)'
+      ],
+      '8': [
+        'Nguyễn Thành Long (8A1)', 'Trần Ngọc Bích (8A1)', 'Lê Hoàng Phong (8A2)', 'Phạm Diệu Thảo (8A2)',
+        'Vũ Hải Đăng (8A1)', 'Hoàng Trọng Nghĩa (8A3)', 'Đỗ Mai Trang (8A2)', 'Bùi Thế Hiển (8A1)',
+        'Đinh Huyền Trang (8A3)', 'Ngô Quang Huy (8A2)', 'Mai Nhật Lam (8A1)', 'Phan Thùy Trang (8A3)'
+      ],
+      '8H': [
+        'Nguyễn Duy Khang (8H)', 'Trần Thanh Vân (8H)', 'Lê Nguyên Khôi (8H)', 'Phạm Ngọc Trâm (8H)',
+        'Vũ Anh Dũng (8H)', 'Hoàng Lan Chi (8H)', 'Đỗ Mạnh Hùng (8H)', 'Bùi Diễm Quỳnh (8H)',
+        'Đinh Minh Trí (8H)', 'Ngô Tú Uyên (8H)', 'Mai Tuấn Kiệt (8H)', 'Phan Như Quỳnh (8H)'
+      ],
+      '9': [
+        'Nguyễn Quang Dũng (9A1)', 'Trần Minh Hằng (9A1)', 'Lê Đình Phúc (9A2)', 'Phạm Hồng Nhung (9A2)',
+        'Vũ Quốc Khánh (9A1)', 'Hoàng Kim Ngân (9A3)', 'Đỗ Hữu Thắng (9A2)', 'Bùi Thanh Trúc (9A1)',
+        'Đinh Vĩnh Khang (9A3)', 'Ngô Diệu Hương (9A2)', 'Mai Trung Kiên (9A1)', 'Phan Yến Nhi (9A3)'
+      ],
+      '9H': [
+        'Nguyễn Đức Thắng (9H)', 'Trần Ánh Hồng (9H)', 'Lê Quốc Toàn (9H)', 'Phạm Diệu Nga (9H)',
+        'Vũ Hoàng Quân (9H)', 'Hoàng Thục Đoan (9H)', 'Đỗ Trọng Hiếu (9H)', 'Bùi Thùy Trâm (9H)',
+        'Đinh Tùng Lâm (9H)', 'Ngô Bích Thảo (9H)', 'Mai Gia Khiêm (9H)', 'Phan Ngọc Hà (9H)'
+      ],
+      '10': [
+        'Nguyễn Văn An (10A1)', 'Trần Thị Mai (10A1)', 'Lê Hoàng Nam (10A2)', 'Phạm Minh Đức (10A2)',
+        'Vũ Thùy Linh (10A1)', 'Đặng Tuấn Kiệt (10A3)', 'Hoàng Bảo Ngọc (10A2)', 'Bùi Gia Huy (10A1)',
+        'Nguyễn Hải Đăng (10A3)', 'Trần Ngọc Ánh (10A2)', 'Đỗ Quang Hải (10A1)', 'Lê Minh Khôi (10A3)'
+      ],
+      '11': [
+        'Nguyễn Đức Thịnh (11A1)', 'Trần Hồng Gấm (11A1)', 'Lê Xuân Trường (11A2)', 'Phạm Thùy Chi (11A2)',
+        'Vũ Đình Trọng (11A1)', 'Hoàng Khánh Chi (11A3)', 'Đỗ Bá Đạt (11A2)', 'Bùi Mỹ Lệ (11A1)',
+        'Đinh Thành Nam (11A3)', 'Ngô Lan Hương (11A2)', 'Mai Hữu Phước (11A1)', 'Phan Thu Thảo (11A3)'
+      ],
+      '12': [
+        'Nguyễn Tuấn Anh (12A1)', 'Trần Mai Hoa (12A1)', 'Lê Minh Nhật (12A2)', 'Phạm Quỳnh Giang (12A2)',
+        'Vũ Cao Thắng (12A1)', 'Hoàng Thảo My (12A3)', 'Đỗ Đức Thọ (12A2)', 'Bùi Ánh Tuyết (12A1)',
+        'Đinh Phúc Lâm (12A3)', 'Ngô Thúy Quỳnh (12A2)', 'Mai Hoàng Bách (12A1)', 'Phan Bảo Hân (12A3)'
+      ]
+    };
+
+    // Nạp dữ liệu từ localStorage
+    let allClassData = {};
+    try {
+      const savedClasses = localStorage.getItem('thaytho_all_classes_v2');
+      if (savedClasses) allClassData = JSON.parse(savedClasses);
+    } catch {}
+
+    // Đảm bảo cả 10 lớp đều có danh sách
+    CLASS_KEYS.forEach(k => {
+      if (!allClassData[k] || allClassData[k].length === 0) {
+        allClassData[k] = [...DEFAULT_CLASS_DATA[k]];
+      }
+    });
+
+    let currentClassKey = '10';
+    try {
+      const savedKey = localStorage.getItem('thaytho_current_class_key');
+      if (savedKey && CLASS_KEYS.includes(savedKey)) {
+        currentClassKey = savedKey;
+      }
+    } catch {}
+
+    // Học sinh của lớp hiện tại
+    let students = allClassData[currentClassKey] || [];
 
     const WHEEL_PALETTE = [
       '#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4',
       '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6'
     ];
 
-    let students = [];
-    try {
-      const saved = localStorage.getItem('thaytho_offline_students');
-      if (saved) {
-        students = JSON.parse(saved);
-      }
-    } catch {}
-    if (!students || students.length === 0) {
-      students = [...DEFAULT_STUDENTS];
-    }
-
     let currentGame = 'wheel';
     let isSpinning = false;
     let wheelAngle = 0;
 
-    function saveStudents() {
+    function saveAllClassData() {
       try {
-        localStorage.setItem('thaytho_offline_students', JSON.stringify(students));
+        localStorage.setItem('thaytho_all_classes_v2', JSON.stringify(allClassData));
+        localStorage.setItem('thaytho_current_class_key', currentClassKey);
       } catch {}
+      renderClassPills();
       renderList();
       if (currentGame === 'wheel') drawWheel();
       if (currentGame === 'race') initRaceTracks();
       if (currentGame === 'lightning') initLightningGrid();
+    }
+
+    // --- RENDER 10 NÚT CHỌN LỚP ---
+    function renderClassPills() {
+      const container = document.getElementById('classPillsContainer');
+      container.innerHTML = '';
+
+      CLASS_KEYS.forEach(key => {
+        const btn = document.createElement('button');
+        const isHoa = key.endsWith('H');
+        const isActive = key === currentClassKey;
+        btn.className = `class-pill ${isHoa ? 'pill-hoa' : ''} ${isActive ? 'active' : ''}`;
+        const count = allClassData[key] ? allClassData[key].length : 0;
+        btn.innerHTML = `
+          <span>${CLASS_LABELS[key]}</span>
+          <span class="class-pill-badge">${count}</span>
+        `;
+        btn.onclick = () => selectClass(key);
+        container.appendChild(btn);
+      });
+
+      document.getElementById('currentClassName').innerText = CLASS_LABELS[currentClassKey].toUpperCase();
+      document.getElementById('currentClassCount').innerText = students.length;
+    }
+
+    function selectClass(key) {
+      if (isSpinning) return;
+      currentClassKey = key;
+      students = allClassData[currentClassKey] || [];
+      hideWinner();
+      saveAllClassData();
     }
 
     function renderList() {
@@ -1151,6 +1394,7 @@
         container.appendChild(item);
       });
       document.getElementById('studentCount').innerText = students.length;
+      document.getElementById('currentClassCount').innerText = students.length;
     }
 
     function addStudent(e) {
@@ -1159,37 +1403,54 @@
       const val = txt.value.trim();
       if (val && !students.includes(val)) {
         students.push(val);
+        allClassData[currentClassKey] = students;
         txt.value = '';
-        saveStudents();
+        saveAllClassData();
       }
     }
 
     function deleteStudent(idx) {
       students.splice(idx, 1);
-      saveStudents();
+      allClassData[currentClassKey] = students;
+      saveAllClassData();
     }
 
     function clearAllNames() {
-      if (confirm('Thầy có chắc muốn xóa toàn bộ danh sách không?')) {
+      if (confirm(`Thầy có chắc muốn xóa sạch danh sách học sinh của ${CLASS_LABELS[currentClassKey]} không?`)) {
         students = [];
-        saveStudents();
+        allClassData[currentClassKey] = [];
+        saveAllClassData();
       }
     }
 
-    function resetDefaultClass() {
-      students = [...DEFAULT_STUDENTS];
-      saveStudents();
+    function resetDefaultCurrentClass() {
+      students = [...DEFAULT_CLASS_DATA[currentClassKey]];
+      allClassData[currentClassKey] = students;
+      saveAllClassData();
     }
 
     function pasteBatchList() {
-      const text = prompt('Dán danh sách học sinh vào đây (mỗi học sinh một dòng):');
+      const text = prompt(`Dán danh sách học sinh cho ${CLASS_LABELS[currentClassKey]} (mỗi bạn một dòng):`);
       if (text) {
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         if (lines.length > 0) {
           students = lines;
-          saveStudents();
-          alert(`Đã nạp thành công ${lines.length} học sinh vào trò chơi!`);
+          allClassData[currentClassKey] = students;
+          saveAllClassData();
+          alert(`Đã nạp thành công ${lines.length} bạn vào ${CLASS_LABELS[currentClassKey]}!`);
         }
+      }
+    }
+
+    function toggleSidebar() {
+      const container = document.getElementById('mainContainer');
+      const sidebar = document.getElementById('sidebarContainer');
+      if (sidebar.style.display === 'none') {
+        sidebar.style.display = 'flex';
+        container.classList.remove('sidebar-hidden');
+      } else {
+        sidebar.style.display = 'none';
+        container.classList.add('sidebar-hidden');
       }
     }
 
@@ -1235,7 +1496,7 @@
       if (customDesc) {
         document.getElementById('winnerDescText').innerText = customDesc;
       } else {
-        document.getElementById('winnerDescText').innerText = 'Mời bạn bật mic lên bảng / trả lời câu hỏi của Thầy Thọ!';
+        document.getElementById('winnerDescText').innerText = `Mời học sinh thuộc ${CLASS_LABELS[currentClassKey]} bật mic trả lời câu hỏi của Thầy Thọ!`;
       }
       document.getElementById('winnerBanner').style.display = 'block';
       audio.fanfare();
@@ -1246,7 +1507,8 @@
         const idx = students.indexOf(name);
         if (idx > -1) {
           students.splice(idx, 1);
-          saveStudents();
+          allClassData[currentClassKey] = students;
+          saveAllClassData();
         }
       }
     }
@@ -1260,7 +1522,7 @@
       const sliceAngle = (2 * Math.PI) / num;
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
-      const radius = cx - 12;
+      const radius = cx - 14;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1272,7 +1534,7 @@
         ctx.closePath();
         ctx.fillStyle = WHEEL_PALETTE[i % WHEEL_PALETTE.length];
         ctx.fill();
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
@@ -1281,17 +1543,17 @@
         ctx.rotate(angle + sliceAngle / 2);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.font = 'bold 13px Outfit, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
         ctx.shadowBlur = 4;
-        const displayName = name.length > 18 ? name.slice(0, 16) + '...' : name;
-        ctx.fillText(displayName, radius - 14, 4);
+        const displayName = name.length > 20 ? name.slice(0, 18) + '...' : name;
+        ctx.fillText(displayName, radius - 16, 4.5);
         ctx.restore();
       });
 
       // Tâm vòng quay
       ctx.beginPath();
-      ctx.arc(cx, cy, 26, 0, 2 * Math.PI);
+      ctx.arc(cx, cy, 30, 0, 2 * Math.PI);
       ctx.fillStyle = '#0f172a';
       ctx.fill();
       ctx.lineWidth = 4;
@@ -1299,7 +1561,7 @@
       ctx.stroke();
 
       ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 14px sans-serif';
+      ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('🎯', cx, cy);
@@ -1392,7 +1654,7 @@
           btn.disabled = false;
           btn.innerHTML = '<span>💣</span> KÍCH HOẠT BOM';
           isSpinning = false;
-          showWinner(chosen, '🔥 BÙM! Quả bom đã nổ trúng bạn — Mời bạn trả lời!');
+          showWinner(chosen, `🔥 BÙM! Quả bom đã nổ trúng học sinh ${CLASS_LABELS[currentClassKey]}! Mời bạn trả lời!`);
 
           setTimeout(() => {
             icon.innerText = '💣';
@@ -1433,12 +1695,12 @@
           btn.disabled = false;
           btn.innerHTML = '<span>🎰</span> KÉO CẦN QUAY SỐ';
           isSpinning = false;
-          showWinner(chosen, '🎰 JACKPOT 777! Ba ô trúng thưởng trùng khớp hoàn hảo!');
+          showWinner(chosen, `🎰 JACKPOT 777! Ba ô trùng khớp chúc mừng học sinh ${CLASS_LABELS[currentClassKey]}!`);
         }
       }, 90);
     }
 
-    // --- GAME 4: F1 GRAND PRIX (ĐUA XE) ---
+    // --- GAME 4: F1 GRAND PRIX (ĐƯỜNG ĐUA RỘNG) ---
     const CAR_ICONS = ['🏎️', '🚗', '🚙', '🚖'];
     const CAR_COLORS = [
       'linear-gradient(90deg, #ef4444, #f97316)',
@@ -1524,12 +1786,12 @@
           btn.disabled = false;
           btn.innerHTML = '<span>🏎️💨</span> BẮT ĐẦU ĐUA XE';
           isSpinning = false;
-          showWinner(raceRacers[winnerRacerIdx].name, `🏁 VỀ ĐÍCH ĐẦU TIÊN! Tay đua xuất sắc cán đích chặng F1!`);
+          showWinner(raceRacers[winnerRacerIdx].name, `🏁 VỀ ĐÍCH ĐẦU TIÊN! Tay đua xuất sắc cán đích chặng F1 của ${CLASS_LABELS[currentClassKey]}!`);
         }
       }, 100);
     }
 
-    // --- GAME 5: TIA SÉT THOR ---
+    // --- GAME 5: TIA SÉT THOR (LƯỚI RỘNG) ---
     let lightningCardsList = [];
 
     function initLightningGrid() {
@@ -1537,7 +1799,7 @@
       grid.innerHTML = '';
       if (students.length === 0) return;
 
-      const pickCount = Math.min(students.length, 9);
+      const pickCount = Math.min(students.length, 12);
       const shuffled = [...students].sort(() => 0.5 - Math.random());
       lightningCardsList = shuffled.slice(0, pickCount);
 
@@ -1545,7 +1807,7 @@
         const card = document.createElement('div');
         card.className = 'lightning-card';
         card.id = `lcard${i}`;
-        card.innerHTML = `<span>⚡</span> ${name}`;
+        card.innerHTML = `<span style="font-size: 16px;">⚡</span> <span>${name}</span>`;
         grid.appendChild(card);
       });
     }
@@ -1589,7 +1851,7 @@
           btn.disabled = false;
           btn.innerHTML = '<span>⚡</span> TRIỆU HỒI SẤM SÉT';
           isSpinning = false;
-          showWinner(chosen, '⚡ BÙM! Tia sét sấm truyền của Thor đã giáng trúng bạn!');
+          showWinner(chosen, `⚡ BÙM! Tia sét Thor đã giáng trúng bạn (${CLASS_LABELS[currentClassKey]})! Mời bạn trả lời!`);
         }
       }, 80);
     }
@@ -1648,7 +1910,7 @@
             targetCard.querySelector('.chest-icon').innerText = '🎁✨';
           }
           if (targetReward) {
-            targetReward.innerHTML = `<b style="color: #facc15; font-size: 13px;">${chosenStudent}</b>`;
+            targetReward.innerHTML = `<b style="color: #facc15; font-size: 14px;">${chosenStudent}</b>`;
           }
 
           audio.magicChime();
@@ -1656,7 +1918,7 @@
           btn.disabled = false;
           btn.innerHTML = '<span>🎁</span> MỞ NGẪU NHIÊN 1 RƯƠNG';
           isSpinning = false;
-          showWinner(chosenStudent, `🎁 Chiếc ${CHEST_TITLES[idx]} đã mở ra! Mời bạn trả lời!`);
+          showWinner(chosenStudent, `🎁 Chiếc ${CHEST_TITLES[idx]} đã mở ra! Mời học sinh ${CLASS_LABELS[currentClassKey]} trả lời!`);
         }
       }, 90);
     }
@@ -1676,16 +1938,16 @@
       const particles = [];
       const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#facc15', '#ffffff'];
 
-      for (let i = 0; i < 140; i++) {
+      for (let i = 0; i < 150; i++) {
         particles.push({
           x: canvas.width / 2,
           y: canvas.height / 3,
-          vx: (Math.random() - 0.5) * 18,
-          vy: (Math.random() - 0.7) * 18,
-          size: Math.random() * 8 + 4,
+          vx: (Math.random() - 0.5) * 20,
+          vy: (Math.random() - 0.7) * 20,
+          size: Math.random() * 9 + 4,
           color: colors[Math.floor(Math.random() * colors.length)],
           rotation: Math.random() * 360,
-          rotSpeed: (Math.random() - 0.5) * 10
+          rotSpeed: (Math.random() - 0.5) * 12
         });
       }
 
@@ -1725,6 +1987,7 @@
     }
 
     // Khởi tạo ban đầu
+    renderClassPills();
     renderList();
     drawWheel();
     if (document.fonts) {
