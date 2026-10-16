@@ -53,6 +53,7 @@ export default function LiveClassroomPage() {
     return '';
   });
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isKicked, setIsKicked] = useState(false);
   const [tempName, setTempName] = useState('');
 
   // Trạng thái Quản trị viên (Thầy Thọ)
@@ -206,6 +207,23 @@ export default function LiveClassroomPage() {
       .on('broadcast', { event: 'lower_all_hands' }, () => {
         setRaisedHands([]);
         setMyHandRaised(false);
+      })
+      .on('broadcast', { event: 'kick_student' }, ({ payload }) => {
+        if (payload?.name) {
+          // Xóa học sinh khỏi danh sách
+          setStudentList(prev => prev.filter(s => s.name !== payload.name));
+          setRaisedHands(prev => prev.filter(n => n !== payload.name));
+
+          // Nếu chính là học sinh này bị đuổi
+          if (studentName && (studentName === payload.name || studentName.includes(payload.name))) {
+            setIsKicked(true);
+            setHasJoined(false);
+            try {
+              jitsiApiRef.current?.dispose?.();
+            } catch {}
+            toast.error('Bạn đã bị Thầy Thọ mời ra khỏi lớp học!', { duration: 10000 });
+          }
+        }
       })
       .on('broadcast', { event: 'broadcast_exam' }, ({ payload }) => {
         if (payload?.examId) {
@@ -454,6 +472,34 @@ export default function LiveClassroomPage() {
       }
     };
   }, [hasJoined, isHost, isPinUnlocked]);
+
+  // Thầy Thọ đuổi học sinh ra khỏi lớp
+  const handleKickStudent = (name: string) => {
+    if (!isHost) return;
+
+    // Gửi tín hiệu đuổi qua Supabase Broadcast
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'kick_student',
+      payload: { name, fromHost: true }
+    });
+
+    // Thử đuổi qua Jitsi API
+    try {
+      const parts = jitsiApiRef.current?.getParticipantsInfo?.();
+      if (Array.isArray(parts)) {
+        const target = parts.find((p: any) => p?.displayName?.includes(name));
+        if (target) {
+          jitsiApiRef.current?.executeCommand('kickParticipant', target.participantId || target.id);
+        }
+      }
+    } catch {}
+
+    // Cập nhật danh sách tại máy Thầy
+    setStudentList(prev => prev.filter(s => s.name !== name));
+    setRaisedHands(prev => prev.filter(n => n !== name));
+    toast.success(`Đã đuổi học sinh "${name}" ra khỏi lớp học!`, { icon: '🚫', duration: 4000 });
+  };
 
   // Hạ tay tất cả học sinh (Dành cho Thầy Thọ)
   const handleLowerAllHands = () => {
@@ -1249,31 +1295,43 @@ export default function LiveClassroomPage() {
 
       {/* --- NỘI DUNG CHÍNH (KHU VỰC LIVE, SƠ ĐỒ LỚP HỌC & ĐỀ THI) --- */}
       <main className="flex-1 relative flex overflow-hidden">
-        {/* MODAL MÃ PIN (CHỈ HIỂN THỊ NẾU THẦY BẬT KHÓA PIN VÀ CHƯA NHẬP) */}
+        {/* MODAL PHÒNG CHỜ DUYỆT & MẬT KHẨU: HÃY CHỜ ĐỢI */}
         {requirePin && !isPinUnlocked && !isHost ? (
-          <div className="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-amber-500/50 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3">
-                <Lock className="w-6 h-6" />
+          <div className="absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border-2 border-amber-500/60 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center mx-auto mb-4 text-3xl font-black shadow-lg shadow-amber-500/20">
+                ✋
               </div>
-              <h2 className="text-lg font-bold text-white mb-1">Phòng Học Có Khóa PIN</h2>
-              <p className="text-xs text-slate-400 mb-4">Vui lòng nhập mã PIN do Thầy Thọ cung cấp để vào lớp:</p>
-              <form onSubmit={handlePinSubmit} className="space-y-3">
+              <h2 className="text-2xl font-black text-amber-400 mb-2 uppercase tracking-wide">
+                HÃY CHỜ ĐỢI
+              </h2>
+              <p className="text-sm text-slate-300 mb-3 leading-relaxed">
+                Thầy Lương Thọ đang chuẩn bị bài giảng hoặc phòng học đang tạm khóa chờ duyệt.
+              </p>
+              <p className="text-xs text-slate-400 mb-5">
+                Nếu bạn có mật khẩu mở phòng, vui lòng nhập mật khẩu bên dưới để vào thẳng lớp ngay:
+              </p>
+              <form onSubmit={handlePinSubmit} className="space-y-3.5">
                 <input
                   type="password"
                   required
-                  placeholder="Nhập mã PIN..."
+                  placeholder="Nhập mật khẩu / mã PIN..."
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-800 border-2 border-slate-700 text-white text-center text-lg font-mono tracking-widest focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition"
                 />
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg transition"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 transition active:scale-95"
                 >
-                  Mở khóa vào lớp
+                  🔓 Mở Khóa Vào Lớp Ngay
                 </button>
               </form>
+
+              <div className="mt-5 pt-4 border-t border-slate-800 flex items-center justify-center gap-2 text-xs text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Vui lòng giữ nguyên màn hình, Thầy Thọ sẽ mở lớp cho bạn!</span>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1311,6 +1369,7 @@ export default function LiveClassroomPage() {
                 });
                 toast.success(`Đã hạ tay học sinh "${name}"`);
               }}
+              onKickStudent={handleKickStudent}
               onSwitchToTileView={() => {
                 setLayoutMode('video');
                 try {
@@ -1405,6 +1464,32 @@ export default function LiveClassroomPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL THÔNG BÁO BỊ ĐUỔI KHỎI LỚP */}
+      {isKicked && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-rose-600 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center">
+            <div className="w-16 h-16 rounded-2xl bg-rose-600/20 text-rose-500 border border-rose-500/40 flex items-center justify-center mx-auto mb-4 text-3xl font-black">
+              🚫
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-rose-400 mb-2">
+              BẠN ĐÃ BỊ THẦY THỌ MỜI RA KHỎI LỚP
+            </h2>
+            <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+              Bạn đã bị đưa ra khỏi phòng học do vi phạm nội quy lớp hoặc Thầy yêu cầu rời phòng.
+            </p>
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 mb-6">
+              Nếu có nhầm lẫn, vui lòng liên hệ Thầy Lương Thọ qua Hotline / Zalo: <span className="text-amber-400 font-bold">0345.833.133</span>
+            </div>
+            <button
+              onClick={() => navigate('/exam')}
+              className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition"
+            >
+              Quay lại danh sách đề thi
+            </button>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Users, Hand, Mic, MicOff, Monitor, Sparkles, CheckCircle2,
   AlertCircle, Maximize2, Shield, Eye, Award, Volume2, Search,
-  Download, Grid, LayoutGrid, ChevronRight, UserCheck, Video, VideoOff
+  Download, Grid, LayoutGrid, ChevronRight, UserCheck, Video, VideoOff, UserX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -29,6 +29,7 @@ interface ClassroomSeatingChartProps {
   onLowerHand?: (name: string) => void;
   onSpotlight?: (seat: StudentSeat) => void;
   onSwitchToTileView?: () => void;
+  onKickStudent?: (studentName: string) => void;
 }
 
 const AVATAR_COLORS = [
@@ -48,7 +49,8 @@ export default function ClassroomSeatingChart({
   currentStudentName = '',
   onLowerHand,
   onSpotlight,
-  onSwitchToTileView
+  onSwitchToTileView,
+  onKickStudent
 }: ClassroomSeatingChartProps) {
   const [totalSeats, setTotalSeats] = useState<number>(24);
   const [selectedSeat, setSelectedSeat] = useState<StudentSeat | null>(null);
@@ -505,6 +507,20 @@ export default function ClassroomSeatingChart({
                     >
                       Chi tiết ➔
                     </button>
+                    {onKickStudent && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Thầy có chắc chắn muốn đuổi học sinh "${seat.name}" ra khỏi lớp học không?`)) {
+                            onKickStudent(seat.name!);
+                          }
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold transition ml-auto mr-1"
+                        title="Đuổi học sinh này ra khỏi lớp ngay"
+                      >
+                        ✕ Đuổi
+                      </button>
+                    )}
                     {isHandRaised && onLowerHand && (
                       <button
                         onClick={(e) => {
@@ -593,6 +609,22 @@ export default function ClassroomSeatingChart({
                 <Mic className="w-4 h-4" />
                 <span>Mời phát biểu</span>
               </button>
+              {/* Nút ĐUỔI HỌC SINH CỦA THẦY THỌ */}
+              {isHost && onKickStudent && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Thầy có chắc chắn muốn đuổi học sinh "${selectedSeat.name}" ra khỏi lớp học không?`)) {
+                      onKickStudent(selectedSeat.name!);
+                      setSelectedSeat(null);
+                    }
+                  }}
+                  className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition flex items-center justify-center gap-1.5 col-span-2 shadow-lg shadow-rose-600/30 active:scale-95"
+                  title="Đuổi học sinh này ra khỏi phòng học ngay lập tức"
+                >
+                  <UserX className="w-4 h-4" />
+                  <span>🚫 Đuổi học sinh này ra khỏi lớp</span>
+                </button>
+              )}
               <button
                 onClick={() => setSelectedSeat(null)}
                 className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
