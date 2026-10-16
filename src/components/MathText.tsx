@@ -35,7 +35,7 @@ const MathText: React.FC<MathTextProps> = ({ html, className = '', block = false
     if (!ref.current) return;
     
     // Chỉ update nếu content thay đổi
-    const newHash = html || '';
+    const newHash = (html || '').replace(/&lt;br\s*\/?&gt;/gi, '<br/>');
     if (initialized.current && contentHash.current === newHash) {
       return; // Đã render rồi, skip để giữ MathJax output
     }

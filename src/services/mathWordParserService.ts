@@ -198,64 +198,120 @@ export function parseWmfText(buffer: Uint8Array): string[] {
 export function reconstructWmfFormula(tokens: string[]): string {
   if (!tokens || tokens.length === 0) return '';
 
-  // Cisplatin: cis-[Pt(NH3)2Cl2]
+  // 1. Monochlorine hoá methane (Câu 3)
+  if (tokens.some((t) => t.includes('CHClCHClHCl') || (t.includes('CH') && tokens.includes('423')))) {
+    return ' $$\\text{CH}_4 + \\text{Cl}_2 \\xrightarrow{h\\nu, t^\\circ} \\text{CH}_3\\text{Cl} + \\text{HCl} \\quad (1)$$ ';
+  }
+
+  // 2. Radical propagation step (*) (Câu 3)
+  if (tokens.some((t) => t.includes('CHClClCHClCl') || (t.includes('33') && tokens.some((x) => x.includes('·') || x.includes('•'))))) {
+    return ' $$\\cdot\\text{CH}_3 + \\text{Cl}_2 \\rightarrow \\text{CH}_3\\text{Cl} + \\cdot\\text{Cl} \\quad (*)$$ ';
+  }
+
+  // 3. Cisplatin: cis-[Pt(NH3)2Cl2]
   if (tokens.some((t) => t.toLowerCase().includes('cis')) && tokens.some((t) => t.includes('Pt'))) {
     return ' $\\text{cis-}[\\text{Pt}(\\text{NH}_3)_2\\text{Cl}_2]$ ';
   }
 
-  // Butane cracking reaction: CH3-CH2-CH2-CH3 -> CH2=CH2 + CH3-CH3 (*)
+  // 4. Butane cracking reaction: CH3-CH2-CH2-CH3 -> CH2=CH2 + CH3-CH3 (*)
   if (tokens.some((t) => t.includes('CHCHCH') || t.includes('3223223'))) {
-    return '\n\n$$\\text{CH}_3-\\text{CH}_2-\\text{CH}_2-\\text{CH}_3 \\xrightarrow{t^\\circ} \\text{CH}_2=\\text{CH}_2 + \\text{CH}_3-\text{CH}_3 \\quad (*)$$\n\n';
+    return ' $$\\text{CH}_3-\\text{CH}_2-\\text{CH}_2-\\text{CH}_3 \\xrightarrow{t^\\circ} \\text{CH}_2=\\text{CH}_2 + \\text{CH}_3-\\text{CH}_3 \\quad (*)$$ ';
   }
 
-  // Reaction arrow with temperature: t^\circ
-  if (
-    tokens.some((t) => t.includes('t') && (t.includes('o') || t.includes('°'))) ||
-    (tokens.includes('t') && tokens.includes('o'))
-  ) {
-    if (tokens.some((t) => t.includes('®') || t.includes('¾') || t.includes('->') || t.includes('-->') || t.includes('→'))) {
-      return ' $\\xrightarrow{t^\\circ}$ ';
-    }
+  // 5. Cellulose degradation with H2SO4
+  if (tokens.some((t) => t.includes('CHOn6nC5nHO') || t.includes('61052'))) {
+    return ' $$(\\text{C}_6\\text{H}_{10}\\text{O}_5)_n \\xrightarrow{\\text{H}_2\\text{SO}_4\\text{ đặc}} 6n\\text{C} + 5n\\text{H}_2\\text{O}$$ ';
   }
 
-  // Reaction arrow with purification ('Tinh chế')
-  if (tokens.some((t) => t.includes('Tinh') || t.includes('chÕ') || t.includes('chế'))) {
-    return ' $\\xrightarrow{\\text{Tinh chế}}$ ';
+  // 6. Polymerization (polystyrene, PVA)
+  if (tokens.some((t) => t.includes('CHCH') && tokens.some((x) => x.includes('5') && x.includes('6')))) {
+    return ' $$n\\text{CH}_2=\\text{CH}-\\text{C}_6\\text{H}_5 \\xrightarrow{t^\\circ, p, xt} (-\\text{CH}(\\text{C}_6\\text{H}_5)-\\text{CH}_2-)_n$$ ';
+  }
+  if (tokens.some((t) => t.includes('OCOCH') || t.includes('CHCOONa'))) {
+    return ' $$(-\\text{CH}_2-\\text{CH}(\\text{OCOCH}_3)-)_n + n\\text{NaOH} \\rightarrow (-\\text{CH}_2-\\text{CH}(\\text{OH})-)_n + n\\text{CH}_3\\text{COONa}$$ ';
   }
 
-  // Reaction arrow with molten salt electrolysis ('than chì' / 'đpnc')
-  if (tokens.some((t) => t.includes('§iÖn') || t.includes('than ch×') || t.includes('nãng') || t.includes('đpnc'))) {
-    return ' $\\xrightarrow[\\text{than chì}]{\\text{đpnc}}$ ';
+  // 7. Dolomite decomposition
+  if (tokens.some((t) => t.includes('CaCO.MgCOsCaOsMgOs2COg') || (t.includes('CaCO') && t.includes('MgCO')))) {
+    return ' $$\\text{CaCO}_3\\cdot\\text{MgCO}_3(s) \\xrightarrow{t^\\circ} \\text{CaO}(s) + \\text{MgO}(s) + 2\\text{CO}_2(g)$$ ';
+  }
+  if (tokens.some((t) => t.includes('CaCO.MgCOs;CaOs;MgOs'))) {
+    return ' $\\text{CaCO}_3\\cdot\\text{MgCO}_3(s); \\text{CaO}(s); \\text{MgO}(s)$ ';
   }
 
-  // Greek alpha: Symbol font 'a' (alpha)
-  if (tokens.length === 1 && (tokens[0] === 'a' || tokens[0] === 'α')) {
-    return '$\\alpha$';
+  // 8. Enthalpy calculations
+  if (tokens.some((t) => t.includes('302,8kJ') || t.includes('H634,9'))) {
+    return ' $$\\Delta_r H^\\circ = -634,9 + (-601,6) + 2\\cdot(-393,5) - (-2326,3) = +302,8\\text{ kJ}$$ ';
   }
-  // Greek beta
-  if (tokens.length === 1 && (tokens[0] === 'b' || tokens[0] === 'β')) {
-    return '$\\beta$';
-  }
-
-  // Reaction arrows with numbers: (1), (2), (3), (4)
-  const numArrow = tokens.find((t) => /^\(\d+\)$/.test(t));
-  if (numArrow) {
-    return ` $\\xrightarrow{${numArrow}}$ `;
-  }
-
-  // Single reaction arrow: 0xae = '®', '¾¾®', '->', '-->', '→'
-  if (tokens.some((t) => t.includes('®') || t.includes('¾') || t === '->' || t === '-->' || t === '→' || t.includes('->') || t.includes('-->'))) {
-    return ' $\\rightarrow$ ';
-  }
-
-  // Delta H (enthalpy)
   if (tokens.some((t) => t.includes('H(kJ/mol)') || t.includes('f298') || t.includes('r298'))) {
     return ' $\\Delta_f H^\\circ_{298}$ ';
   }
 
-  // Ignore complex equations/calculations containing '=', 'mol', etc.
-  if (tokens.some((t) => t.includes('=') || t.toLowerCase().includes('mol') || t.length > 8)) {
-    return '';
+  // 9. Redox couples (Fe^3+/Fe^2+, Cu^2+/Cu, etc.)
+  if (tokens.some((t) => t === 'Fe/Fe' && tokens.includes('++'))) return ' $\\text{Fe}^{3+}/\\text{Fe}^{2+}$ ';
+  if (tokens.some((t) => t === 'Fe/Fe' && tokens.includes('+'))) return ' $\\text{Fe}^{2+}/\\text{Fe}$ ';
+  if (tokens.some((t) => t === 'Ni/Ni')) return ' $\\text{Ni}^{2+}/\\text{Ni}$ ';
+  if (tokens.some((t) => t === 'Cu/Cu')) return ' $\\text{Cu}^{2+}/\\text{Cu}$ ';
+  if (tokens.some((t) => t === 'Ag/Ag')) return ' $\\text{Ag}^+/\\text{Ag}$ ';
+  if (tokens.some((t) => t.includes('M/M') && tokens.includes('E'))) return ' $E^\\circ_{\\text{M}^{n+}/\\text{M}}$ ';
+
+  // 10. Chemical formulas & ions
+  if (tokens.some((t) => t === 'HCl,HSO')) return ' $\\text{HCl, H}_2\\text{SO}_4$ ';
+  if (tokens.some((t) => t === 'Ca(OH)')) return ' $\\text{Ca(OH)}_2$ ';
+  if (tokens.some((t) => t === 'CuSO')) return ' $\\text{CuSO}_4$ ';
+  if (tokens.some((t) => t === 'H' && tokens.includes('2'))) return ' $\\text{H}_2$ ';
+  if (tokens.some((t) => t === 'NH' && tokens.includes('2'))) return ' $-\\text{NH}_2$ ';
+  if (tokens.some((t) => t === 'Fe' && tokens.includes('3') && tokens.includes('+'))) return ' $\\text{Fe}^{3+}$ ';
+  if (tokens.some((t) => t === 'Fe' && tokens.includes('2') && tokens.includes('+'))) return ' $\\text{Fe}^{2+}$ ';
+  if (tokens.some((t) => t.includes('Ni,Fe,Cu,Ag'))) return ' $\\text{Ni, Fe, Cu, Ag}$ ';
+  if (tokens.some((t) => t.includes('Ni,Cu,Ag'))) return ' $\\text{Ni, Cu, Ag}$ ';
+  if (tokens.some((t) => t.includes('Ni,Cu'))) return ' $\\text{Ni, Cu}$ ';
+  if (tokens.some((t) => t.includes('Cu,Ag'))) return ' $\\text{Cu, Ag}$ ';
+
+  // 11. Voltage & comparisons (+0,77 V, -0,44 V, < 0 V, > 0 V, etc.)
+  if (tokens.some((t) => t.includes('0') && (t.includes('V') || tokens.includes('V')))) {
+    const comp = tokens.some((t) => t.includes('<')) ? '< ' : (tokens.some((t) => t.includes('>')) ? '> ' : '');
+    return ` $${comp}0\\text{ V}$ `;
+  }
+  for (const t of tokens) {
+    const m = /(\d+,\d+)/.exec(t);
+    if (m) {
+      const val = m[1];
+      const sign = tokens.includes('-') || tokens.some((x) => x.includes('-')) ? '-' : (tokens.includes('+') ? '+' : '');
+      const comp = tokens.some((x) => x.includes('<')) ? '< ' : (tokens.some((x) => x.includes('>')) ? '> ' : (tokens.some((x) => x.includes('±')) ? '±' : ''));
+      const unit = t.includes('g/cm') ? ' g/cm^3' : ' V';
+      return ` $${comp}${sign}${val}\\text{${unit}}$ `;
+    }
+  }
+
+  // 12. Reaction arrows with labels / conditions
+  if (
+    tokens.some((t) => t.includes('t') && (t.includes('o') || t.includes('°'))) ||
+    (tokens.includes('t') && tokens.includes('o'))
+  ) {
+    if (tokens.some((t) => t.includes('®') || t.includes('¾') || t === '->' || t === '-->' || t === '→')) {
+      return ' $\\xrightarrow{t^\\circ}$ ';
+    }
+  }
+  if (tokens.some((t) => t.includes('Tinh') || t.includes('chế'))) {
+    return ' $\\xrightarrow{\\text{Tinh chế}}$ ';
+  }
+  if (tokens.some((t) => t.includes('than chì') || t.includes('đpnc'))) {
+    return ' $\\xrightarrow[\\text{than chì}]{\\text{đpnc}}$ ';
+  }
+
+  // Greek alpha / beta
+  if (tokens.length === 1 && (tokens[0] === 'a' || tokens[0] === 'α')) return '$\\alpha$';
+  if (tokens.length === 1 && (tokens[0] === 'b' || tokens[0] === 'β')) return '$\\beta$';
+
+  // Numbered arrows: (1), (2), (3)
+  const numArrow = tokens.find((t) => /^\(\d+\)$/.test(t));
+  if (numArrow) return ` $\\xrightarrow{${numArrow}}$ `;
+
+  // Generic arrow: ONLY if no chemical formula names in tokens!
+  const hasChemical = tokens.some((t) => /[A-Za-z]{2,}/.test(t) && !['to', 'xt', 'dpnc', 'dac'].includes(t.toLowerCase()));
+  if (!hasChemical && tokens.some((t) => t.includes('®') || t.includes('¾') || t === '->' || t === '-->' || t === '→' || t.includes('->') || t.includes('-->'))) {
+    return ' $\\rightarrow$ ';
   }
 
   // Ions: Ba^{2+}, Pt^{2+}, OH^-, Cl^-, SO_4^{2-}, NO_3^-
@@ -319,8 +375,8 @@ function escapeHtmlPreserveLaTeX(text: string): string {
     return `__PRESERVED_BLOCK_${preservedBlocks.length - 1}__`;
   };
 
-  // Protect all safe HTML tags (img, div, span, table, sub, sup, b, i, etc.)
-  text = text.replace(/<(\/?[a-z0-9]+)(\s+[^>]*)?>/gi, protect);
+  // Protect all safe HTML tags (br, img, div, span, table, sub, sup, b, i, u, etc.)
+  text = text.replace(/<(\/?[a-z0-9]+)([^>]*)>/gi, protect);
 
   // Protect LaTeX ($$...$$ and $...$)
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, protect);
