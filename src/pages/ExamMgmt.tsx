@@ -1026,8 +1026,16 @@ export default function ExamMgmt() {
         <div className="space-y-8 max-h-[75vh] overflow-y-auto pr-2 bg-gray-50 p-4 rounded-xl">
           
           {[1, 2, 3, 4].map(part => {
+            // Đề thi chuẩn 3 phần: Không hiển thị Phần 4 nếu không có câu hỏi tự luận thực sự
+            if (part === 4) {
+              const writingQs = previewData?.questions?.filter((q: any) => q.type === 'writing');
+              if (!writingQs || writingQs.length === 0) return null;
+            }
+
             const questionsInPart = previewData?.questions?.filter((q: any) => {
               const qPart = typeof q.part === 'string' ? parseInt(q.part.replace(/\D/g, '')) : q.part;
+              // Nếu câu hỏi dạng short_answer bị đánh số nhầm sang part 4, gom về Phần 3
+              if (qPart === 4 && q.type !== 'writing') return part === 3;
               return qPart === part;
             }) || [];
 

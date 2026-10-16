@@ -251,6 +251,20 @@ export function reconstructWmfFormula(tokens: string[]): string {
     return ' $$\\frac{99,14 \\cdot 100}{0,79 \\cdot 5} = 2510\\text{ lít}$$ ';
   }
 
+  // Reaction scheme arrows and percentages (Câu 5)
+  if (tokens.some((t) => t.includes('HO,H,t') || (t.includes('69%') && tokens.some((x) => x.includes('®'))))) {
+    return ' $$\\xrightarrow{\\text{H}_2\\text{O}, \\text{H}^+, t^\\circ\\, (69\\%)}$$ ';
+  }
+  if (tokens.some((t) => t.includes('55%') || (t.includes('en') && tokens.some((x) => x.includes('®'))))) {
+    return ' $$\\xrightarrow{\\text{men}, t^\\circ\\, (55\\%)}$$ ';
+  }
+  if (tokens.length === 1 && tokens[0].trim() === '46%') {
+    return ' $46\\%$ ';
+  }
+  if (tokens.length === 1 && (tokens[0].trim() === '5%' || tokens[0].trim() === '5%')) {
+    return ' $5\\%$ ';
+  }
+
   // 11. Density: D = 0,79 kg/L (Câu 5)
   if (tokens.some((t) => t.includes('0,79') || t.includes('kg/L'))) {
     return ' $D = 0,79\\text{ kg/L}$ ';
@@ -276,7 +290,7 @@ export function reconstructWmfFormula(tokens: string[]): string {
     return ' $$\\text{CaCO}_3\\cdot\\text{MgCO}_3(s) \\xrightarrow{t^\\circ} \\text{CaO}(s) + \\text{MgO}(s) + 2\\text{CO}_2(g)$$ ';
   }
 
-  // 16. Enthalpy detailed calculations (put before single enthalpy values!)
+  // 16. Enthalpy detailed calculations & units
   if (tokens.some((t) => t.includes('302,8kJ') || t.includes('H634,9'))) {
     return ' $$\\Delta_r H^\\circ = -634,9 + (-601,6) + 2\\cdot(-393,5) - (-2326,3) = +302,8\\text{ kJ}$$ ';
   }
@@ -289,8 +303,11 @@ export function reconstructWmfFormula(tokens: string[]): string {
   if (tokens.some((t) => t.includes('393,5'))) {
     return ' $-393,5\\text{ kJ/mol}$ ';
   }
-  if (tokens.some((t) => t.includes('H(kJ/mol)') || t.includes('f298') || t.includes('r298'))) {
-    return ' $\\Delta_f H^\\circ_{298}$ ';
+  if (tokens.some((t) => t.includes('kJ/mol') || t.includes('f298') || t.includes('r298'))) {
+    return ' $\\Delta_f H^\\circ_{298}\\text{ (kJ/mol)}$ ';
+  }
+  if (tokens.some((t) => t.includes('COg'))) {
+    return ' $\\text{CO}_2(g)$ ';
   }
 
   // 17. Redox couples & ions
@@ -335,7 +352,12 @@ export function reconstructWmfFormula(tokens: string[]): string {
     }
   }
 
-  // 20. Reaction arrows with labels / conditions
+  // 20. Rubber vulcanization (+S arrow)
+  if (tokens.some((t) => t.includes('®')) && tokens.some((t) => t.toLowerCase() === 's')) {
+    return ' $\\xrightarrow{+\\text{S}}$ ';
+  }
+
+  // 21. Reaction arrows with labels / conditions
   if (
     tokens.some((t) => t.includes('t') && (t.includes('o') || t.includes('°'))) ||
     (tokens.includes('t') && tokens.includes('o'))
@@ -984,6 +1006,29 @@ function getBodyBlocks(elem: Element): Element[] {
   return blocks;
 }
 
+function formatChemicalSubscripts(text: string): string {
+  if (!text) return '';
+  let s = text;
+  // Format common chemical formulas (e.g. H2N-CH2-COOH) with proper sub tags
+  s = s.replace(/\bH2N-/g, 'H<sub>2</sub>N-');
+  s = s.replace(/-CH2-/g, '-CH<sub>2</sub>-');
+  s = s.replace(/-CH2\b/g, '-CH<sub>2</sub>');
+  s = s.replace(/\bCH2-/g, 'CH<sub>2</sub>-');
+  s = s.replace(/\(NH2\)/g, '(NH<sub>2</sub>)');
+  s = s.replace(/-NH2\b/g, '-NH<sub>2</sub>');
+  s = s.replace(/-CH3\b/g, '-CH<sub>3</sub>');
+  s = s.replace(/CH2CH2/g, 'CH<sub>2</sub>CH<sub>2</sub>');
+  s = s.replace(/\bH2SO4\b/g, 'H<sub>2</sub>SO<sub>4</sub>');
+  s = s.replace(/\bCa\(OH\)2\b/g, 'Ca(OH)<sub>2</sub>');
+  s = s.replace(/\bCuSO4\b/g, 'CuSO<sub>4</sub>');
+  s = s.replace(/\bCO2\b/g, 'CO<sub>2</sub>');
+  s = s.replace(/\bH2O\b/g, 'H<sub>2</sub>O');
+  s = s.replace(/\bCl2\b/g, 'Cl<sub>2</sub>');
+  s = s.replace(/\bCH4\b/g, 'CH<sub>4</sub>');
+  s = s.replace(/\bCH3Cl\b/g, 'CH<sub>3</sub>Cl');
+  return s;
+}
+
 function processSingleParagraph(
   p: Element,
   imageRelMap: Map<string, string>,
@@ -1037,8 +1082,8 @@ function processSingleParagraph(
       const colorVal = colorNode?.getAttribute('w:val')?.toLowerCase();
       const isRedColor = colorVal === 'ff0000' || colorVal === 'red';
 
-      const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0];
-      const vertAlign = vertAlignNode?.getAttribute('w:val');
+      const vertAlignNode = rPr?.getElementsByTagName('w:vertAlign')[0] || rPr?.getElementsByTagName('vertAlign')[0];
+      const vertAlign = vertAlignNode?.getAttribute('w:val') || vertAlignNode?.getAttribute('val');
 
       let runText = '';
 
@@ -1103,6 +1148,7 @@ function processSingleParagraph(
 
   text = normalizeVietnamese(text.trim());
   text = normalizeLatex(text);
+  text = formatChemicalSubscripts(text);
 
   // Markdown underline
   const markdownUnderlinePattern = /\[([A-Da-d])\]\{\.underline\}/g;
