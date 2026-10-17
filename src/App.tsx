@@ -32,6 +32,9 @@ import StudentCourseViewer from '@/pages/StudentCourseViewer'
 
 // Pages Chấm thi AI
 import PhieuGrader from '@/pages/PhieuGrader'
+import HomeworkMgmt from '@/pages/HomeworkMgmt'
+import StudentSubmitHomeworkPage from '@/homework/StudentSubmitHomeworkPage'
+
 
 // Pages Công cụ bổ trợ
 import OcrToolPage from '@/pages/OcrToolPage'
@@ -87,6 +90,12 @@ export default function App() {
       {/* 1. CỔNG CÔNG KHAI DÀNH CHO HỌC SINH VÀ ĐĂNG NHẬP */}
       <Route path="/login"    element={<Login />} />
       <Route path="/thi"      element={<StudentPortal />} />
+      {/* CỔNG NỘP BÀI TẬP VỀ NHÀ DÀNH CHO HỌC SINH (CHUẨN AZOTA) */}
+      <Route path="/nop-bai/:assignmentId" element={<StudentSubmitHomeworkPage />} />
+      <Route path="/nop-bai"               element={<StudentSubmitHomeworkPage />} />
+      <Route path="/bai-tap/:assignmentId" element={<StudentSubmitHomeworkPage />} />
+      <Route path="/bai-tap"               element={<StudentSubmitHomeworkPage />} />
+
       {/* PHÒNG HỌC LIVE CỐ ĐỊNH THEO SỐ ĐIỆN THOẠI THẦY THỌ */}
       <Route path="/casio"       element={<CasioCalculatorPage />} />
       <Route path="/may-tinh-casio" element={<CasioCalculatorPage />} />
@@ -118,6 +127,9 @@ export default function App() {
         <Route path="exam-rooms"           element={<ExamRoomsMgmt />} />
         <Route path="exam-results/:roomId" element={<ExamResultsPage />} />
         <Route path="phieu-grader"         element={<PhieuGrader />} />
+        <Route path="homework"             element={<HomeworkMgmt />} />
+        <Route path="giao-bai-tap"         element={<HomeworkMgmt />} />
+
 
         {/* --- Nhóm Công cụ chuyên dụng --- */}
         <Route path="ocr"            element={<OcrToolPage />} />

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, BookOpen, CalendarCheck, Banknote,
   Mail, Settings, LogOut, FileText, MonitorPlay, ScanText,
   GraduationCap, Sigma, FilePlus, PlaySquare, Zap, FileType, CreditCard,
-  ClipboardList, Tag, MessageCircle, Calculator,                                  // ← MỚI ZALO
+  ClipboardList, ClipboardCheck, Tag, MessageCircle, Calculator,                                  // ← MỚI ZALO
 } from 'lucide-react'
 
 export default function Layout() {
@@ -35,11 +35,14 @@ export default function Layout() {
     {
       title: 'Học liệu & Thi cử',
       items: [
-        { path: '/courses',           icon: PlaySquare,    label: 'Khóa học & Bài giảng' },
+        {
+        path: '/homework',          icon: ClipboardCheck, label: 'Giao Bài Tập (Azota)'
+      },
+      { path: '/courses',           icon: PlaySquare,    label: 'Khóa học & Bài giảng' },
         { path: '/exams',             icon: FileText,      label: 'Ngân hàng đề' },
         { path: '/create-pdf-exam',   icon: FilePlus,      label: 'Tạo đề PDF' },
         { path: '/create-tex-exam',   icon: Sigma,         label: 'Tạo đề LaTeX' },
-        { path: '/create-worksheet',  icon: ClipboardList, label: 'Phiếu Bài Tập' },  // ← MỚI
+        { path: '/create-worksheet',  icon: ClipboardList, ClipboardCheck, label: 'Phiếu Bài Tập' },  // ← MỚI
         { path: '/0345833133',        icon: Video,         label: '🔴 Phòng Live 0345.833.133' },
         { path: '/exam-rooms',        icon: MonitorPlay,   label: 'Phòng thi' },
         { path: '/phieu-grader',      icon: GraduationCap, label: 'Chấm Bài Học Sinh' },
