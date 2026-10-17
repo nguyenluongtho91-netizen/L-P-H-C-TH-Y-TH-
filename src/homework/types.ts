@@ -14,12 +14,17 @@ export interface HomeworkAssignment {
   code: string; // Mã bài ngắn gọn 5-6 ký tự (VD: HW782)
   title: string;
   description?: string;
+  content_html?: string; // Nội dung soạn thảo đề bài
   class_ids: string[]; // Các lớp được giao bài
   class_names?: string[];
   created_at: string;
-  deadline: string; // ISO date-time string
+  deadline?: string; // ISO date-time string
+  no_deadline?: boolean; // Không giới hạn thời gian nộp
   allow_late: boolean; // Cho phép nộp muộn (đánh dấu nhãn Nộp trễ)
   require_login: boolean; // Bắt buộc đăng nhập mã HS + mật khẩu
+  require_password?: boolean; // Yêu cầu mật khẩu khi chọn tên trong danh sách lớp
+  assignment_password?: string; // Mật khẩu chung của bài tập (nếu có)
+  submission_types?: Array<'photo' | 'online' | 'file'>; // Các hình thức nộp bài cho phép
   view_score_rule: 'immediate' | 'graded_only' | 'hidden'; // Cấu hình xem điểm
   view_solution_rule: 'immediate' | 'after_deadline' | 'hidden'; // Cấu hình xem lời giải
   solution_text?: string;

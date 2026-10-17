@@ -19,7 +19,7 @@ export interface Annotation {
   color?: string;
 }
 
-export type ActiveTool = 'correct' | 'incorrect' | 'circle' | 'pen' | 'text' | 'view';
+export type ActiveTool = 'correct' | 'incorrect' | 'circle' | 'pen' | 'text' | 'view' | 'azota_tap';
 
 interface EssayImageAnnotatorProps {
   images: string[]; // Mảng Base64 hoặc URL ảnh bài làm
@@ -63,6 +63,7 @@ export default function EssayImageAnnotator({
   const [dragCurrent, setDragCurrent] = useState<{ x: number; y: number } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
   const curAnnotations = annotations[currentImgIndex] || [];
@@ -94,7 +95,39 @@ export default function EssayImageAnnotator({
     const coords = getCoordinates(e);
     if (!coords) return;
 
-    if (tool === 'correct' || tool === 'incorrect') {
+    if (tool === 'azota_tap') {
+      const now = Date.now();
+      const last = lastTapRef.current;
+      if (last && (now - last.time < 500) && Math.abs(coords.x - last.x) < 5 && Math.abs(coords.y - last.y) < 5) {
+        setAnnotations(prev => {
+          const list = prev[currentImgIndex] || [];
+          if (list.length === 0) return prev;
+          const updated = [...list];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            type: 'incorrect',
+            color: '#dc2626',
+          };
+          return { ...prev, [currentImgIndex]: updated };
+        });
+        lastTapRef.current = null;
+        return;
+      }
+
+      const newAnno: Annotation = {
+        id: 'anno_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        type: 'correct',
+        x: coords.x,
+        y: coords.y,
+        color: '#16a34a',
+      };
+      setAnnotations(prev => ({
+        ...prev,
+        [currentImgIndex]: [...(prev[currentImgIndex] || []), newAnno]
+      }));
+      lastTapRef.current = { time: now, x: coords.x, y: coords.y };
+      return;
+    } else if (tool === 'correct' || tool === 'incorrect') {
       // Đóng dấu ĐÚNG (✓) hoặc SAI (✗)
       const newAnno: Annotation = {
         id: 'anno_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
