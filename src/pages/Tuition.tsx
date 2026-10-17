@@ -1,3 +1,4 @@
+import { isZaloRobotOnline } from '@/services/zaloQueueService'
 import { useEffect, useState, useMemo } from 'react'
 import { Banknote, Plus, CheckCircle, XCircle, Mail, Send, Loader2, MessageCircle, AlertCircle, Trash2, Check, QrCode, Copy, ExternalLink, Building2 } from 'lucide-react'
 import { useDataStore } from '@/store/dataStore'
@@ -46,6 +47,21 @@ export default function Tuition() {
   const [copiedWebhook, setCopiedWebhook] = useState(false)
   const [autoSending, setAutoSending] = useState(false)
   const [autoProgress, setAutoProgress] = useState<{ current: number; total: number; currentStudent: string; logs: string[] }>({ current: 0, total: 0, currentStudent: '', logs: [] })
+  const [sendingStudentId, setSendingStudentId] = useState<string | null>(null)
+  const [robotOnline, setRobotOnline] = useState<boolean>(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const checkStatus = async () => {
+      try {
+        const online = await isZaloRobotOnline()
+        if (isMounted) setRobotOnline(online)
+      } catch {}
+    }
+    checkStatus()
+    const interval = setInterval(checkStatus, 7000)
+    return () => { isMounted = false; clearInterval(interval) }
+  }, [])
 
   // ── Load foundational data on mount ──
   useEffect(() => {
@@ -287,6 +303,80 @@ export default function Tuition() {
       await loadTuitionNotifications(selClass)
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message)
+    }
+  }
+
+  // ── 1-CLICK DIRECT ZALO SEND FOR SINGLE STUDENT ──
+  const sendZaloDirect1Click = async (row: TuitionNotificationRow) => {
+    const student = students.find((s: any) => s.id === row.student.id)
+    const phone = (student as any)?.zalo || (student as any)?.parent_phone || ''
+    const cleanPhone = phone.replace(/\D/g, '').replace(/^84/, '0')
+
+    if (!cleanPhone || cleanPhone.length < 9) {
+      toast.error(`Học sinh ${row.student.full_name} chưa có số điện thoại Zalo hợp lệ!`)
+      return
+    }
+
+    const amountVal = courseAmount ? Number(courseAmount) : (Number(row.notification?.amount) || 600000)
+    const activeCourseName = (courseName && courseName.trim()) || row.notification?.course_name || 'Học phí'
+
+    if (selClass) {
+      try {
+        await upsertTuitionNotification({
+          student_id: row.student.id,
+          class_id: selClass,
+          course_name: activeCourseName,
+          amount: amountVal,
+          is_paid: false
+        })
+        void loadTuitionNotifications(selClass)
+      } catch (err) {}
+    }
+
+    const bankId      = import.meta.env.VITE_BANK_ID      || 'VCB'
+    const bankAccount = import.meta.env.VITE_BANK_ACCOUNT || '1070493932'
+    const bankName    = import.meta.env.VITE_BANK_NAME    || import.meta.env.VITE_BANK_ACCOUNT_NAME || 'HO KINH DOANH NGUYEN LUONG THO'
+
+    const cls = classes.find(c => c.id === selClass)
+    const clsName = (cls as any)?.class_name || cls?.name || 'Lớp học'
+    const cleanClass = clsName.replace(/^[Ll][ớỚoO][pP]\s*/, '').trim() || clsName
+    const addInfo = formatVietQRAddInfo(row.student.full_name, clsName, row.student.student_code)
+    const qrUrl = bankId && bankAccount
+      ? 'https://img.vietqr.io/image/' + bankId + '-' + bankAccount + '-compact.png'
+        + '?amount=' + amountVal
+        + '&addInfo=' + encodeURIComponent(addInfo)
+        + '&accountName=' + encodeURIComponent(bankName)
+      : ''
+
+    const msg = `Chào Quý phụ huynh.\n`
+              + `Thầy gửi thông tin học phí tháng ${activeCourseName}:\n\n`
+              + `• Học sinh: ${row.student.full_name}\n`
+              + `• Lớp: ${cleanClass}\n`
+              + `• Số tiền cần nộp: ${amountVal.toLocaleString('vi-VN')} VNĐ\n`
+              + `• Thời gian thu học phí: Từ 01 – 10 hàng tháng\n\n`
+              + `• Hình thức nộp: Chuyển khoản\n`
+              + `   - Ngân hàng: V.C.B (Ngoại thương)\n`
+              + `   - STK: ${bankAccount}\n`
+              + `   - Chủ TK (HKD): ${bankName}\n`
+              + `   - Nội dung chuyển khoản: ${addInfo}\n\n`
+              + `👉 Mã QR chuyển khoản nhanh (đã điền sẵn số tiền và tên học sinh bên dưới):`
+
+    setSendingStudentId(row.student.id)
+    const toastId = toast.loading(`🚀 Đang tự động gửi Zalo cho ${row.student.full_name}...`)
+
+    try {
+      const res = await sendZaloPersonalMessage(cleanPhone, msg, qrUrl, row.student.full_name)
+      toast.dismiss(toastId)
+      if (res.success) {
+        toast.success(`🎉 ${res.message}`)
+      } else {
+        toast.error(res.message)
+      }
+    } catch (err: any) {
+      toast.dismiss(toastId)
+      toast.error(`Lỗi: ${err.message}`)
+    } finally {
+      setSendingStudentId(null)
     }
   }
 
@@ -760,9 +850,21 @@ export default function Tuition() {
         <>
           {/* Form Setup Tuition Notification */}
           <div className="card p-6 bg-gradient-to-br from-teal-50/50 to-white border border-teal-100 shadow-sm rounded-3xl">
-            <h3 className="font-extrabold text-teal-800 mb-4 flex items-center gap-2 text-base">
-              📢 Thiết lập & Phát hành Báo học phí theo Khóa
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="font-extrabold text-teal-800 flex items-center gap-2 text-base">
+                📢 Thiết lập & Phát hành Báo học phí theo Khóa
+              </h3>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all shadow-xs"
+                style={{
+                  backgroundColor: robotOnline ? '#ecfdf5' : '#fffbeb',
+                  color: robotOnline ? '#065f46' : '#92400e',
+                  borderColor: robotOnline ? '#a7f3d0' : '#fde68a'
+                }}
+              >
+                <span className={`w-2 h-2 rounded-full ${robotOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                {robotOnline ? '🟢 Robot Zalo PC: Sẵn sàng 1-Click' : '🟡 Robot Zalo: Hãy mở file trên Desktop'}
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
               <div>
@@ -823,19 +925,11 @@ export default function Tuition() {
                         await sendClassNotifications();
                       }
 
-                      // Kiểm tra xem Robot Zalo PC có đang chạy không để tự động gửi luôn
-                      try {
-                        const health = await checkZaloServiceHealth();
-                        if (health.ok) {
-                          setAutoSendModal(true);
-                          setTimeout(() => {
-                            runAutoBulkSend();
-                          }, 350);
-                          return;
-                        }
-                      } catch {}
-
-                      startBatchZalo();
+                      // Tự động mở bảng theo dõi và gửi Zalo đồng loạt 1-click
+                      setAutoSendModal(true);
+                      setTimeout(() => {
+                        runAutoBulkSend();
+                      }, 350);
                     }}
                     className="py-3 px-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/25 flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     title="Bấm 1 lần để phát hành và gửi Zalo cho cả lớp"
@@ -1002,8 +1096,22 @@ export default function Tuition() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => sendZaloDirect1Click(row)}
+                            disabled={sendingStudentId === row.student.id}
+                            className="px-3 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-60"
+                            title="Bấm 1 nút là tự động gửi Zalo ngay lập tức"
+                          >
+                            {sendingStudentId === row.student.id ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" /> Đang gửi...</>
+                            ) : (
+                              <><Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" /> Gửi Zalo ngay</>
+                            )}
+                          </button>
+
+                          <button
                             onClick={() => sendZalo(row)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 hover:border-blue-300 bg-blue-50/70 rounded-xl border border-blue-200 transition-all flex items-center justify-center cursor-pointer shadow-xs hover:scale-105" title="Báo riêng qua Zalo (Mở gửi trực tiếp)"
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Xem mẫu tin nhắn / Copy gửi thủ công"
                           >
                             <MessageCircle className="w-4 h-4" />
                           </button>
@@ -1011,7 +1119,7 @@ export default function Tuition() {
                           <button
                             onClick={() => sendGmailReminder(row)}
                             disabled={sending}
-                            className="p-2 text-rose-600 hover:bg-rose-50 hover:border-rose-300 bg-rose-50/70 rounded-xl border border-rose-200 transition-all flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 disabled:opacity-40"
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                             title="Nhắc học phí qua Gmail"
                           >
                             <Mail className="w-4 h-4" />

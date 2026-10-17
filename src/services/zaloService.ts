@@ -1,3 +1,4 @@
+import { isZaloRobotOnline, enqueueZaloMessage, waitForZaloJob } from './zaloQueueService'
 /**
  * Zalo Official Account (OA) & ZNS Service
  * Quản lý gửi tin nhắn trực tiếp qua Zalo OA OpenAPI & Serverless API
@@ -387,7 +388,15 @@ export interface ZaloServiceHealth {
   * Kiểm tra tình trạng kết nối của Zalo Personal Gateway (/health)
   */
 export async function checkZaloServiceHealth(): Promise<ZaloServiceHealth> {
-  // 1. Ưu tiên kiểm tra Local Zalo Bridge Robot trên máy tính Thầy Thọ (port 3001)
+  // 1. Ưu tiên kiểm tra Robot Zalo PC qua Supabase Cloud Outbox (Không bị lỗi Mixed Content trên HTTPS)
+  try {
+    const isOnline = await isZaloRobotOnline();
+    if (isOnline) {
+      return { ok: true, zalo: 'ready' };
+    }
+  } catch {}
+
+  // 2. Kiểm tra Local Zalo Bridge Robot trên máy tính Thầy Thọ (port 3001) nếu có
   try {
     const localRes = await fetch('http://127.0.0.1:3001/health', { method: 'GET' });
     if (localRes.ok) {
@@ -423,14 +432,36 @@ export async function checkZaloServiceHealth(): Promise<ZaloServiceHealth> {
 export async function sendZaloPersonalMessage(
   phone: string,
   message: string,
-  qrUrl?: string
+  qrUrl?: string,
+  studentName?: string
 ): Promise<{ success: boolean; message: string; jobId?: string }> {
-  // 1. Ưu tiên số 1: Tự động gửi trực tiếp qua Robot Zalo PC (http://127.0.0.1:3001)
+  const cleanPhone = phone.replace(/\D/g, '').replace(/^84/, '0');
+
+  // 1. Ưu tiên số 1: Gửi tự động qua Robot Zalo PC (Cloud Outbox Supabase - Bỏ qua Mixed Content)
+  try {
+    const isOnline = await isZaloRobotOnline();
+    if (isOnline) {
+      const jobId = await enqueueZaloMessage({
+        phone: cleanPhone,
+        student_name: studentName || cleanPhone,
+        message,
+        qr_url: qrUrl
+      });
+      const res = await waitForZaloJob(jobId, 15000);
+      if (res.success) {
+        return { success: true, message: 'Đã tự động gửi qua Robot Zalo PC thành công!', jobId };
+      }
+    }
+  } catch (e) {
+    console.warn('Robot Cloud Outbox error:', e);
+  }
+
+  // 2. Thử gửi qua local bridge nếu có
   try {
     const localRes = await fetch('http://127.0.0.1:3001/api/zalo/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, message, qrUrl })
+      body: JSON.stringify({ phone: cleanPhone, message, qrUrl })
     });
     if (localRes.ok) {
       const data = await localRes.json();
@@ -438,13 +469,25 @@ export async function sendZaloPersonalMessage(
         return { success: true, message: 'Đã tự động gửi qua Robot Zalo PC thành công!' };
       }
     }
-  } catch (e) {
-    // Local bridge chưa bật
-  }
+  } catch (e) {}
+
+  // 3. Fallback 1-Click: Copy vào Clipboard & Mở Zalo phụ huynh để Thầy chỉ cần bấm Ctrl+V gửi luôn
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+    }
+    if (cleanPhone) {
+      window.open('https://zalo.me/' + cleanPhone, '_blank');
+      return {
+        success: true,
+        message: 'Đã tự động copy nội dung và mở Zalo phụ huynh. Thầy chỉ cần bấm Ctrl+V để gửi!'
+      };
+    }
+  } catch (err) {}
 
   const cfg = getZaloConfig();
   if (!cfg.serviceUrl) {
-    return { success: false, message: 'Chưa bật Robot Zalo PC. Thầy hãy mở file "ROBOT_TU_DONG_GUI_ZALO.bat" trên màn hình Desktop.' };
+    return { success: false, message: 'Chưa bật Robot Zalo PC. Thầy hãy mở file "CHAY_ROBOT_ZALO_TU_DONG.bat" trên màn hình Desktop.' };
   }
 
   const cleanUrl = cfg.serviceUrl.replace(/\/$/, '');
