@@ -819,12 +819,12 @@ export default function ClassroomGamesModal({
                       onClick={() => {
                         setWinner(null);
                         setTimeout(() => {
-                          if (activeTab === 'wheel') spinWheel();
-                          else if (activeTab === 'bomb') startBomb();
-                          else if (activeTab === 'slot') startSlot();
-                          else if (activeTab === 'race') startRace();
-                          else if (activeTab === 'lightning') startLightning();
-                          else if (activeTab === 'chest') startChest();
+                          if (activeTab === 'wheel') handleSpinWheel();
+                          else if (activeTab === 'slot') handleStartSlot();
+                          else if (activeTab === 'race') handleStartRace();
+                          else if (activeTab === 'lightning') handleStartLightning();
+                          else if (activeTab === 'mystery') handleStartMystery();
+                          else handleSpinWheel();
                         }, 150);
                       }}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
@@ -839,12 +839,12 @@ export default function ClassroomGamesModal({
                         }
                         setWinner(null);
                         setTimeout(() => {
-                          if (activeTab === 'wheel') spinWheel();
-                          else if (activeTab === 'bomb') startBomb();
-                          else if (activeTab === 'slot') startSlot();
-                          else if (activeTab === 'race') startRace();
-                          else if (activeTab === 'lightning') startLightning();
-                          else if (activeTab === 'chest') startChest();
+                          if (activeTab === 'wheel') handleSpinWheel();
+                          else if (activeTab === 'slot') handleStartSlot();
+                          else if (activeTab === 'race') handleStartRace();
+                          else if (activeTab === 'lightning') handleStartLightning();
+                          else if (activeTab === 'mystery') handleStartMystery();
+                          else handleSpinWheel();
                         }, 150);
                       }}
                       className="px-3 py-2 rounded-xl bg-rose-500/20 text-rose-300 hover:bg-rose-500 hover:text-white border border-rose-500/30 font-bold text-xs hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
