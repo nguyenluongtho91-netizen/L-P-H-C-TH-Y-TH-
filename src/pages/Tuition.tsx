@@ -19,7 +19,8 @@ export default function Tuition() {
   const {
     classes, students, enrollments, tuitionNotifications,
     loadClasses, loadStudents, loadEnrollments, loadPayments, loadTuitionNotifications,
-    addPayment, upsertTuitionNotification, updateTuitionNotification
+    addPayment, upsertTuitionNotification, updateTuitionNotification,
+    batchUpsertTuitionNotifications, deleteTuitionNotification
   } = useDataStore()
 
   const [selClass, setSelClass] = useState('')
@@ -219,7 +220,10 @@ export default function Tuition() {
   // ── Send notifications for the entire class ──
   const [sendingNotif, setSendingNotif] = useState(false)
   const sendClassNotifications = async () => {
-    if (!selClass) return
+    if (!selClass) {
+      toast.error('Vui lòng chọn lớp học!')
+      return
+    }
     const amt = parseFloat(courseAmount)
     if (isNaN(amt) || amt <= 0) {
       toast.error('Vui lòng nhập số tiền học phí hợp lệ!')
@@ -230,36 +234,27 @@ export default function Tuition() {
       return
     }
 
-    const unnotifiedRows = tuitionData.filter(r => r.status === 'unnotified')
-    if (unnotifiedRows.length === 0) {
-      if (!window.confirm('Tất cả học sinh đã có thông báo học phí. Bạn có muốn cập nhật lại mức học phí mới cho các học sinh chưa thanh toán không?')) {
-        return
-      }
-    }
-
     setSendingNotif(true)
     try {
-      const targetRows = unnotifiedRows.length > 0 ? unnotifiedRows : tuitionData.filter(r => r.status === 'unpaid')
+      const targetRows = tuitionData
       if (targetRows.length === 0) {
-        toast.error('Không tìm thấy học sinh nào cần gửi thông báo học phí.')
+        toast.error('Không tìm thấy học sinh nào trong lớp này.')
         return
       }
 
-      const promises = targetRows.map(async (row) => {
-        return upsertTuitionNotification({
-          student_id: row.student.id,
-          class_id: selClass,
-          course_name: courseName.trim(),
-          amount: amt,
-          is_paid: false
-        })
-      })
+      const notifs = targetRows.map(row => ({
+        student_id: row.student.id,
+        class_id: selClass,
+        course_name: courseName.trim(),
+        amount: amt,
+        is_paid: row.notification?.is_paid ?? false
+      }))
 
-      await Promise.all(promises)
-      toast.success(`📢 Đã tạo thông báo học phí khóa "${courseName}" cho ${promises.length} học sinh`)
-      void loadTuitionNotifications(selClass)
+      await batchUpsertTuitionNotifications(notifs)
+      toast.success(`📢 Đã phát hành báo học phí khóa "${courseName.trim()}" cho ${notifs.length} học sinh thành công!`)
+      await loadTuitionNotifications(selClass)
     } catch (e: any) {
-      toast.error('Lỗi khi gửi thông báo: ' + e.message)
+      toast.error('Lỗi khi gửi thông báo: ' + (e.message || String(e)))
     } finally {
       setSendingNotif(false)
     }
@@ -267,6 +262,10 @@ export default function Tuition() {
 
   // Send single student notification
   const sendSingleNotification = async (studentId: string) => {
+    if (!selClass) {
+      toast.error('Vui lòng chọn lớp học!')
+      return
+    }
     const amt = parseFloat(courseAmount)
     if (isNaN(amt) || amt <= 0) {
       toast.error('Vui lòng nhập số tiền học phí hợp lệ!')
@@ -285,7 +284,7 @@ export default function Tuition() {
         is_paid: false
       })
       toast.success('✅ Đã tạo thông báo học phí thành công!')
-      void loadTuitionNotifications(selClass)
+      await loadTuitionNotifications(selClass)
     } catch (e: any) {
       toast.error('Lỗi: ' + e.message)
     }
@@ -483,7 +482,26 @@ export default function Tuition() {
 
   // ── Send reminders via Gmail proxy ──
   const sendGmailReminder = async (row?: TuitionNotificationRow) => {
-    if (!selClass || !courseName) return
+    if (!selClass) {
+      toast.error('Vui lòng chọn lớp học!')
+      return
+    }
+    const amt = parseFloat(courseAmount) || 600000
+    const activeCourse = (courseName && courseName.trim()) || row?.notification?.course_name || 'Tháng 9'
+
+    if (row && !row.notification) {
+      try {
+        await upsertTuitionNotification({
+          student_id: row.student.id,
+          class_id: selClass,
+          course_name: activeCourse,
+          amount: amt,
+          is_paid: false
+        })
+        void loadTuitionNotifications(selClass)
+      } catch {}
+    }
+
     setSending(true)
     setSendResult(null)
     try {
@@ -493,7 +511,7 @@ export default function Tuition() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           classId: selClass,
-          courseName: courseName.trim(),
+          courseName: activeCourse,
           studentIds
         }),
       })
@@ -642,18 +660,7 @@ export default function Tuition() {
   const deleteNotice = async (notifId: string) => {
     if (!window.confirm('Bạn có muốn xóa thông báo học phí này?')) return
     try {
-      const { supabase } = await import('@/lib/supabase')
-      try {
-        await supabase.from('tuition_notifications').delete().eq('id', notifId)
-      } catch {}
-      try {
-        const { data } = await supabase.from('exams').select('data').eq('title', '__TUITION_NOTIFICATIONS_STORE__').maybeSingle()
-        if (data?.data?.items) {
-          const items = (data.data.items as any[]).filter(i => i.id !== notifId)
-          await supabase.from('exams').upsert({ title: '__TUITION_NOTIFICATIONS_STORE__', data: { items } }, { onConflict: 'title' })
-          localStorage.setItem('__TUITION_NOTIFICATIONS_STORE__', JSON.stringify(items))
-        }
-      } catch {}
+      await deleteTuitionNotification(notifId)
       toast.success('Xóa thông báo học phí thành công!')
       void loadTuitionNotifications(selClass)
     } catch (e: any) {
@@ -791,29 +798,38 @@ export default function Tuition() {
               
               <div className="flex flex-wrap items-center gap-2.5">
                 <button
-                onClick={sendClassNotifications}
-                disabled={sendingNotif}
-                className="btn-teal py-3 px-6 shadow-md shadow-teal-500/15 flex items-center gap-2 font-extrabold text-sm rounded-xl"
-              >
-                {sendingNotif ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Đang phát hành...</>
-                ) : (
-                  <><Send className="w-4 h-4" /> Báo học phí cả lớp ({tuitionData.filter(r => r.status === 'unnotified').length} HS)</>
-                )}
-              </button>
-                <button
-                  onClick={async () => {
-                    if (tuitionData.some(r => r.status === 'unnotified')) {
-                      await sendClassNotifications();
-                    }
-                    startBatchZalo();
-                  }}
-                  className="py-3 px-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/25 flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  title="Bấm 1 lần để phát hành và gửi Zalo cho cả lớp"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                  🚀 BÁO & GỬI ZALO CẢ LỚP ({tuitionData.length} HS)
-                </button>
+                    onClick={sendClassNotifications}
+                    disabled={sendingNotif}
+                    className="btn-teal py-3 px-6 shadow-md shadow-teal-500/15 flex items-center gap-2 font-extrabold text-sm rounded-xl cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    {sendingNotif ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Đang phát hành...</>
+                    ) : (
+                      <><Send className="w-4 h-4" /> Báo học phí cả lớp ({tuitionData.length} HS)</>
+                    )}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const amt = parseFloat(courseAmount)
+                      if (isNaN(amt) || amt <= 0) {
+                        toast.error('Vui lòng nhập số tiền học phí hợp lệ!')
+                        return
+                      }
+                      if (!courseName.trim()) {
+                        toast.error('Vui lòng nhập tên khóa học!')
+                        return
+                      }
+                      if (tuitionData.some(r => r.status === 'unnotified')) {
+                        await sendClassNotifications();
+                      }
+                      startBatchZalo();
+                    }}
+                    className="py-3 px-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/25 flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    title="Bấm 1 lần để phát hành và gửi Zalo cho cả lớp"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                    🚀 BÁO & GỬI ZALO CẢ LỚP ({tuitionData.length} HS)
+                  </button>
               </div>
             </div>
           </div>
@@ -981,9 +997,9 @@ export default function Tuition() {
                           
                           <button
                             onClick={() => sendGmailReminder(row)}
-                            disabled={row.status !== 'unpaid' || sending}
-                            className="p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-40 rounded-xl border border-rose-100 transition-all flex items-center justify-center"
-                            title="Nhắc qua Gmail"
+                            disabled={sending}
+                            className="p-2 text-rose-600 hover:bg-rose-50 hover:border-rose-300 bg-rose-50/70 rounded-xl border border-rose-200 transition-all flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 disabled:opacity-40"
+                            title="Nhắc học phí qua Gmail"
                           >
                             <Mail className="w-4 h-4" />
                           </button>
