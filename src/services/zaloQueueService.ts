@@ -1,4 +1,4 @@
-import { supabase } from '@/store/dataStore'
+import { supabase } from '@/lib/supabase'
 
 export interface ZaloQueueItem {
   id: string

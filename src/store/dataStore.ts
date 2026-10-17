@@ -1,3 +1,4 @@
+export { supabase } from '@/lib/supabase'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { toTitleCase } from '@/lib/helpers'
