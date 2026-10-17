@@ -253,27 +253,66 @@ export default function StudentSubmitHomeworkPage() {
   };
 
   // ── XỬ LÝ ẢNH BÀI LÀM (CHỤP VỞ HOẶC CHỌN TỪ MÁY) ──
-  const handleProcessImages = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Vui lòng chỉ chọn file ảnh (JPG, PNG)!');
-        return;
-      }
-
+  // Nén ảnh canvas để tối ưu dung lượng (chống tràn LocalStorage) và tăng tốc nộp bài
+  const compressImage = (file: File, maxWidth = 1600, quality = 0.8): Promise<string> => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
-        const newImg = {
-          id: 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-          url,
-          rotation: 0,
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth || height > maxWidth) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxWidth) / height);
+              height = maxWidth;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
         };
-        setImages(prev => [...prev, newImg]);
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
       };
+      reader.onerror = () => resolve('');
       reader.readAsDataURL(file);
     });
+  };
+
+  const handleProcessImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Vui lòng chỉ chọn file ảnh (JPG, PNG)!');
+        continue;
+      }
+
+      try {
+        const compressedUrl = await compressImage(file);
+        if (compressedUrl) {
+          const newImg = {
+            id: 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            url: compressedUrl,
+            rotation: 0,
+          };
+          setImages(prev => [...prev, newImg]);
+        }
+      } catch (err) {
+        console.warn('Lỗi xử lý ảnh:', err);
+      }
+    }
   };
 
   const handleRotateImage = (id: string, e: React.MouseEvent) => {

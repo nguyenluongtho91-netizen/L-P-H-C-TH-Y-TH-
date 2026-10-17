@@ -8,6 +8,24 @@ import * as XLSX from 'xlsx';
 const LOCAL_STORAGE_KEY_ASSIGNMENTS = 'thay_tho_azota_assignments_v1';
 const LOCAL_STORAGE_PREFIX_SUBMISSIONS = 'thay_tho_azota_submissions_';
 
+// ─── TIỆN ÍCH UUID CHUẨN POSTGRES (RFC4122) ────────────────────────────────────
+
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export function isUUID(str?: string): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 // ─── 1. QUẢN LÝ BÀI TẬP (ASSIGNMENTS) ──────────────────────────────────────────
 
 export async function getAssignments(): Promise<HomeworkAssignment[]> {
@@ -64,25 +82,48 @@ export async function getAssignmentById(id: string): Promise<HomeworkAssignment 
 
   // Thử query trực tiếp Supabase nếu chưa có trong list
   try {
-    const { data } = await supabase
-      .from('exams')
-      .select('id, data, created_at')
-      .eq('id', id)
-      .maybeSingle();
+    if (isUUID(id)) {
+      const { data } = await supabase
+        .from('exams')
+        .select('id, data, created_at')
+        .eq('id', id)
+        .maybeSingle();
 
-    if (data?.data) {
-      return {
-        ...data.data,
-        id: data.id,
-        created_at: data.created_at || data.data.created_at,
-      };
+      if (data?.data) {
+        return {
+          ...data.data,
+          id: data.id,
+          created_at: data.created_at || data.data.created_at,
+        };
+      }
+    } else {
+      const { data } = await supabase
+        .from('exams')
+        .select('id, data, created_at')
+        .ilike('title', `%${id}%`)
+        .maybeSingle();
+
+      if (data?.data) {
+        return {
+          ...data.data,
+          id: data.id,
+          created_at: data.created_at || data.data.created_at,
+        };
+      }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Lỗi getAssignmentById:', err);
+  }
 
   return null;
 }
 
 export async function saveAssignment(assignment: HomeworkAssignment): Promise<HomeworkAssignment> {
+  // Đảm bảo id luôn là UUID hợp lệ chuẩn RFC4122 cho Postgres
+  if (!assignment.id || !isUUID(assignment.id)) {
+    assignment.id = generateUUID();
+  }
+
   const all = await getAssignments();
   const existingIdx = all.findIndex(a => a.id === assignment.id);
   
@@ -104,8 +145,8 @@ export async function saveAssignment(assignment: HomeworkAssignment): Promise<Ho
       id: assignment.id,
       title: titleKey,
       data: assignment,
-      created_at: assignment.created_at,
-    });
+      created_at: assignment.created_at || new Date().toISOString(),
+    }, { onConflict: 'id' });
   } catch (err) {
     console.error('Lỗi lưu bài tập lên Supabase:', err);
   }
@@ -119,8 +160,11 @@ export async function deleteAssignment(id: string): Promise<boolean> {
   localStorage.setItem(LOCAL_STORAGE_KEY_ASSIGNMENTS, JSON.stringify(filtered));
 
   try {
-    await supabase.from('exams').delete().eq('id', id);
+    if (isUUID(id)) {
+      await supabase.from('exams').delete().eq('id', id);
+    }
     await supabase.from('exams').delete().eq('title', `__AZOTA_HW_SUBMISSIONS__${id}`);
+    await supabase.from('exams').delete().eq('title', `__AZOTA_HW__${id}`);
   } catch (err) {
     console.warn('Lỗi xóa bài tập trên Supabase:', err);
   }
@@ -170,19 +214,40 @@ export async function saveSubmission(submission: HomeworkSubmission): Promise<Ho
     updated = [submission, ...subs];
   }
 
-  // Lưu local
+  // 1. Lưu local
   localStorage.setItem(LOCAL_STORAGE_PREFIX_SUBMISSIONS + submission.assignment_id, JSON.stringify(updated));
 
-  // Lưu Supabase
+  // 2. Lưu Supabase (truy vấn tìm row submission đã có theo title để tránh lỗi thiếu ON CONFLICT)
   try {
-    await supabase.from('exams').upsert({
-      title: `__AZOTA_HW_SUBMISSIONS__${submission.assignment_id}`,
+    const subTitle = `__AZOTA_HW_SUBMISSIONS__${submission.assignment_id}`;
+    const { data: existingRows } = await supabase
+      .from('exams')
+      .select('id')
+      .eq('title', subTitle)
+      .limit(1);
+
+    const payload = {
+      title: subTitle,
       data: {
         assignment_id: submission.assignment_id,
         updated_at: new Date().toISOString(),
         submissions: updated,
       },
-    }, { onConflict: 'title' });
+    };
+
+    if (existingRows && existingRows.length > 0) {
+      await supabase
+        .from('exams')
+        .update(payload)
+        .eq('id', existingRows[0].id);
+    } else {
+      await supabase
+        .from('exams')
+        .insert({
+          id: generateUUID(),
+          ...payload,
+        });
+    }
   } catch (err) {
     console.error('Lỗi lưu submission lên Supabase:', err);
   }

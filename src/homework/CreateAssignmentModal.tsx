@@ -13,7 +13,7 @@ import { HomeworkAssignment, HomeworkAttachment } from './types';
 import { parseWordToExam } from '@/services/mathWordParserService';
 import { parseTexToExam } from '@/services/texParserService';
 import type { Question } from '@/types';
-import { saveAssignment, generateZaloShareMessage, formatDateTimeVN } from './homeworkService';
+import { saveAssignment, generateZaloShareMessage, formatDateTimeVN, generateUUID, isUUID } from './homeworkService';
 import toast from 'react-hot-toast';
 
 interface CreateAssignmentModalProps {
@@ -274,7 +274,7 @@ export default function CreateAssignmentModal({
         .map(c => c.name);
 
       const assignment: HomeworkAssignment = {
-        id: initialData?.id || 'hw_' + Date.now(),
+        id: (initialData?.id && isUUID(initialData.id)) ? initialData.id : generateUUID(),
         code,
         title: title.trim(),
         description: description.trim(),
