@@ -403,6 +403,8 @@ export default function Tuition() {
       toast.dismiss(toastId)
       if (res.success) {
         toast.success(`🎉 ${res.message}`)
+      } else if ((res as any).openedZalo) {
+        toast(`💬 ${res.message}`, { icon: '📋', duration: 6000 })
       } else {
         toast.error(res.message)
       }
@@ -539,10 +541,12 @@ export default function Tuition() {
 
           if (res.success) {
             successCount++
-            logs.push(`✅ [${i + 1}/${unpaidList.length}] ${row.student.full_name}: Đã gửi thành công!`)
+            logs.push(`✅ [${i + 1}/${unpaidList.length}] ${row.student.full_name}: Robot PC đã gửi thành công!`)
+          } else if ((res as any).openedZalo) {
+            logs.push(`📋 [${i + 1}/${unpaidList.length}] ${row.student.full_name}: Đã mở Zalo phụ huynh (bấm Ctrl+V gửi).`)
           } else {
             failCount++
-            logs.push(`⚠️ [${i + 1}/${unpaidList.length}] ${row.student.full_name}: ${res.message || 'Cần dùng Trợ lý web hoặc Robot'}`)
+            logs.push(`⚠️ [${i + 1}/${unpaidList.length}] ${row.student.full_name}: ${res.message || 'Chưa gửi được'}`)
           }
         } catch (err: any) {
           failCount++

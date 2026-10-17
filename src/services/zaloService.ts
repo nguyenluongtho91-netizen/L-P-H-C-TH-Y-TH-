@@ -434,10 +434,24 @@ export async function sendZaloPersonalMessage(
   message: string,
   qrUrl?: string,
   studentName?: string
-): Promise<{ success: boolean; message: string; jobId?: string }> {
+): Promise<{ success: boolean; message: string; jobId?: string; openedZalo?: boolean }> {
   const cleanPhone = phone.replace(/\D/g, '').replace(/^84/, '0');
 
-  // 1. Ưu tiên số 1: Gửi tự động qua Robot Zalo PC (Cloud Outbox Supabase - Bỏ qua Mixed Content)
+  if (!cleanPhone || cleanPhone.length !== 10) {
+    return {
+      success: false,
+      message: `Số điện thoại ${cleanPhone || 'trống'} không hợp lệ (cần đúng 10 số)`
+    };
+  }
+
+  // 1. Luôn copy sẵn tin nhắn vào Clipboard cho Thầy
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+    }
+  } catch (err) {}
+
+  // 2. Thử gửi tự động qua Robot Zalo PC (nếu Robot đang Online)
   try {
     const isOnline = await isZaloRobotOnline();
     if (isOnline) {
@@ -447,79 +461,35 @@ export async function sendZaloPersonalMessage(
         message,
         qr_url: qrUrl
       });
-      const res = await waitForZaloJob(jobId, 15000);
+      const res = await waitForZaloJob(jobId, 6000);
       if (res.success) {
-        return { success: true, message: 'Đã tự động gửi qua Robot Zalo PC thành công!', jobId };
+        return {
+          success: true,
+          message: `Robot Zalo PC đã tự động gửi cho ${studentName || cleanPhone} thành công!`,
+          jobId
+        };
       }
     }
   } catch (e) {
     console.warn('Robot Cloud Outbox error:', e);
   }
 
-  // 2. Thử gửi qua local bridge nếu có
+  // 3. Nếu Robot PC chưa gửi được: Mở trực tiếp khung chat Zalo của phụ huynh
   try {
-    const localRes = await fetch('http://127.0.0.1:3001/api/zalo/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: cleanPhone, message, qrUrl })
-    });
-    if (localRes.ok) {
-      const data = await localRes.json();
-      if (data.ok || data.success) {
-        return { success: true, message: 'Đã tự động gửi qua Robot Zalo PC thành công!' };
-      }
-    }
-  } catch (e) {}
-
-  // 3. Fallback 1-Click: Copy vào Clipboard & Mở Zalo phụ huynh để Thầy chỉ cần bấm Ctrl+V gửi luôn
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(message);
-    }
-    if (cleanPhone) {
-      window.open('https://zalo.me/' + cleanPhone, '_blank');
-      return {
-        success: true,
-        message: 'Đã tự động copy nội dung và mở Zalo phụ huynh. Thầy chỉ cần bấm Ctrl+V để gửi!'
-      };
-    }
-  } catch (err) {}
-
-  const cfg = getZaloConfig();
-  if (!cfg.serviceUrl) {
-    return { success: false, message: 'Chưa bật Robot Zalo PC. Thầy hãy mở file "CHAY_ROBOT_ZALO_TU_DONG.bat" trên màn hình Desktop.' };
-  }
-
-  const cleanUrl = cfg.serviceUrl.replace(/\/$/, '');
-  let formattedPhone = phone.replace(/\D/g, '');
-
-  try {
-    const res = await fetch(`${cleanUrl}/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(cfg.serviceApiKey ? { 'x-api-key': cfg.serviceApiKey } : {}),
-      },
-      body: JSON.stringify({
-        phone: formattedPhone,
-        message,
-      }),
-    });
-
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      return { success: true, message: 'Đã đưa tin nhắn vào hàng chờ gửi Zalo cá nhân thành công!', jobId: data.jobId };
-    } else {
-      return { success: false, message: data.error || 'Lỗi khi gửi qua Zalo Service' };
-    }
-  } catch (err: any) {
-    return { success: false, message: `Lỗi kết nối tới Zalo Service: ${err.message}` };
+    window.open('https://zalo.me/' + cleanPhone, '_blank');
+    return {
+      success: false,
+      openedZalo: true,
+      message: `Đã mở Zalo của ${studentName || cleanPhone} & copy sẵn tin nhắn. Thầy bấm Ctrl+V để gửi!`
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: 'Không thể mở Zalo phụ huynh. Vui lòng kiểm tra chặn popup trên trình duyệt.'
+    };
   }
 }
 
-/**
- * Bắt đầu lấy mã QR đăng nhập từ Zalo Personal Gateway (/login/start)
- */
 export async function startZaloPersonalLogin(): Promise<{ ok: boolean; qrRaw?: string; qrImage?: string; error?: string }> {
   const cfg = getZaloConfig();
   if (!cfg.serviceUrl) {
