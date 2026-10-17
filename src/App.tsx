@@ -24,7 +24,8 @@ import CasioCalculatorPage from '@/pages/CasioCalculatorPage'
 import ExamRoomPage from '@/pages/ExamRoomPage'
 import CreatePdfExamPage from '@/pages/CreatePdfExamPage'
 import CreateTexExamPage from '@/pages/CreateTexExamPage'
-import CreateWorksheetPage from '@/pages/CreateWorksheetPage'   // ← MỚI
+import CreateWorksheetPage from '@/pages/CreateWorksheetPage'
+import WhiteboardPage from '@/pages/WhiteboardPage'   // ← MỚI
 
 // Pages Khóa học mới
 import CourseMgmt from '@/pages/CourseMgmt'
@@ -97,6 +98,8 @@ export default function App() {
       <Route path="/bai-tap"               element={<StudentSubmitHomeworkPage />} />
 
       {/* PHÒNG HỌC LIVE CỐ ĐỊNH THEO SỐ ĐIỆN THOẠI THẦY THỌ */}
+      <Route path="/whiteboard" element={<WhiteboardPage />} />
+      <Route path="/bang-ve"    element={<WhiteboardPage />} />
       <Route path="/casio"       element={<CasioCalculatorPage />} />
       <Route path="/may-tinh-casio" element={<CasioCalculatorPage />} />
       <Route path="/0345833133"   element={<LiveClassroomPage />} />
@@ -132,6 +135,8 @@ export default function App() {
 
 
         {/* --- Nhóm Công cụ chuyên dụng --- */}
+        <Route path="whiteboard"    element={<WhiteboardPage />} />
+        <Route path="bang-ve"       element={<WhiteboardPage />} />
         <Route path="ocr"            element={<OcrToolPage />} />
         <Route path="latex-tools"    element={<LatexToolsPage />} />
         <Route path="word-tools"     element={<WordToolsPage />} />

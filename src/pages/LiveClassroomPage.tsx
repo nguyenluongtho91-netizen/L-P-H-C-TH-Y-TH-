@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useExamStore } from '@/store/examStore';
 import LessonExamRoom from '@/components/LessonExamRoom';
 import CasioCalculator from '@/components/CasioCalculator';
+import InteractiveWhiteboard from '@/components/InteractiveWhiteboard';
 import ClassroomSeatingChart from '@/components/ClassroomSeatingChart';
 import ClassroomGamesModal from '@/components/ClassroomGamesModal';
 import { playSound, SOUND_EFFECTS, SoundEffectType, setSoundVolume } from '@/utils/soundEffects';
@@ -87,6 +88,7 @@ export default function LiveClassroomPage() {
   const [lockRaiseHand, setLockRaiseHand] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showCasio, setShowCasio] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [showGamesModal, setShowGamesModal] = useState(false);
 
   // --- CHẾ ĐỘ GHI MÀN HÌNH BÀI GIẢNG (SCREEN RECORDER) ---
@@ -983,6 +985,20 @@ export default function LiveClassroomPage() {
             <span className="hidden sm:inline">Trò Chơi Gọi Tên</span>
           </button>
 
+          {/* NÚT BẢNG VẼ Ô LY DẠY HỌC TOÁN - HÓA */}
+          <button
+            onClick={() => setShowWhiteboard(!showWhiteboard)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition shadow ${
+              showWhiteboard
+                ? 'bg-sky-500 text-slate-950 font-black'
+                : 'bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40'
+            }`}
+            title="Mở Bảng vẽ ô ly Toán - Hóa để giải đề, viết công thức và vẽ hình"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            <span className="hidden sm:inline">Bảng Ô Ly Toán-Hóa</span>
+          </button>
+
           {/* NÚT MÁY TÍNH CASIO FX-580 CHO THẦY VÀ HỌC SINH */}
           <button
             onClick={() => setShowCasio(!showCasio)}
@@ -1568,6 +1584,15 @@ export default function LiveClassroomPage() {
 
       {/* CỬA SỔ MÁY TÍNH CASIO FX-580VN X NỔI */}
       <CasioCalculator isOpen={showCasio} onClose={() => setShowCasio(false)} />
+
+      {/* BẢNG VẼ Ô LY TOÁN - HÓA GIẢNG DẠY TRỰC TIẾP */}
+      {showWhiteboard && (
+        <InteractiveWhiteboard
+          isModal={true}
+          onClose={() => setShowWhiteboard(false)}
+          title="Bảng Vẽ Ô Ly Giảng Dạy Trực Tuyến - Lớp Học Thầy Thọ"
+        />
+      )}
 
       {/* TRUNG TÂM CÁC TRÒ CHƠI GỌI TÊN HỌC SINH */}
       <ClassroomGamesModal

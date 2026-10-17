@@ -7,6 +7,7 @@ import {
 import type { Question, QuestionOption } from '@/types';
 import MathText from '@/components/MathText';
 import { generateSvgDataUri, GraphOptions } from '@/services/graphGeneratorService';
+import InteractiveWhiteboard from '@/components/InteractiveWhiteboard';
 import toast from 'react-hot-toast';
 
 interface QuestionEditorModalProps {
@@ -38,6 +39,7 @@ export default function QuestionEditorModal({
 
   // Sub-modal sinh đồ thị
   const [showGraphStudio, setShowGraphStudio] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [graphType, setGraphType] = useState<GraphOptions['type']>('parabola');
   const [graphTitle, setGraphTitle] = useState('Đồ thị minh họa');
   const [paramA, setParamA] = useState(1);
@@ -80,6 +82,7 @@ export default function QuestionEditorModal({
         ]);
       }
       setShowGraphStudio(false);
+      setShowWhiteboard(false);
     }
   }, [isOpen, initialQuestion]);
 
@@ -119,6 +122,13 @@ export default function QuestionEditorModal({
   };
 
   // Chèn đồ thị vừa sinh vào đề bài
+  const handleInsertFromWhiteboard = (dataUrl: string) => {
+    const imgTag = `\n<div style="text-align:center;margin:12px 0;"><img src="${dataUrl}" style="max-height:360px;max-width:100%;height:auto;border-radius:8px;border:1px solid #cbd5e1;display:inline-block;" alt="Hình vẽ bảng ô ly" /></div>\n`;
+    insertTextToStem(imgTag);
+    setShowWhiteboard(false);
+    toast.success('Đã chèn hình vẽ từ bảng ô ly vào câu hỏi!');
+  };
+
   const handleInsertGraph = () => {
     const params: Record<string, number> = {
       a: paramA,
@@ -138,6 +148,7 @@ export default function QuestionEditorModal({
     const imgTag = `\n<div style="text-align:center;margin:12px 0;"><img src="${dataUri}" style="max-height:340px;max-width:100%;height:auto;border-radius:8px;border:1px solid #cbd5e1;display:inline-block;" alt="${graphTitle}" /></div>\n`;
     insertTextToStem(imgTag);
     setShowGraphStudio(false);
+      setShowWhiteboard(false);
     toast.success('🎉 Đã chèn đồ thị Oxy vào câu hỏi!');
   };
 
@@ -251,6 +262,17 @@ export default function QuestionEditorModal({
                 >
                   <LineChart className="w-3.5 h-3.5" />
                   Sinh đồ thị Oxy
+                </button>
+
+                {/* Nút Mở Bảng vẽ ô ly Toán - Hóa */}
+                <button
+                  type="button"
+                  onClick={() => setShowWhiteboard(true)}
+                  className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  title="Mở Bảng vẽ ô ly tương tác Toán học & Hóa học (chuẩn giấy ô ly)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
+                  Bảng vẽ ô ly Toán - Hóa
                 </button>
               </div>
             </div>
@@ -437,6 +459,15 @@ export default function QuestionEditorModal({
       {/* ══════════════════════════════════════════════════════════════
           SUB-MODAL: STUDIO VẼ ĐỒ THỊ OXY TỰ ĐỘNG BẰNG SVG
          ══════════════════════════════════════════════════════════════ */}
+      {showWhiteboard && (
+        <InteractiveWhiteboard
+          isModal={true}
+          onClose={() => setShowWhiteboard(false)}
+          onInsertToQuestion={handleInsertFromWhiteboard}
+          title="Bảng Vẽ Ô Ly Toán - Hóa (Soạn câu hỏi)"
+        />
+      )}
+
       {showGraphStudio && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 p-5 space-y-4 max-h-[90vh] overflow-y-auto">

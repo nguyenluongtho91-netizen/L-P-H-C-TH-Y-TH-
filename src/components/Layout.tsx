@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, BookOpen, CalendarCheck, Banknote,
   Mail, Settings, LogOut, FileText, MonitorPlay, ScanText,
   GraduationCap, Sigma, FilePlus, PlaySquare, Zap, FileType, CreditCard,
-  ClipboardList, ClipboardCheck, Tag, MessageCircle, Calculator,                                  // ← MỚI ZALO
+  ClipboardList, ClipboardCheck, Tag, MessageCircle, Calculator, PenTool,                                  // ← MỚI ZALO
 } from 'lucide-react'
 
 export default function Layout() {
@@ -51,6 +51,7 @@ export default function Layout() {
     {
       title: 'Công cụ bổ trợ',
       items: [
+        { path: '/whiteboard',     icon: PenTool,  label: 'Bảng vẽ ô ly Toán - Hóa' },
         { path: '/ocr',            icon: ScanText, label: 'Smart OCR' },
         { path: '/latex-tools',    icon: Sigma,    label: 'Công cụ LaTeX' },
         { path: '/word-tools',     icon: FileType, label: 'Công cụ Word' },
