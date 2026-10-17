@@ -387,9 +387,18 @@ export interface ZaloServiceHealth {
   * Kiểm tra tình trạng kết nối của Zalo Personal Gateway (/health)
   */
 export async function checkZaloServiceHealth(): Promise<ZaloServiceHealth> {
+  // 1. Ưu tiên kiểm tra Local Zalo Bridge Robot trên máy tính Thầy Thọ (port 3001)
+  try {
+    const localRes = await fetch('http://127.0.0.1:3001/health', { method: 'GET' });
+    if (localRes.ok) {
+      const data = await localRes.json();
+      if (data.ok) return { ok: true, zalo: 'ready' };
+    }
+  } catch {}
+
   const cfg = getZaloConfig();
   if (!cfg.serviceUrl) {
-    return { ok: false, zalo: 'disconnected', lastError: 'Chưa cấu hình URL Zalo Service' };
+    return { ok: false, zalo: 'disconnected', lastError: 'Chưa khởi chạy Robot Zalo PC' };
   }
 
   const cleanUrl = cfg.serviceUrl.replace(/\/$/, '');
@@ -413,11 +422,29 @@ export async function checkZaloServiceHealth(): Promise<ZaloServiceHealth> {
  */
 export async function sendZaloPersonalMessage(
   phone: string,
-  message: string
+  message: string,
+  qrUrl?: string
 ): Promise<{ success: boolean; message: string; jobId?: string }> {
+  // 1. Ưu tiên số 1: Tự động gửi trực tiếp qua Robot Zalo PC (http://127.0.0.1:3001)
+  try {
+    const localRes = await fetch('http://127.0.0.1:3001/api/zalo/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, message, qrUrl })
+    });
+    if (localRes.ok) {
+      const data = await localRes.json();
+      if (data.ok || data.success) {
+        return { success: true, message: 'Đã tự động gửi qua Robot Zalo PC thành công!' };
+      }
+    }
+  } catch (e) {
+    // Local bridge chưa bật
+  }
+
   const cfg = getZaloConfig();
   if (!cfg.serviceUrl) {
-    return { success: false, message: 'Chưa cấu hình URL Zalo Service! Vui lòng kiểm tra lại cấu hình Zalo Cá nhân.' };
+    return { success: false, message: 'Chưa bật Robot Zalo PC. Thầy hãy mở file "ROBOT_TU_DONG_GUI_ZALO.bat" trên màn hình Desktop.' };
   }
 
   const cleanUrl = cfg.serviceUrl.replace(/\/$/, '');

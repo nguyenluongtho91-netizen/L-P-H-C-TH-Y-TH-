@@ -4,7 +4,7 @@ import { useDataStore } from '@/store/dataStore'
 import { fmtVNDShort, formatVietQRAddInfo } from '@/lib/helpers'
 import Modal from '@/components/Modal'
 import VietQRModal from '@/components/VietQRModal'
-import { sendZaloPersonalMessage, sendZaloOAMessage, isZaloOAConfigured } from '@/services/zaloService'
+import { sendZaloPersonalMessage, sendZaloOAMessage, isZaloOAConfigured, checkZaloServiceHealth } from '@/services/zaloService'
 import { Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { PaymentMethod } from '@/types'
@@ -408,7 +408,7 @@ export default function Tuition() {
       } else {
 
         try {
-          let res = await sendZaloPersonalMessage(cleanPhone, msg)
+          let res = await sendZaloPersonalMessage(cleanPhone, msg, qrUrl)
           if (!res.success && isZaloOAConfigured()) {
             res = await sendZaloOAMessage(cleanPhone, msg)
           }
@@ -822,6 +822,19 @@ export default function Tuition() {
                       if (tuitionData.some(r => r.status === 'unnotified')) {
                         await sendClassNotifications();
                       }
+
+                      // Kiểm tra xem Robot Zalo PC có đang chạy không để tự động gửi luôn
+                      try {
+                        const health = await checkZaloServiceHealth();
+                        if (health.ok) {
+                          setAutoSendModal(true);
+                          setTimeout(() => {
+                            runAutoBulkSend();
+                          }, 350);
+                          return;
+                        }
+                      } catch {}
+
                       startBatchZalo();
                     }}
                     className="py-3 px-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/25 flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -1177,6 +1190,30 @@ export default function Tuition() {
             </div>
 
             <div className="p-4 space-y-3">
+              <button
+                onClick={async () => {
+                  toast.loading('Đang tự động gửi tin nhắn và mã QR vào Zalo PC...');
+                  const res = await sendZaloPersonalMessage(zaloModal.phone, zaloModal.msg, zaloModal.qrUrl);
+                  toast.dismiss();
+                  if (res.success) {
+                    toast.success('🎉 Đã gửi tự động vào Zalo PC thành công!');
+                    setZaloModal(null);
+                  } else {
+                    toast.error(res.message);
+                  }
+                }}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                ⚡ BẤM GỬI TỰ ĐỘNG NGAY QUA ZALO PC
+              </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="shrink-0 mx-2 text-[10px] text-gray-400 font-bold uppercase">Hoặc gửi thủ công</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
               {/* Step 1: Copy Text message */}
               <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
@@ -1670,6 +1707,29 @@ export default function Tuition() {
 
                   {/* Action Buttons */}
                   <div className="space-y-2.5 pt-1">
+                    <button
+                      onClick={async () => {
+                        toast.loading(`Đang tự động gửi Zalo cho ${currentRow.student.full_name}...`);
+                        const res = await sendZaloPersonalMessage(phoneForLink, msg, qrUrl);
+                        toast.dismiss();
+                        if (res.success) {
+                          toast.success(`🎉 Đã gửi tự động cho ${currentRow.student.full_name}!`);
+                          if (batchZaloModal.currentIndex < batchZaloModal.list.length - 1) {
+                            setBatchZaloModal(b => b ? { ...b, currentIndex: b.currentIndex + 1 } : null);
+                          } else {
+                            toast.success('🎉 Đã hoàn tất danh sách gửi Zalo!');
+                            setBatchZaloModal(null);
+                          }
+                        } else {
+                          toast.error(res.message);
+                        }
+                      }}
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-blue-500/25 text-sm flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    >
+                      <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+                      ⚡ BẤM GỬI TỰ ĐỘNG NGAY QUA ZALO PC
+                    </button>
+
                     <button
                       onClick={openAndCopy}
                       className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-blue-500/25 text-sm flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
