@@ -83,7 +83,7 @@ async function saveStoreToExams(title: string, items: any[]) {
       await supabase.from('exams').insert([{ title, data: { items } }])
     }
   } catch (err) {
-    console.warn(saveStoreToExams error for :, err)
+    console.warn('saveStoreToExams error for ' + title, err)
   }
 }
 
