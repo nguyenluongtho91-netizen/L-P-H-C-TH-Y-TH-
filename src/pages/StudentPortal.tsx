@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { shuffleExamForStudent } from '@/services/mergeExamsService'
+import { getStudentCredential, saveStudentCredential } from '@/services/studentCredentialsService'
 
 const BANK_ID      = import.meta.env.VITE_BANK_ID      || 'VCB'
 const BANK_ACCOUNT = import.meta.env.VITE_BANK_ACCOUNT || '1070493932'
@@ -85,6 +86,10 @@ export default function StudentPortal() {
         .maybeSingle()
 
       if (latestStudent) {
+        const cred = await getStudentCredential(latestStudent.student_code)
+        if (cred?.avatar_url) {
+          latestStudent.avatar_url = cred.avatar_url
+        }
         setStudent(latestStudent)
         localStorage.setItem('current_student', JSON.stringify(latestStudent))
       }
@@ -174,14 +179,20 @@ export default function StudentPortal() {
       return null
     }
 
-    if (!data.password) {
-      toast.error('Tài khoản này chưa được đặt mật khẩu. Vui lòng liên hệ giáo viên.')
-      return null
+    const cred = await getStudentCredential(code.trim())
+    const expectedPassword = cred?.password || data.password
+    if (cred?.avatar_url) {
+      data.avatar_url = cred.avatar_url
     }
 
-    if (data.password !== password.trim()) {
-      toast.error('Sai mật khẩu! Vui lòng kiểm tra lại.')
-      return null
+    if (expectedPassword) {
+      if (expectedPassword !== password.trim()) {
+        toast.error('Sai mật khẩu! Vui lòng kiểm tra lại.')
+        return null
+      }
+    } else {
+      // Lưu mật khẩu học sinh nhập làm mật khẩu mặc định
+      await saveStudentCredential(data.student_code, password.trim())
     }
 
     localStorage.setItem('current_student', JSON.stringify(data))
@@ -258,12 +269,7 @@ export default function StudentPortal() {
 
     setIsChangingPassword(true)
     try {
-      const { error } = await supabase
-        .from('students')
-        .update({ password: newPassword.trim() })
-        .eq('id', student.id)
-
-      if (error) throw error
+      await saveStudentCredential(student.student_code, newPassword.trim())
 
       // Cập nhật state cục bộ và localStorage
       const updatedStudent = { ...student, password: newPassword.trim() }
@@ -322,12 +328,7 @@ export default function StudentPortal() {
         .from('exams_pdf')
         .getPublicUrl(filePath)
 
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ avatar_url: publicUrl })
-        .eq('id', student.id)
-
-      if (updateError) throw updateError
+      await saveStudentCredential(student.student_code, undefined, undefined, publicUrl)
 
       const updatedStudent = { ...student, avatar_url: publicUrl }
       setStudent(updatedStudent)
@@ -349,12 +350,7 @@ export default function StudentPortal() {
     if (!confirm('Bạn có chắc chắn muốn xóa ảnh đại diện hiện tại?')) return
     setIsUploadingAvatar(true)
     try {
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ avatar_url: null })
-        .eq('id', student.id)
-
-      if (updateError) throw updateError
+      await saveStudentCredential(student.student_code, undefined, undefined, '')
 
       const updatedStudent = { ...student, avatar_url: null }
       setStudent(updatedStudent)

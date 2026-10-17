@@ -9,6 +9,7 @@ import type { Student } from '@/types'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 import { toTitleCase } from '@/lib/helpers'
+import { saveStudentCredential, saveBatchStudentCredentials, getAllStudentCredentials, enrichStudentsWithCredentials, getStudentCredentialSync } from '@/services/studentCredentialsService'
 
 
 // ─── Helper: Detect học sinh ẩn danh (thi tự do không có lớp) ─────────────
@@ -288,12 +289,17 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
         school:        r.school,
         grade:         r.grade,
         address:       r.address,
-        note:          r.note,
-        password:      r.password,
         status:        'active',
       }))
 
       const { error } = await supabase.from('students').insert(payload)
+      if (!error) {
+        await saveBatchStudentCredentials(valid.map(r => ({
+          student_code: r.student_code,
+          password: r.password,
+          note: r.note,
+        })))
+      }
       if (error) throw error
 
       setDoneCount(valid.length)
@@ -506,7 +512,14 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
 type TabKey = 'all' | 'active' | 'inactive' | 'anonymous'
 
 export default function Students() {
-  const { students, classes, enrollments, loadStudents, loadClasses, loadEnrollments, enroll } = useDataStore()
+  const { students: rawStudents, classes, enrollments, loadStudents, loadClasses, loadEnrollments, enroll } = useDataStore()
+  const [credentialsVersion, setCredentialsVersion] = useState(0)
+
+  useEffect(() => {
+    getAllStudentCredentials().then(() => setCredentialsVersion(v => v + 1))
+  }, [])
+
+  const students = enrichStudentsWithCredentials(rawStudents)
   const { user, isAdmin } = useAuthStore() as any
 
   const [modal, setModal]               = useState<'form' | 'import' | null>(null)
@@ -530,6 +543,7 @@ export default function Students() {
   useEffect(() => {
     sessionStorage.setItem('students_active_grade', activeGrade.toString())
   }, [activeGrade])
+
 
   const [selectedClassId, setSelectedClassId] = useState<string | 'unassigned' | null>(null)
   const [hasInitGrade, setHasInitGrade] = useState(false)
@@ -602,7 +616,13 @@ export default function Students() {
   const openAdd  = () => { setEditing(null); setForm(EMPTY); setFormClassId(''); setShowPassword(false); setModal('form') }
   const openEdit = (s: Student) => {
     setEditing(s)
-    setForm({ ...s, password: (s as any).password ?? null, date_of_birth: (s as any).date_of_birth ?? null })
+    const cred = getStudentCredentialSync(s.student_code)
+    setForm({
+      ...s,
+      password: (s as any).password ?? cred?.password ?? '',
+      note: (s as any).note ?? cred?.note ?? '',
+      date_of_birth: (s as any).date_of_birth ?? null
+    })
     setShowPassword(false)
     setModal('form')
   }
@@ -632,7 +652,7 @@ export default function Students() {
     setSaving(true)
     try {
       const payload: any = {
-        student_code:  form.student_code,
+        student_code:  form.student_code.trim(),
         full_name:     toTitleCase(form.full_name),
         date_of_birth: form.date_of_birth || null,
         parent_name:   form.parent_name,
@@ -642,19 +662,20 @@ export default function Students() {
         school:        form.school,
         grade:         form.grade,
         address:       form.address,
-        note:          form.note,
         status:        form.status,
       }
-      if (form.password?.trim()) payload.password = form.password.trim()
 
       if (editing) {
         const { error } = await supabase.from('students').update(payload).eq('id', editing.id)
         if (error) throw error
+        await saveStudentCredential(form.student_code.trim(), form.password?.trim(), form.note?.trim())
+        setCredentialsVersion(v => v + 1)
         toast.success('Đã cập nhật học sinh')
       } else {
-        if (!payload.password) { toast.error('Vui lòng đặt mật khẩu'); setSaving(false); return }
         const { data, error } = await supabase.from('students').insert(payload).select().single()
         if (error) throw error
+        await saveStudentCredential(form.student_code.trim(), form.password?.trim(), form.note?.trim())
+        setCredentialsVersion(v => v + 1)
         
         if (formClassId) {
           try {

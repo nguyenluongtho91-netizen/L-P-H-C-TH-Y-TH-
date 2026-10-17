@@ -12,6 +12,7 @@ import {
 import { HomeworkAssignment, HomeworkSubmission, HomeworkAttachment } from './types';
 import { getAssignmentById, getSubmissions, saveSubmission, formatDateTimeVN } from './homeworkService';
 import { supabase } from '@/lib/supabase';
+import { getStudentCredential } from '@/services/studentCredentialsService';
 import toast from 'react-hot-toast';
 
 export default function StudentSubmitHomeworkPage() {
@@ -116,7 +117,7 @@ export default function StudentSubmitHomeworkPage() {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .or(`student_code.ilike.${code},parent_phone.eq.${code},phone.eq.${code}`)
+        .or(`student_code.ilike.${code},parent_phone.eq.${code}`)
         .maybeSingle();
 
       if (error || !data) {
@@ -129,8 +130,10 @@ export default function StudentSubmitHomeworkPage() {
         return;
       }
 
-      // Kiểm tra mật khẩu (nếu trong DB có mật khẩu thì so khớp, nếu chưa có thì chấp nhận pass hoặc 123456)
-      if (data.password && data.password.trim() !== pass) {
+      // Kiểm tra mật khẩu đồng bộ từ Supabase credentials store
+      const cred = await getStudentCredential(data.student_code || code);
+      const expectedPassword = cred?.password || data.password;
+      if (expectedPassword && expectedPassword.trim() !== pass) {
         toast.error('Sai mật khẩu! Vui lòng thử lại.');
         return;
       }
