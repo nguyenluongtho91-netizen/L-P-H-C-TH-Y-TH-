@@ -10,6 +10,9 @@ import {
   HelpCircle, ShieldCheck
 } from 'lucide-react';
 import { HomeworkAssignment, HomeworkAttachment } from './types';
+import { parseWordToExam } from '@/services/mathWordParserService';
+import { parseTexToExam } from '@/services/texParserService';
+import type { Question } from '@/types';
 import { saveAssignment, generateZaloShareMessage, formatDateTimeVN } from './homeworkService';
 import toast from 'react-hot-toast';
 
@@ -33,6 +36,9 @@ export default function CreateAssignmentModal({
   const [description, setDescription] = useState('');
   const [attachments, setAttachments] = useState<HomeworkAttachment[]>([]);
   const [customLink, setCustomLink] = useState('');
+  const [parsedQuestions, setParsedQuestions] = useState<Question[]>([]);
+  const [isParsingDocx, setIsParsingDocx] = useState(false);
+  const [showQuestionPreview, setShowQuestionPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +82,8 @@ export default function CreateAssignmentModal({
         setViewScoreRule(initialData.view_score_rule || 'graded_only');
         setViewSolutionRule(initialData.view_solution_rule || 'after_deadline');
         setAttachments(initialData.attachments || []);
+        setParsedQuestions(initialData.parsed_questions || []);
+        if (initialData.parsed_questions?.length) setShowQuestionPreview(true);
       } else {
         // Mặc định tạo mới: Hạn nộp là 23:59 sau 3 ngày
         setTitle('');
@@ -92,6 +100,8 @@ export default function CreateAssignmentModal({
         setViewScoreRule('graded_only');
         setViewSolutionRule('after_deadline');
         setAttachments([]);
+        setParsedQuestions([]);
+        setShowQuestionPreview(false);
       }
       setPublishedAssignment(null);
       setCopiedLink(false);
@@ -101,15 +111,16 @@ export default function CreateAssignmentModal({
 
   if (!isOpen) return null;
 
-  // Xử lý tệp tải lên
-  const processFiles = (files: FileList | File[]) => {
-    Array.from(files).forEach(file => {
+  // Xử lý tệp tải lên & TỰ ĐỘNG BÓC TÁCH CÂU HỎI CHUẨN AZOTA
+  const processFiles = async (files: FileList | File[]) => {
+    for (const file of Array.from(files)) {
       let type: 'pdf' | 'docx' | 'image' | 'video' = 'image';
       const nameLower = file.name.toLowerCase();
       if (nameLower.endsWith('.pdf')) type = 'pdf';
       else if (nameLower.endsWith('.docx') || nameLower.endsWith('.doc')) type = 'docx';
       else if (nameLower.endsWith('.mp4') || nameLower.endsWith('.mov')) type = 'video';
 
+      // 1. Lưu file đính kèm
       const reader = new FileReader();
       reader.onload = () => {
         const url = reader.result as string;
@@ -123,7 +134,48 @@ export default function CreateAssignmentModal({
         setAttachments(prev => [...prev, newAttachment]);
       };
       reader.readAsDataURL(file);
-    });
+
+      // 2. NẾU LÀ FILE WORD (.docx) -> TỰ ĐỘNG BÓC TÁCH CÂU HỎI TRẮC NGHIỆM & TỰ LUẬN CHUẨN AZOTA!
+      if (nameLower.endsWith('.docx')) {
+        setIsParsingDocx(true);
+        const toastId = toast.loading('⚡ Azota đang tự động nhận diện câu hỏi từ file Word...');
+        try {
+          const examData = await parseWordToExam(file);
+          if (examData && examData.questions && examData.questions.length > 0) {
+            setParsedQuestions(examData.questions);
+            setShowQuestionPreview(true);
+            setTitle(prev => prev.trim() ? prev : file.name.replace(/\.docx$/i, ''));
+            toast.success(`🎉 Azota đã bóc tách thành công ${examData.questions.length} câu hỏi từ file Word!`, { id: toastId });
+          } else {
+            toast.dismiss(toastId);
+          }
+        } catch (err: any) {
+          console.warn('Lỗi parse Word:', err);
+          toast.error('File Word không đúng chuẩn đề thi, đã đính kèm file gốc!', { id: toastId });
+        } finally {
+          setIsParsingDocx(false);
+        }
+      }
+
+      // 3. NẾU LÀ FILE LATEX (.tex)
+      if (nameLower.endsWith('.tex')) {
+        setIsParsingDocx(true);
+        const toastId = toast.loading('⚡ Đang nhận diện câu hỏi từ file LaTeX...');
+        try {
+          const examData = await parseTexToExam(file);
+          if (examData && examData.questions && examData.questions.length > 0) {
+            setParsedQuestions(examData.questions);
+            setShowQuestionPreview(true);
+            setTitle(prev => prev.trim() ? prev : file.name.replace(/\.tex$/i, ''));
+            toast.success(`🎉 Đã nhận diện ${examData.questions.length} câu hỏi LaTeX!`, { id: toastId });
+          }
+        } catch (err) {
+          toast.dismiss(toastId);
+        } finally {
+          setIsParsingDocx(false);
+        }
+      }
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +213,23 @@ export default function CreateAssignmentModal({
     };
     setAttachments(prev => [...prev, newAtt]);
     setCustomLink('');
+  };
+
+  const handleToggleCorrectOption = (qIdx: number, optIdx: number) => {
+    setParsedQuestions(prev => {
+      const copy = [...prev];
+      const q = { ...copy[qIdx] };
+      if (q.options) {
+        const targetLetter = q.options[optIdx].letter;
+        q.options = q.options.map((opt, i) => ({
+          ...opt,
+          isCorrect: i === optIdx,
+        }));
+        q.correctAnswer = targetLetter;
+      }
+      copy[qIdx] = q;
+      return copy;
+    });
   };
 
   const handleRemoveAttachment = (id: string) => {
@@ -221,6 +290,7 @@ export default function CreateAssignmentModal({
         view_score_rule: viewScoreRule,
         view_solution_rule: viewSolutionRule,
         attachments,
+        parsed_questions: parsedQuestions.length > 0 ? parsedQuestions : undefined,
         status: 'active',
       };
 
@@ -575,6 +645,114 @@ export default function CreateAssignmentModal({
                 </button>
               </div>
             </div>
+
+            {/* KHU VỰC CÂU HỎI ĐÃ NHẬN DIỆN TỰ ĐỘNG CHUẨN AZOTA */}
+            {isParsingDocx && (
+              <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-center space-y-2 animate-pulse">
+                <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-bold text-blue-900">
+                  ⚡ Đang phân tích file đề, bóc tách câu hỏi trắc nghiệm & tự luận theo chuẩn Azota...
+                </p>
+              </div>
+            )}
+
+            {parsedQuestions.length > 0 && (
+              <div className="p-4 rounded-3xl bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/80 border border-blue-200 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-blue-950 uppercase tracking-wide">
+                        AZOTA ĐÃ NHẬN DIỆN {parsedQuestions.length} CÂU HỎI TỰ ĐỘNG
+                      </h4>
+                      <p className="text-[11px] text-blue-700 font-medium">
+                        Học sinh làm trắc nghiệm trực tuyến (tự động chấm) và chụp vở phần tự luận!
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowQuestionPreview(!showQuestionPreview)}
+                    className="px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    {showQuestionPreview ? 'Thu gọn' : 'Xem chi tiết câu hỏi'}
+                  </button>
+                </div>
+
+                {/* Thống kê từng phần */}
+                <div className="flex flex-wrap gap-1.5 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800">
+                    Phần I (Trắc nghiệm): {parsedQuestions.filter(q => q.part === 1 || q.type === 'multiple_choice').length} câu
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800">
+                    Phần II (Đúng/Sai): {parsedQuestions.filter(q => q.part === 2 || q.type === 'true_false').length} câu
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">
+                    Phần III (Trả lời ngắn): {parsedQuestions.filter(q => q.part === 3 || q.type === 'short_answer').length} câu
+                  </span>
+                  {parsedQuestions.filter(q => q.part === 4 || q.type === 'writing').length > 0 && (
+                    <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800">
+                      Phần IV (Tự luận): {parsedQuestions.filter(q => q.part === 4 || q.type === 'writing').length} câu
+                    </span>
+                  )}
+                </div>
+
+                {/* Danh sách câu hỏi chi tiết */}
+                {showQuestionPreview && (
+                  <div className="mt-3 max-h-72 overflow-y-auto space-y-2 pr-1 border-t border-blue-200/60 pt-3">
+                    {parsedQuestions.map((q, idx) => (
+                      <div key={idx} className="p-3 rounded-2xl bg-white border border-slate-200 text-xs space-y-2 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-slate-800">
+                            Câu {q.number || idx + 1}: {q.part === 1 ? 'Trắc nghiệm' : q.part === 2 ? 'Đúng/Sai' : q.part === 3 ? 'Trả lời ngắn' : 'Tự luận'}
+                          </span>
+                          {q.correctAnswer && (
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px]">
+                              Đáp án: {q.correctAnswer}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-slate-700 leading-relaxed font-serif text-xs" dangerouslySetInnerHTML={{ __html: q.text }} />
+
+                        {/* Các lựa chọn A, B, C, D */}
+                        {q.options && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                            {q.options.map((opt, oIdx) => {
+                              const isCorr = opt.isCorrect || q.correctAnswer === opt.letter;
+                              return (
+                                <div
+                                  key={oIdx}
+                                  onClick={() => handleToggleCorrectOption(idx, oIdx)}
+                                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] flex items-center gap-1.5 cursor-pointer transition ${
+                                    isCorr
+                                      ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold'
+                                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                  }`}
+                                  title="Bấm để chọn làm đáp án đúng"
+                                >
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                                    isCorr ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300'
+                                  }`}>
+                                    {opt.letter}
+                                  </span>
+                                  <span className="truncate" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                  {isCorr && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto flex-shrink-0 stroke-[3]" />}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 3. Nội dung / Lời dặn bài tập */}
             <div>

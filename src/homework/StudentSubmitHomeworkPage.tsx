@@ -310,6 +310,64 @@ export default function StudentSubmitHomeworkPage() {
       setIsSubmitting(true);
       const isLate = !assignment.no_deadline && assignment.deadline ? new Date(assignment.deadline).getTime() < Date.now() : false;
 
+      // ── TỰ ĐỘNG CHẤM ĐIỂM TRẮC NGHIỆM CHUẨN AZOTA NẾU BÀI TẬP CÓ CÂU HỎI ──
+      let autoScore = 0;
+      let part1Correct = 0;
+      let part2Correct = 0;
+      let part3Correct = 0;
+
+      if (assignment.parsed_questions && assignment.parsed_questions.length > 0) {
+        assignment.parsed_questions.forEach(q => {
+          const qNum = Number(q.number);
+          // Phần 1: Trắc nghiệm khách quan A, B, C, D
+          if (q.part === 1 || q.type === 'multiple_choice') {
+            const studentAns = onlinePart1[qNum];
+            let correctLetter = q.correctAnswer;
+            if (!correctLetter && q.options) {
+              const corrOpt = q.options.find(o => o.isCorrect);
+              if (corrOpt) correctLetter = corrOpt.letter;
+            }
+            if (studentAns && correctLetter && studentAns.toUpperCase() === correctLetter.toUpperCase()) {
+              autoScore += 0.25;
+              part1Correct += 1;
+            }
+          }
+
+          // Phần 2: Đúng / Sai a, b, c, d (Chuẩn Bộ GD&ĐT 2025: 1 ý=0.1đ, 2 ý=0.25đ, 3 ý=0.5đ, 4 ý=1.0đ)
+          if (q.part === 2 || q.type === 'true_false') {
+            const studentChoices = onlinePart2[qNum] || {};
+            let matchCount = 0;
+            if (q.options) {
+              q.options.forEach(opt => {
+                const ans = studentChoices[opt.letter];
+                const expected = opt.isCorrect ? 'T' : 'F';
+                if (ans && ans.toUpperCase() === expected) {
+                  matchCount++;
+                }
+              });
+            }
+            if (matchCount === 1) autoScore += 0.1;
+            else if (matchCount === 2) autoScore += 0.25;
+            else if (matchCount === 3) autoScore += 0.5;
+            else if (matchCount === 4) autoScore += 1.0;
+            part2Correct += matchCount;
+          }
+
+          // Phần 3: Trả lời ngắn
+          if (q.part === 3 || q.type === 'short_answer') {
+            const studentAns = (onlinePart3[qNum] || '').trim().replace(/,/g, '.');
+            const expected = (q.correctAnswer || '').trim().replace(/,/g, '.');
+            if (studentAns && expected && studentAns.toLowerCase() === expected.toLowerCase()) {
+              autoScore += 0.25;
+              part3Correct += 1;
+            }
+          }
+        });
+      }
+
+      autoScore = Math.round(autoScore * 100) / 100;
+      const hasWriting = assignment.parsed_questions?.some(q => q.part === 4 || q.type === 'writing');
+
       const submission: HomeworkSubmission = {
         id: previousSubmission?.id || 'sub_' + Date.now(),
         assignment_id: assignment.id,
@@ -321,17 +379,27 @@ export default function StudentSubmitHomeworkPage() {
         zalo: currentStudent.zalo,
         submitted_at: new Date().toISOString(),
         is_late: isLate,
-        status: 'submitted',
-        submission_mode: images.length > 0 ? (showOnlineForm ? 'hybrid' : 'photos_only') : 'online_form',
+        status: hasWriting || images.length > 0 ? 'submitted' : 'graded',
+        score: hasWriting ? null : autoScore,
+        score_breakdown: {
+          trac_nghiem: autoScore,
+        },
+        submission_mode: images.length > 0 ? (assignment.parsed_questions?.length ? 'hybrid' : 'photos_only') : 'online_form',
         images: images.map(img => ({
           id: img.id,
           url: img.url,
         })),
-        online_answers: showOnlineForm ? {
+        online_answers: {
           part1: Object.keys(onlinePart1).length > 0 ? onlinePart1 : undefined,
           part2: Object.keys(onlinePart2).length > 0 ? onlinePart2 : undefined,
           part3: Object.keys(onlinePart3).length > 0 ? onlinePart3 : undefined,
-        } : undefined,
+          score_details: {
+            auto_score: autoScore,
+            part1_correct: part1Correct,
+            part2_correct: part2Correct,
+            part3_correct: part3Correct,
+          },
+        },
         student_note: studentNote.trim() || undefined,
       };
 
@@ -741,6 +809,190 @@ export default function StudentSubmitHomeworkPage() {
                 Đổi bạn khác
               </button>
             </div>
+
+            {/* ══════════════════════════════════════════════════════════════════
+                NẾU BÀI TẬP CÓ CÂU HỎI TRẮC NGHIỆM ĐƯỢC BÓC TÁCH TỪ FILE (AZOTA ONLINE TEST)
+               ══════════════════════════════════════════════════════════════════ */}
+            {assignment.parsed_questions && assignment.parsed_questions.length > 0 && (
+              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-blue-200 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-blue-600" />
+                      LÀM BÀI TRỰC TUYẾN ({assignment.parsed_questions.length} CÂU HỎI CHUẨN AZOTA)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Em bấm chọn đáp án đúng bên dưới. Hệ thống sẽ tự động chấm điểm ngay khi nộp bài!
+                    </p>
+                  </div>
+
+                  {/* Thanh tiến độ số câu đã làm */}
+                  <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-xs font-bold text-blue-800 flex items-center gap-2 flex-shrink-0">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    Đã làm: {Object.keys(onlinePart1).length + Object.keys(onlinePart2).length + Object.keys(onlinePart3).length} / {assignment.parsed_questions.length} câu
+                  </div>
+                </div>
+
+                {/* BẢNG QUESTION PALETTE: DÃY NÚT NHẢY NHANH CÂU HỎI NHƯ AZOTA */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Bảng câu hỏi (Bấm số câu để nhảy nhanh):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                    {assignment.parsed_questions.map((q, idx) => {
+                      const qNum = Number(q.number || idx + 1);
+                      const isAnswered = q.part === 1 ? !!onlinePart1[qNum] : q.part === 2 ? !!onlinePart2[qNum] : !!onlinePart3[qNum];
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(`azota_q_${qNum}`);
+                            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className={`w-8 h-8 rounded-xl text-xs font-black transition flex items-center justify-center ${
+                            isAnswered
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-300'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {qNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* DANH SÁCH CHI TIẾT CÁC CÂU HỎI */}
+                <div className="space-y-5 pt-2">
+                  {assignment.parsed_questions.map((q, idx) => {
+                    const qNum = Number(q.number || idx + 1);
+
+                    return (
+                      <div
+                        key={idx}
+                        id={`azota_q_${qNum}`}
+                        className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-blue-300 transition space-y-3.5 shadow-xs"
+                      >
+                        {/* Header câu hỏi */}
+                        <div className="flex items-center justify-between">
+                          <span className="px-3 py-1 rounded-xl bg-blue-50 text-blue-800 text-xs font-black border border-blue-100">
+                            Câu {qNum} {q.part === 1 ? '(Trắc nghiệm)' : q.part === 2 ? '(Đúng / Sai)' : q.part === 3 ? '(Trả lời ngắn)' : '(Tự luận)'}
+                          </span>
+                        </div>
+
+                        {/* Đề bài câu hỏi */}
+                        <div
+                          className="text-xs sm:text-sm text-slate-800 leading-relaxed font-serif"
+                          dangerouslySetInnerHTML={{ __html: q.text }}
+                        />
+
+                        {/* PHẦN 1: 4 NÚT CHỌN A, B, C, D */}
+                        {(q.part === 1 || q.type === 'multiple_choice') && q.options && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            {q.options.map((opt, oIdx) => {
+                              const isSelected = onlinePart1[qNum] === opt.letter;
+                              return (
+                                <button
+                                  key={oIdx}
+                                  type="button"
+                                  onClick={() => setOnlinePart1(prev => ({ ...prev, [qNum]: opt.letter }))}
+                                  className={`p-3 rounded-xl border text-left text-xs font-medium flex items-center gap-3 transition cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                                      : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-blue-50/50 hover:border-blue-200'
+                                  }`}
+                                >
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0 ${
+                                    isSelected ? 'bg-white text-blue-700' : 'bg-white border border-slate-300 text-slate-700'
+                                  }`}>
+                                    {opt.letter}
+                                  </div>
+                                  <span className="leading-snug" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* PHẦN 2: CHỌN ĐÚNG / SAI TỪNG Ý a, b, c, d */}
+                        {(q.part === 2 || q.type === 'true_false') && q.options && (
+                          <div className="space-y-2 pt-1">
+                            {q.options.map((opt, oIdx) => {
+                              const currentVal = onlinePart2[qNum]?.[opt.letter];
+                              return (
+                                <div
+                                  key={oIdx}
+                                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <span className="font-black text-blue-700 uppercase">{opt.letter + ')'}</span>
+                                    <span className="text-slate-700 leading-snug" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => setOnlinePart2(prev => ({
+                                        ...prev,
+                                        [qNum]: { ...(prev[qNum] || {}), [opt.letter]: 'T' }
+                                      }))}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
+                                        currentVal === 'T'
+                                          ? 'bg-emerald-600 text-white shadow-sm'
+                                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50'
+                                      }`}
+                                    >
+                                      ✓ Đúng
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setOnlinePart2(prev => ({
+                                        ...prev,
+                                        [qNum]: { ...(prev[qNum] || {}), [opt.letter]: 'F' }
+                                      }))}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
+                                        currentVal === 'F'
+                                          ? 'bg-rose-600 text-white shadow-sm'
+                                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-rose-50'
+                                      }`}
+                                    >
+                                      ✗ Sai
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* PHẦN 3: TRẢ LỜI NGẮN */}
+                        {(q.part === 3 || q.type === 'short_answer') && (
+                          <div className="pt-1">
+                            <span className="text-[11px] font-bold text-slate-500 block mb-1">Nhập kết quả:</span>
+                            <input
+                              type="text"
+                              value={onlinePart3[qNum] || ''}
+                              onChange={e => setOnlinePart3(prev => ({ ...prev, [qNum]: e.target.value }))}
+                              placeholder="Ví dụ: 12.5 hoặc Fe2O3..."
+                              className="w-full max-w-xs px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/50"
+                            />
+                          </div>
+                        )}
+
+                        {/* PHẦN 4: TỰ LUẬN */}
+                        {(q.part === 4 || q.type === 'writing') && (
+                          <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200 text-xs text-purple-900 flex items-center gap-2">
+                            <Camera className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                            <span>Câu này là tự luận. Em hãy làm ra vở ghi rồi chụp ảnh trang vở ở mục bên dưới để nộp nhé!</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* KHU VỰC CHỤP ẢNH VỞ NỘP BÀI */}
             <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-5">

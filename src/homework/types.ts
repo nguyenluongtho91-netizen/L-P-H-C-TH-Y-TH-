@@ -1,6 +1,8 @@
 // src/homework/types.ts
 // Hệ thống Giao & Nộp Bài Tập Về Nhà - Chuẩn Azota
 
+import type { Question, ExamData } from '@/types';
+
 export interface HomeworkAttachment {
   id: string;
   name: string;
@@ -30,6 +32,7 @@ export interface HomeworkAssignment {
   solution_text?: string;
   solution_attachments?: HomeworkAttachment[];
   attachments: HomeworkAttachment[];
+  parsed_questions?: Question[]; // Câu hỏi tự động bóc tách từ file Word (.docx) / LaTeX (.tex) chuẩn Azota
   status: 'active' | 'closed' | 'draft';
   total_students?: number;
   submitted_count?: number;
@@ -64,6 +67,15 @@ export interface HomeworkSubmission {
     part1?: Record<number, string>; // Trắc nghiệm A, B, C, D
     part2?: Record<number, Record<string, string>>; // Đúng / Sai a, b, c, d
     part3?: Record<number, string>; // Trả lời ngắn
+    score_details?: {
+      part1_correct?: number;
+      part1_total?: number;
+      part2_correct?: number;
+      part2_total?: number;
+      part3_correct?: number;
+      part3_total?: number;
+      auto_score?: number; // Điểm máy tự chấm
+    };
   };
   student_note?: string;
   teacher_comment?: string;
