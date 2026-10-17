@@ -54,21 +54,18 @@ export default function ZaloCenter() {
   const [selectedClassId, setSelectedClassId] = useState('all')
   const [selectedMonth, setSelectedMonth]     = useState('Tháng 8/2026')
   const [tuitionTemplate, setTuitionTemplate] = useState(
-    'Chào Quý phụ huynh.
-Thầy gửi thông tin học phí tháng {thang}:
-
-• Học sinh: {ten_hoc_sinh}
-• Lớp: {lop}
-• Số tiền cần nộp: {so_tien} VNĐ
-
-• Hình thức nộp: Chuyển khoản
-   - Ngân hàng: V.C.B (Ngoại thương)
-   - STK: 1070493932
-   - Chủ TK (HKD): HO KINH DOANH NGUYEN LUONG THO
-   - Cú pháp CK: HP {ma_hoc_sinh} KH
-
-👉 Mã QR chuyển khoản nhanh (bên dưới):
-{link_qr}'
+    `Chào Quý phụ huynh.\n`
+    + `Thầy gửi thông tin học phí tháng {thang}:\n\n`
+    + `• Học sinh: {ten_hoc_sinh}\n`
+    + `• Lớp: {lop}\n`
+    + `• Số tiền cần nộp: {so_tien} VNĐ\n\n`
+    + `• Hình thức nộp: Chuyển khoản\n`
+    + `   - Ngân hàng: V.C.B (Ngoại thương)\n`
+    + `   - STK: 1070493932\n`
+    + `   - Chủ TK (HKD): HO KINH DOANH NGUYEN LUONG THO\n`
+    + `   - Cú pháp CK: HP {ma_hoc_sinh} KH\n\n`
+    + `👉 Mã QR chuyển khoản nhanh (bên dưới):\n`
+    + `{link_qr}`
   )
   const [isSendingBulk, setIsSendingBulk] = useState(false)
   const [sentItemIds, setSentItemIds]     = useState<string[]>([])
