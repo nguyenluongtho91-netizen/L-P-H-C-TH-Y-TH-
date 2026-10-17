@@ -1,3 +1,5 @@
+import QuestionEditorModal from './QuestionEditorModal';
+import ExamBankSelectorModal from './ExamBankSelectorModal';
 import MathText from '@/components/MathText';
 import { uploadPdfToSupabase } from '@/services/supabaseService';
 // src/homework/CreateAssignmentModal.tsx
@@ -10,7 +12,7 @@ import {
   Trash2, Sparkles, BookOpen, Lock, Unlock, Eye, Users,
   Share2, Copy, CheckCheck, QrCode, ArrowRight, ExternalLink,
   HelpCircle, ShieldCheck
-} from 'lucide-react';
+, Edit3, Shuffle, LineChart} from 'lucide-react';
 import { HomeworkAssignment, HomeworkAttachment } from './types';
 import { parseWordToExam } from '@/services/mathWordParserService';
 import { parseTexToExam } from '@/services/texParserService';
@@ -57,6 +59,20 @@ export default function CreateAssignmentModal({
 
   const [saving, setSaving] = useState(false);
 
+  // Cấu hình nâng cao chuẩn Azota
+  const [enableTimeLimit, setEnableTimeLimit] = useState(false);
+  const [timeLimit, setTimeLimit] = useState(45);
+  const [antiCheat, setAntiCheat] = useState(true);
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [shuffleOptions, setShuffleOptions] = useState(false);
+  const [submissionType, setSubmissionType] = useState<'hybrid' | 'online_only' | 'photo_only'>('hybrid');
+
+  // Modal Sửa/Thêm câu hỏi & Ngân hàng đề thi
+  const [isQuestionEditorOpen, setIsQuestionEditorOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState(-1);
+  const [isExamBankOpen, setIsExamBankOpen] = useState(false);
+
   // Modal Share sau khi xuất bản
   const [publishedAssignment, setPublishedAssignment] = useState<HomeworkAssignment | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -83,6 +99,17 @@ export default function CreateAssignmentModal({
         setAssignmentPassword(initialData.assignment_password || '');
         setViewScoreRule(initialData.view_score_rule || 'graded_only');
         setViewSolutionRule(initialData.view_solution_rule || 'after_deadline');
+        if (initialData.time_limit && initialData.time_limit > 0) {
+          setEnableTimeLimit(true);
+          setTimeLimit(initialData.time_limit);
+        } else {
+          setEnableTimeLimit(false);
+          setTimeLimit(45);
+        }
+        setAntiCheat(initialData.anti_cheat ?? true);
+        setShuffleQuestions(initialData.shuffle_questions ?? false);
+        setShuffleOptions(initialData.shuffle_options ?? false);
+        setSubmissionType(initialData.allow_student_type || 'hybrid');
         setAttachments(initialData.attachments || []);
         setParsedQuestions(initialData.parsed_questions || []);
         if (initialData.parsed_questions?.length) setShowQuestionPreview(true);
@@ -251,6 +278,39 @@ export default function CreateAssignmentModal({
     setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
+
+  const handleAddNewQuestion = () => {
+    setEditingQuestion(null);
+    setEditingQuestionIndex(-1);
+    setIsQuestionEditorOpen(true);
+  };
+
+  const handleEditQuestion = (q: Question, idx: number) => {
+    setEditingQuestion(q);
+    setEditingQuestionIndex(idx);
+    setIsQuestionEditorOpen(true);
+  };
+
+  const handleDeleteQuestion = (idx: number) => {
+    setParsedQuestions(prev => prev.filter((_, i) => i !== idx));
+    toast.success('Đã xóa câu hỏi!');
+  };
+
+  const handleSaveEditedQuestion = (savedQ: Question) => {
+    if (editingQuestionIndex >= 0) {
+      setParsedQuestions(prev => prev.map((q, i) => (i === editingQuestionIndex ? savedQ : q)));
+    } else {
+      setParsedQuestions(prev => [...prev, savedQ]);
+      setShowQuestionPreview(true);
+    }
+  };
+
+  const handleSelectFromExamBank = (examTitle: string, questions: Question[]) => {
+    setParsedQuestions(questions);
+    setShowQuestionPreview(true);
+    setTitle(prev => prev.trim() ? prev : examTitle);
+  };
+
   const handleToggleClass = (classId: string) => {
     setSelectedClassIds(prev =>
       prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
@@ -304,6 +364,11 @@ export default function CreateAssignmentModal({
         assignment_password: assignmentPassword.trim() || undefined,
         view_score_rule: viewScoreRule,
         view_solution_rule: viewSolutionRule,
+        time_limit: enableTimeLimit ? timeLimit : 0,
+        anti_cheat: antiCheat,
+        shuffle_questions: shuffleQuestions,
+        shuffle_options: shuffleOptions,
+        allow_student_type: submissionType,
         attachments,
         parsed_questions: parsedQuestions.length > 0 ? parsedQuestions : undefined,
         status: 'active',
@@ -688,14 +753,36 @@ export default function CreateAssignmentModal({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowQuestionPreview(!showQuestionPreview)}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition flex items-center gap-1.5 shadow-xs"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    {showQuestionPreview ? 'Thu gọn' : 'Xem chi tiết câu hỏi'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddNewQuestion}
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+                      title="Thêm câu hỏi mới thủ công bằng Vũ khí Toán - Hóa"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm câu hỏi
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsExamBankOpen(true)}
+                      className="px-2.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      title="Nạp câu hỏi từ Ngân hàng đề thi của Thầy Thọ"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      Ngân hàng đề
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowQuestionPreview(!showQuestionPreview)}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-700 text-xs font-bold hover:bg-blue-50 transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      {showQuestionPreview ? 'Thu gọn' : 'Xem chi tiết'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Thống kê từng phần */}
@@ -725,11 +812,29 @@ export default function CreateAssignmentModal({
                           <span className="font-black text-slate-800">
                             Câu {q.number || idx + 1}: {q.part === 1 ? 'Trắc nghiệm' : q.part === 2 ? 'Đúng/Sai' : q.part === 3 ? 'Trả lời ngắn' : 'Tự luận'}
                           </span>
-                          {q.correctAnswer && (
-                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px]">
-                              Đáp án: {q.correctAnswer}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {q.correctAnswer && (
+                              <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px]">
+                                Đáp án: {q.correctAnswer}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleEditQuestion(q, idx)}
+                              className="p-1 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition"
+                              title="Chỉnh sửa câu hỏi & công thức / hình vẽ"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteQuestion(idx)}
+                              className="p-1 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                              title="Xóa câu hỏi này"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="text-slate-700 leading-relaxed font-serif text-xs">

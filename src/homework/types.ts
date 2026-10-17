@@ -29,6 +29,11 @@ export interface HomeworkAssignment {
   submission_types?: Array<'photo' | 'online' | 'file'>; // Các hình thức nộp bài cho phép
   view_score_rule: 'immediate' | 'graded_only' | 'hidden'; // Cấu hình xem điểm
   view_solution_rule: 'immediate' | 'after_deadline' | 'hidden'; // Cấu hình xem lời giải
+  time_limit?: number; // Giới hạn thời gian làm bài tính bằng phút (0 = không giới hạn)
+  shuffle_questions?: boolean; // Đảo thứ tự câu hỏi
+  shuffle_options?: boolean; // Đảo thứ tự đáp án A, B, C, D
+  anti_cheat?: boolean; // Giám sát chống gian lận chuyển tab
+  allow_student_type?: 'hybrid' | 'online_only' | 'photo_only'; // Hình thức nộp bài cho phép
   solution_text?: string;
   solution_attachments?: HomeworkAttachment[];
   attachments: HomeworkAttachment[];

@@ -65,6 +65,56 @@ export default function StudentSubmitHomeworkPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
+  // Countdown Timer & Anti-cheat chuẩn Azota
+  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number | null>(null);
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
+  const [showAntiCheatModal, setShowAntiCheatModal] = useState<boolean>(false);
+
+  // Khởi tạo timer khi học sinh được chọn
+  useEffect(() => {
+    if (currentStudent && assignment?.time_limit && assignment.time_limit > 0 && timeLeftSeconds === null) {
+      setTimeLeftSeconds(assignment.time_limit * 60);
+    }
+  }, [currentStudent, assignment, timeLeftSeconds]);
+
+  // Bộ đếm lùi thời gian
+  useEffect(() => {
+    if (timeLeftSeconds === null || timeLeftSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setTimeLeftSeconds(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          toast.error('⏰ Đã hết thời gian làm bài! Vui lòng bấm Nộp bài ngay.');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeftSeconds]);
+
+  // Giám sát chống gian lận chuyển tab
+  useEffect(() => {
+    if (!currentStudent || !assignment?.anti_cheat) return;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitchCount(prev => {
+          const next = prev + 1;
+          setShowAntiCheatModal(true);
+          return next;
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [currentStudent, assignment]);
+
+  const formatTimeRemaining = (seconds: number) => {
+    const mm = Math.floor(seconds / 60);
+    const ss = seconds % 60;
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  };
+
   // 1. TẢI THÔNG TIN BÀI TẬP
   useEffect(() => {
     async function fetchAssignment() {
