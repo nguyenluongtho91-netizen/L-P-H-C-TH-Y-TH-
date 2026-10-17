@@ -428,11 +428,11 @@ function normalizeVietnamese(text: string): string {
 function normalizeLatex(text: string): string {
   if (!text) return '';
   let s = text;
-  s = s.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$1$$$$');
-  s = s.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => `$$$${inner}$$$$`);
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => `$$${inner}$$`);
   s = s.replace(/\\begin\{align\*?\}/g, '\\begin{aligned}');
   s = s.replace(/\\end\{align\*?\}/g, '\\end{aligned}');
-  s = s.replace(/\${3,}/g, '$$');
+  s = s.replace(/\${3,}/g, '$$$$');
   s = s.replace(/[ \t]+/g, ' ');
   s = s.replace(/\n{3,}/g, '\n\n');
   return s.trim();
@@ -448,8 +448,8 @@ function escapeHtmlPreserveLaTeX(text: string): string {
     return `__PRESERVED_BLOCK_${preservedBlocks.length - 1}__`;
   };
 
-  // Protect all safe HTML tags (br, img, div, span, table, sub, sup, b, i, u, etc.)
-  text = text.replace(/<(\/?[a-z0-9]+)([^>]*)>/gi, protect);
+  // Protect all safe HTML tags (br, img, div, span, table, sub, sup, b, i, u, strong, em, etc.)
+  text = text.replace(/<\/?(br|img|div|span|table|tr|td|th|tbody|thead|sub|sup|b|i|u|strong|em)([^>]*)>/gi, protect);
 
   // Protect LaTeX ($$...$$ and $...$)
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, protect);
@@ -460,7 +460,7 @@ function escapeHtmlPreserveLaTeX(text: string): string {
   text = text.replace(/>/g, '&gt;');
 
   for (let i = 0; i < preservedBlocks.length; i++) {
-    text = text.replace(`__PRESERVED_BLOCK_${i}__`, preservedBlocks[i]);
+    text = text.replace(`__PRESERVED_BLOCK_${i}__`, () => preservedBlocks[i]);
   }
 
   return text;
@@ -1009,7 +1009,46 @@ function getBodyBlocks(elem: Element): Element[] {
 function formatChemicalSubscripts(text: string): string {
   if (!text) return '';
   let s = text;
-  // Format common chemical formulas (e.g. H2N-CH2-COOH) with proper sub tags
+
+  // 1. Ký hiệu mũi tên phản ứng hóa học & toán học
+  s = s.replace(/\s*⇒\s*/g, ' $\\Rightarrow$ ');
+  s = s.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*→\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*<=>\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/\s*⇌\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/·/g, '&middot;');
+  s = s.replace(/≈/g, '&approx;');
+
+  // 2. Chuyển đổi các ký tự chỉ số trên/dưới Unicode sang thẻ HTML sup/sub chuẩn
+  const supMap: Record<string, string> = {
+    '⁰':'0', '¹':'1', '²':'2', '³':'3', '⁴':'4', '⁵':'5', '⁶':'6', '⁷':'7', '⁸':'8', '⁹':'9', '⁺':'+', '⁻':'-'
+  };
+  for (const [k, v] of Object.entries(supMap)) {
+    s = s.split(k).join(`<sup>${v}</sup>`);
+  }
+  const subMap: Record<string, string> = {
+    '₀':'0', '₁':'1', '₂':'2', '₃':'3', '₄':'4', '₅':'5', '₆':'6', '₇':'7', '₈':'8', '₉':'9'
+  };
+  for (const [k, v] of Object.entries(subMap)) {
+    s = s.split(k).join(`<sub>${v}</sub>`);
+  }
+
+  // 3. Cấu hình electron: 1s2, 2s2, 2p6, 3d10, 4f14, ns2, np4...
+  s = s.replace(/\b([1-7n][spdf])([1-9]|1[0-4])\b/g, '$1<sup>$2</sup>');
+
+  // 4. Biến đổi nhiệt động hóa học Enthalpy: ΔfH°298 hoặc ΔrH°298
+  s = s.replace(/Δ([rf])H°?(\d+)/g, '&Delta;<sub>$1</sub>H<sup>&deg;</sup><sub>$2</sub>');
+
+  // 5. Ký hiệu công thức tổng quát và khối lượng mol: AxBy, MR, MX, MA, MB
+  s = s.replace(/\bA([xy])B([xy])\b/g, 'A<sub>$1</sub>B<sub>$2</sub>');
+  s = s.replace(/\b(\d*)M([RXABM])\b/g, '$1M<sub>$2</sub>');
+
+  // 6. Các ion hóa học phổ biến kèm điện tích: Fe3+, Cu2+, Al3+, Na+, Cl-, SO4^2-, SO4 2-
+  s = s.replace(/\b(Fe|Cu|Al|Zn|Na|K|Mg|Ca|Ba|Cl|NO3|SO4|CO3|PO4|NH4|H|OH)\s*([2-4]?[+-])(?=[\s,.;\)]|$)/g, '$1<sup>$2</sup>');
+
+  // 7. Nhóm hữu cơ đặc thù
   s = s.replace(/\bH2N-/g, 'H<sub>2</sub>N-');
   s = s.replace(/-CH2-/g, '-CH<sub>2</sub>-');
   s = s.replace(/-CH2\b/g, '-CH<sub>2</sub>');
@@ -1018,21 +1057,25 @@ function formatChemicalSubscripts(text: string): string {
   s = s.replace(/-NH2\b/g, '-NH<sub>2</sub>');
   s = s.replace(/-CH3\b/g, '-CH<sub>3</sub>');
   s = s.replace(/CH2CH2/g, 'CH<sub>2</sub>CH<sub>2</sub>');
-  s = s.replace(/\bH2SO4\b/g, 'H<sub>2</sub>SO<sub>4</sub>');
-  s = s.replace(/\bCa\(OH\)2\b/g, 'Ca(OH)<sub>2</sub>');
-  s = s.replace(/\bCuSO4\b/g, 'CuSO<sub>4</sub>');
-  s = s.replace(/\bCO2\b/g, 'CO<sub>2</sub>');
-  s = s.replace(/\bH2O\b/g, 'H<sub>2</sub>O');
-  s = s.replace(/\bCl2\b/g, 'Cl<sub>2</sub>');
-  s = s.replace(/\bCH4\b/g, 'CH<sub>4</sub>');
-  s = s.replace(/\bCH3Cl\b/g, 'CH<sub>3</sub>Cl');
+
+  // 8. Tự động nhận diện công thức phân tử hóa học tổng quát (RH3, R2O5, XO3, Na2O, Al2O3, Ba(OH)2, H2SO4...)
+  const nonChem = new Set(['ID', 'HW', 'COVID', 'COVID19', 'A4', 'A3', 'MP3', 'MP4', 'H1N1', 'K10', 'K11', 'K12', 'P1', 'P2', 'P3', 'P4', 'C1', 'C2', 'V1', 'V2']);
+  const chemRegex = /(\b\d+\s*)?([A-Z][a-z]?(?:\([A-Za-z0-9]+\)|[A-Z][a-z]?|\d+)*\d+[A-Za-z0-9\(\)]*)\b/g;
+  s = s.replace(chemRegex, (full, prefix, tok) => {
+    if (!tok || nonChem.has(tok)) return full;
+    if (tok.includes('<sub>') || tok.includes('<sup>')) return full;
+    const formatted = tok.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>');
+    return (prefix || '') + formatted;
+  });
+
   return s;
 }
 
 function processSingleParagraph(
   p: Element,
   imageRelMap: Map<string, string>,
-  wmfFormulaMap: Map<string, string>
+  wmfFormulaMap: Map<string, string>,
+  images?: ImageData[]
 ): ParagraphData | null {
   let text = '';
   const imageRIds: string[] = [];
@@ -1161,6 +1204,28 @@ function processSingleParagraph(
 
   text = text.replace(/[ \t]*\n[ \t]*/g, '\n').trim();
 
+  // Nhúng hình ảnh câu hỏi trực tiếp vào dòng văn bản (bảo toàn vị trí theo Rule 1 AGENTS.md)
+  if (imageRIds.length > 0 && images && images.length > 0) {
+    for (const rid of imageRIds) {
+      let img = images.find((i) => i.rId === rid);
+      if (!img) {
+        for (const image of images) {
+          if (image.filename && rid.includes(image.filename)) {
+            img = image;
+            break;
+          }
+        }
+      }
+      if (img && !img.filename?.toLowerCase().endsWith('.wmf') && img.contentType !== 'image/x-wmf') {
+        const raw = img.base64 || img.data || '';
+        if (raw) {
+          const imgSrc = raw.startsWith('data:') ? raw : `data:${img.contentType || 'image/png'};base64,${raw}`;
+          text += `<div style="text-align:center;margin:12px 0;"><img src="${imgSrc}" style="max-height:360px;max-width:100%;height:auto;border-radius:8px;border:1px solid #e2e8f0;display:inline-block;" alt="Hình ảnh câu hỏi" /></div>`;
+        }
+      }
+    }
+  }
+
   if (text || imageRIds.length > 0) {
     return { text, imageRIds, hasUnderline, underlinedSegments };
   }
@@ -1207,7 +1272,7 @@ function extractParagraphsWithUnderline(
         // Layout table with question stems and side-by-side images
         const innerPs = Array.from(block.getElementsByTagName('w:p'));
         for (const ip of innerPs) {
-          const pData = processSingleParagraph(ip, imageRelMap, wmfFormulaMap);
+          const pData = processSingleParagraph(ip, imageRelMap, wmfFormulaMap, images);
           if (pData) paragraphs.push(pData);
         }
         continue;
@@ -1224,7 +1289,7 @@ function extractParagraphsWithUnderline(
         });
       }
     } else if (name === 'p') {
-      const pData = processSingleParagraph(block, imageRelMap, wmfFormulaMap);
+      const pData = processSingleParagraph(block, imageRelMap, wmfFormulaMap, images);
       if (pData) paragraphs.push(pData);
     }
   }

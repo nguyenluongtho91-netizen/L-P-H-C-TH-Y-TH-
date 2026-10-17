@@ -186,15 +186,20 @@ function stripMetaCommands(text: string): string {
     .replace(/\\medskip\b/g, '')
     .replace(/\\bigskip\b/g, '')
     .replace(/\\smallskip\b/g, '')
-    .replace(/\\vspace\s*\{[^}]*\}/g, '')
-    .replace(/\\hspace\s*\{[^}]*\}/g, ' ')
+    .replace(/\\vspace\*?\s*(?:\{[^}]*\}|\[[^\]]*\]|[-0-9.]+(?:mm|cm|in|pt|em|ex))/g, '')
+    .replace(/\\hspace\*?\s*(?:\{[^}]*\}|\[[^\]]*\]|[-0-9.]+(?:mm|cm|in|pt|em|ex))/g, ' ')
     .replace(/\\phantom\s*\{[^}]*\}/g, '')
     .replace(/\\label\s*\{[^}]*\}/g, '')
     .replace(/\\ref\s*\{[^}]*\}/g, '')
     .replace(/\\pagebreak\b/g, '')
     .replace(/\\linebreak\b/g, '')
-    .replace(/\\displaystyle\b/g, '\\displaystyle ') 
-    .replace(/\\mathrm\b/g, '\\mathrm')              
+    .replace(/\\displaystyle\b/g, '\\displaystyle ')
+    .replace(/\\mathrm\b/g, '\\mathrm')
+    .replace(/\\dots\b/g, '...')
+    .replace(/\\quad\b/g, ' ')
+    .replace(/\\qquad\b/g, '  ')
+    .replace(/\\implies\b/g, ' $\\Rightarrow$ ')
+    .replace(/\\iff\b/g, ' $\\Leftrightarrow$ ')
     ;
 }
 
@@ -394,11 +399,88 @@ function convertListsToHtml(text: string): string {
   return text;
 }
 
+
+function stripLatexComments(s: string): string {
+  if (!s) return '';
+  // 1. Dòng comment độc lập bắt đầu bằng %
+  s = s.replace(/^[ \t]*%[^\r\n]*\r?\n?/gm, '');
+  // 2. Comment ở cuối dòng (chỉ xóa nếu % KHÔNG đi liền sau số hoặc dấu gạch chéo ngược)
+  s = s.replace(/(?<![0-9\\%])\s*%(?![0-9])[^\r\n]*/g, '');
+  // 3. Chuyển \% thành %
+  s = s.replace(/\\%/g, '%');
+  return s;
+}
+
+function formatChemicalSubscripts(text: string): string {
+  if (!text) return '';
+  let s = text;
+
+  // 1. Ký hiệu mũi tên phản ứng hóa học & toán học
+  s = s.replace(/\s*⇒\s*/g, ' $\\Rightarrow$ ');
+  s = s.replace(/\s*-->\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*->\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*→\s*/g, ' $\\rightarrow$ ');
+  s = s.replace(/\s*<=>\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/\s*<->\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/\s*⇌\s*/g, ' $\\rightleftharpoons$ ');
+  s = s.replace(/·/g, '&middot;');
+  s = s.replace(/≈/g, '&approx;');
+
+  // 2. Chuyển đổi các ký tự chỉ số trên/dưới Unicode sang thẻ HTML sup/sub chuẩn
+  const supMap: Record<string, string> = {
+    '⁰':'0', '¹':'1', '²':'2', '³':'3', '⁴':'4', '⁵':'5', '⁶':'6', '⁷':'7', '⁸':'8', '⁹':'9', '⁺':'+', '⁻':'-'
+  };
+  for (const [k, v] of Object.entries(supMap)) {
+    s = s.split(k).join(`<sup>${v}</sup>`);
+  }
+  const subMap: Record<string, string> = {
+    '₀':'0', '₁':'1', '₂':'2', '₃':'3', '₄':'4', '₅':'5', '₆':'6', '₇':'7', '₈':'8', '₉':'9'
+  };
+  for (const [k, v] of Object.entries(subMap)) {
+    s = s.split(k).join(`<sub>${v}</sub>`);
+  }
+
+  // 3. Cấu hình electron: 1s2, 2s2, 2p6, 3d10, 4f14, ns2, np4...
+  s = s.replace(/\b([1-7n][spdf])([1-9]|1[0-4])\b/g, '$1<sup>$2</sup>');
+
+  // 4. Biến đổi nhiệt động hóa học Enthalpy: ΔfH°298 hoặc ΔrH°298
+  s = s.replace(/Δ([rf])H°?(\d+)/g, '&Delta;<sub>$1</sub>H<sup>&deg;</sup><sub>$2</sub>');
+
+  // 5. Ký hiệu công thức tổng quát và khối lượng mol: AxBy, MR, MX, MA, MB
+  s = s.replace(/\bA([xy])B([xy])\b/g, 'A<sub>$1</sub>B<sub>$2</sub>');
+  s = s.replace(/\b(\d*)M([RXABM])\b/g, '$1M<sub>$2</sub>');
+
+  // 6. Các ion hóa học phổ biến kèm điện tích: Fe3+, Cu2+, Al3+, Na+, Cl-, SO4^2-, SO4 2-
+  s = s.replace(/\b(Fe|Cu|Al|Zn|Na|K|Mg|Ca|Ba|Cl|NO3|SO4|CO3|PO4|NH4|H|OH)\s*([2-4]?[+-])(?=[\s,.;\)]|$)/g, '$1<sup>$2</sup>');
+
+  // 7. Nhóm hữu cơ đặc thù
+  s = s.replace(/\bH2N-/g, 'H<sub>2</sub>N-');
+  s = s.replace(/-CH2-/g, '-CH<sub>2</sub>-');
+  s = s.replace(/-CH2\b/g, '-CH<sub>2</sub>');
+  s = s.replace(/\bCH2-/g, 'CH<sub>2</sub>-');
+  s = s.replace(/\(NH2\)/g, '(NH<sub>2</sub>)');
+  s = s.replace(/-NH2\b/g, '-NH<sub>2</sub>');
+  s = s.replace(/-CH3\b/g, '-CH<sub>3</sub>');
+  s = s.replace(/CH2CH2/g, 'CH<sub>2</sub>CH<sub>2</sub>');
+
+  // 8. Tự động nhận diện công thức phân tử hóa học tổng quát (RH3, R2O5, XO3, Na2O, Al2O3, Ba(OH)2, H2SO4...)
+  const nonChem = new Set(['ID', 'HW', 'COVID', 'COVID19', 'A4', 'A3', 'MP3', 'MP4', 'H1N1', 'K10', 'K11', 'K12', 'P1', 'P2', 'P3', 'P4', 'C1', 'C2', 'V1', 'V2']);
+  const chemRegex = /(\b\d+\s*)?([A-Z][a-z]?(?:\([A-Za-z0-9]+\)|[A-Z][a-z]?|\d+)*\d+[A-Za-z0-9\(\)]*)\b/g;
+  s = s.replace(chemRegex, (full, prefix, tok) => {
+    if (!tok || nonChem.has(tok)) return full;
+    if (tok.includes('<sub>') || tok.includes('<sup>')) return full;
+    const formatted = tok.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>');
+    return (prefix || '') + formatted;
+  });
+
+  return s;
+}
+
 function processLatexText(text: string): string {
   if (!text) return '';
+  text = stripLatexComments(text);
   text = stripMetaCommands(text);
   text = preProcessEquationCommands(text);
-  text = transformNonMath(text, t => t.replace(/%[^\n]*/g, ''));
   text = convertTabularToHtml(text);
   text = convertListsToHtml(text);
   text = transformNonMath(text, t => {
@@ -416,6 +498,7 @@ function processLatexText(text: string): string {
     t = t.replace(/\\\\/g, '<br/>');
     t = t.replace(/(?<!\\)~/g, '\u00a0');
     t = t.replace(/\r?\n[ \t]*/g, ' ');
+    t = formatChemicalSubscripts(t);
     return t;
   });
 
@@ -424,9 +507,9 @@ function processLatexText(text: string): string {
 
 function processLatexSolution(text: string, images: ExtendedImageData[]): string {
   if (!text) return '';
+  text = stripLatexComments(text);
   text = stripMetaCommands(text);
   text = preProcessEquationCommands(text);
-  text = text.replace(/%[^\n]*/g, '');
   text = inlineTikzAsHtml(text, images);
   text = convertTabularToHtml(text);
   text = convertListsToHtml(text);
@@ -448,6 +531,7 @@ function processLatexSolution(text: string, images: ExtendedImageData[]): string
     t = t.replace(/\\\\/g, '<br/>');
     t = t.replace(/(?<!\\)~/g, '\u00a0');
     t = t.replace(/\r?\n[ \t]*/g, ' ');
+    t = formatChemicalSubscripts(t);
     return t;
   });
   return text.replace(/[ \t]{2,}/g, ' ').trim();
@@ -776,7 +860,20 @@ function getPartName(part: number): string {
 
 function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQuestion[] {
   const docMatch = content.match(/\\begin\{document\}([\s\S]*?)(?:\\end\{document\}|$)/i);
-  const body = docMatch ? docMatch[1] : content;
+  let body = docMatch ? docMatch[1] : content;
+
+  // Lọc bỏ toàn bộ comment an toàn (không làm mất phần trăm % trong văn bản hóa học)
+  body = stripLatexComments(body);
+
+  // Nhận diện phần Lời giải chi tiết ở cuối đề (nếu có)
+  const solSectionPattern = /(?:ĐÁP\s*ÁN\s*VÀ\s*HƯỚNG\s*DẪN|HƯỚNG\s*DẪN\s*GIẢI\s*CHI\s*TIẾT|LỜI\s*GIẢI\s*CHI\s*TIẾT|DAP\s*AN\s*VA\s*HUONG\s*DAN)/i;
+  const solMatch = solSectionPattern.exec(body);
+  let qBody = body;
+  let solBody = '';
+  if (solMatch && solMatch.index !== undefined) {
+    qBody = body.substring(0, solMatch.index);
+    solBody = body.substring(solMatch.index);
+  }
 
   // Pattern nhận diện các khối câu hỏi theo định dạng in đậm:
   // \textbf{Ví dụ 1.} / \textbf{Ví dụ 1.1.} / \textbf{Câu 1.} / \textbf{Bài 1.} / \textbf{VD 1.}
@@ -784,11 +881,23 @@ function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQ
 
   const matches: RegExpExecArray[] = [];
   let m: RegExpExecArray | null;
-  while ((m = pattern.exec(body)) !== null) {
+  while ((m = pattern.exec(qBody)) !== null) {
     matches.push(m);
   }
 
   if (matches.length === 0) return [];
+
+  // Lấy phần tiêu đề / lý thuyết / công thức mở đầu (nếu có trước câu số 1)
+  let introBanner = '';
+  if (matches.length > 0 && matches[0].index > 0) {
+    const rawIntro = qBody.substring(0, matches[0].index).trim();
+    if (rawIntro && !/^[\s\S]*?\\begin\{center\}\s*\{\\bfseries\\large\s*BÀI TẬP\}\s*\\end\{center\}\s*$/i.test(rawIntro)) {
+      const processedIntro = inlineTikzAsHtml(processLatexText(rawIntro), images);
+      if (processedIntro) {
+        introBanner = `<div style="margin-bottom:14px;padding:10px 14px;background:#f8fafc;border-left:4px solid #3b82f6;border-radius:6px;font-size:13px;line-height:1.6;">${processedIntro}</div>`;
+      }
+    }
+  }
 
   const questions: ParsedQuestion[] = [];
 
@@ -797,8 +906,8 @@ function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQ
     const rawHeader = curMatch[0];
     const labelText = rawHeader.replace(/\\textbf\{|\}/g, '').trim();
     const start = curMatch.index + curMatch[0].length;
-    const end = i + 1 < matches.length ? matches[i + 1].index : body.length;
-    let block = body.substring(start, end).trim();
+    const end = i + 1 < matches.length ? matches[i + 1].index : qBody.length;
+    let block = qBody.substring(start, end).trim();
 
     // Tách lời giải nếu có \loigiai{...}
     const sol = extractCommandGroup(block, '\\loigiai');
@@ -814,7 +923,10 @@ function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQ
 
     // Xử lý TikZ và định dạng LaTeX
     const processedText = inlineTikzAsHtml(processLatexText(contentNoSol), images);
-    const fullQuestionHtml = `<strong>${labelText}</strong> ${processedText}`;
+    let fullQuestionHtml = `<strong>${labelText}</strong> ${processedText}`;
+    if (i === 0 && introBanner) {
+      fullQuestionHtml = `${introBanner}${fullQuestionHtml}`;
+    }
 
     // Kiểm tra xem có \choice (trắc nghiệm) hay không
     const choiceIndex = contentNoSol.search(/\\choice(?!TF)/);
@@ -860,6 +972,36 @@ function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQ
         solution,
         images: [],
       });
+    }
+  }
+
+  // Tự động ghép nối lời giải từ phần "ĐÁP ÁN VÀ HƯỚNG DẪN GIẢI CHI TIẾT" ở cuối tài liệu (nếu có)
+  if (solBody) {
+    const solMatches: RegExpExecArray[] = [];
+    let sm: RegExpExecArray | null;
+    while ((sm = pattern.exec(solBody)) !== null) {
+      solMatches.push(sm);
+    }
+    const solMap: Record<string, string> = {};
+    for (let j = 0; j < solMatches.length; j++) {
+      const curSolMatch = solMatches[j];
+      const solRawHeader = curSolMatch[0];
+      const solKey = solRawHeader.replace(/\\textbf\{|\}/g, '').toLowerCase().replace(/[.:\s]+$/g, '').trim();
+      const sStart = curSolMatch.index + curSolMatch[0].length;
+      const sEnd = j + 1 < solMatches.length ? solMatches[j + 1].index : solBody.length;
+      const solRawText = solBody.substring(sStart, sEnd).trim();
+      solMap[solKey] = processLatexSolution(solRawText, images);
+    }
+
+    for (const q of questions) {
+      if (!q.solution) {
+        for (const [key, solText] of Object.entries(solMap)) {
+          if (q.text.toLowerCase().includes(key)) {
+            q.solution = solText;
+            break;
+          }
+        }
+      }
     }
   }
 

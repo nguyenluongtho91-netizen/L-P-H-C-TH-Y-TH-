@@ -1,3 +1,4 @@
+import MathText from '@/components/MathText';
 // src/homework/StudentSubmitHomeworkPage.tsx
 // Cổng Nộp Bài Học Sinh - Chuẩn Azota 100%: Chọn tên trong danh sách lớp -> Xem đề -> Chụp vở nộp
 
@@ -921,10 +922,9 @@ export default function StudentSubmitHomeworkPage() {
                         </div>
 
                         {/* Đề bài câu hỏi */}
-                        <div
-                          className="text-xs sm:text-sm text-slate-800 leading-relaxed font-serif"
-                          dangerouslySetInnerHTML={{ __html: q.text }}
-                        />
+                        <div className="text-xs sm:text-sm text-slate-800 leading-relaxed font-serif">
+                          <MathText html={q.text} block />
+                        </div>
 
                         {/* PHẦN 1: 4 NÚT CHỌN A, B, C, D */}
                         {(q.part === 1 || q.type === 'multiple_choice') && q.options && (
@@ -947,7 +947,7 @@ export default function StudentSubmitHomeworkPage() {
                                   }`}>
                                     {opt.letter}
                                   </div>
-                                  <span className="leading-snug" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                  <span className="leading-snug flex-1"><MathText html={opt.text} /></span>
                                 </button>
                               );
                             })}
@@ -966,7 +966,7 @@ export default function StudentSubmitHomeworkPage() {
                                 >
                                   <div className="flex items-start gap-2">
                                     <span className="font-black text-blue-700 uppercase">{opt.letter + ')'}</span>
-                                    <span className="text-slate-700 leading-snug" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                    <span className="text-slate-700 leading-snug flex-1"><MathText html={opt.text} /></span>
                                   </div>
 
                                   <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">

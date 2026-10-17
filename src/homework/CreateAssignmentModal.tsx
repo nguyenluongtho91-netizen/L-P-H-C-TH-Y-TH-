@@ -1,3 +1,4 @@
+import MathText from '@/components/MathText';
 import { uploadPdfToSupabase } from '@/services/supabaseService';
 // src/homework/CreateAssignmentModal.tsx
 // Modal Tạo & Giao bài tập về nhà 2 cột - Chuẩn Azota 100%
@@ -731,7 +732,9 @@ export default function CreateAssignmentModal({
                           )}
                         </div>
 
-                        <div className="text-slate-700 leading-relaxed font-serif text-xs" dangerouslySetInnerHTML={{ __html: q.text }} />
+                        <div className="text-slate-700 leading-relaxed font-serif text-xs">
+                          <MathText html={q.text} block />
+                        </div>
 
                         {/* Các lựa chọn A, B, C, D */}
                         {q.options && q.options.length > 0 && (
@@ -754,11 +757,18 @@ export default function CreateAssignmentModal({
                                   }`}>
                                     {opt.letter}
                                   </span>
-                                  <span className="truncate" dangerouslySetInnerHTML={{ __html: opt.text }} />
+                                  <span className="truncate flex-1"><MathText html={opt.text} /></span>
                                   {isCorr && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto flex-shrink-0 stroke-[3]" />}
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+
+                        {q.solution && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
+                            <span className="font-bold text-amber-800 block mb-1">💡 Lời giải / Hướng dẫn:</span>
+                            <MathText html={q.solution} block />
                           </div>
                         )}
                       </div>

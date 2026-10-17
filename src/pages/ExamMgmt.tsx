@@ -1115,14 +1115,18 @@ export default function ExamMgmt() {
                               if (img.filename?.toLowerCase().endsWith('.wmf') || img.id?.toLowerCase().endsWith('.wmf') || img.contentType === 'image/x-wmf') return false;
                               if (q.text && (q.text.includes(img.filename) || (img.base64 && q.text.includes(img.base64.slice(0, 32))))) return false;
                               return true;
-                            }).map((img: any, idx: number) => (
-                              <img 
-                                key={idx} 
-                                src={img.base64 ? `data:${img.contentType || 'image/png'};base64,${img.base64}` : `data:image/png;base64,${img.data}`} 
-                                className="max-h-64 mt-3 rounded-lg border border-gray-200 shadow-sm" 
-                                alt={`Ảnh câu ${displayQNum}`} 
-                              />
-                            ))}
+                            }).map((img: any, idx: number) => {
+                              const b64 = img.base64 || img.data || '';
+                              const imgSrc = b64.startsWith('data:') ? b64 : `data:${img.contentType || 'image/png'};base64,${b64}`;
+                              return (
+                                <img 
+                                  key={idx} 
+                                  src={imgSrc} 
+                                  className="max-h-64 mt-3 rounded-lg border border-gray-200 shadow-sm" 
+                                  alt={`Ảnh câu ${displayQNum}`} 
+                                />
+                              );
+                            })}
                           </div>
 
                           {/* Phương án Phần 1 (Trắc nghiệm thường) */}
