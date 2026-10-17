@@ -143,12 +143,12 @@ export async function enqueueBatchZaloMessages(
  */
 export async function waitForZaloJob(
   jobId: string,
-  timeoutMs = 12000,
+  timeoutMs = 6000,
   onProgress?: (status: string) => void
 ): Promise<{ success: boolean; error?: string }> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
-    await new Promise(r => setTimeout(r, 1000))
+    await new Promise(r => setTimeout(r, 600))
     const outbox = await getZaloOutbox()
     const job = outbox.items.find(i => i.id === jobId)
     if (!job) continue

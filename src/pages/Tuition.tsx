@@ -48,6 +48,7 @@ export default function Tuition() {
   const [autoSending, setAutoSending] = useState(false)
   const [autoProgress, setAutoProgress] = useState<{ current: number; total: number; currentStudent: string; logs: string[] }>({ current: 0, total: 0, currentStudent: '', logs: [] })
   const [sendingStudentId, setSendingStudentId] = useState<string | null>(null)
+  const [phoneEditModal, setPhoneEditModal] = useState<{ student: any; row: TuitionNotificationRow; phoneInput: string } | null>(null)
   const [robotOnline, setRobotOnline] = useState<boolean>(false)
 
   useEffect(() => {
@@ -306,14 +307,47 @@ export default function Tuition() {
     }
   }
 
-  // ── 1-CLICK DIRECT ZALO SEND FOR SINGLE STUDENT ──
-  const sendZaloDirect1Click = async (row: TuitionNotificationRow) => {
-    const student = students.find((s: any) => s.id === row.student.id)
-    const phone = (student as any)?.zalo || (student as any)?.parent_phone || ''
-    const cleanPhone = phone.replace(/\D/g, '').replace(/^84/, '0')
+  const handleSavePhoneAndSend = async () => {
+    if (!phoneEditModal) return
+    const digits = phoneEditModal.phoneInput.replace(/\D/g, '').replace(/^84/, '0')
+    if (digits.length !== 10 || !digits.startsWith('0')) {
+      toast.error('Số điện thoại phải đúng 10 chữ số (bắt đầu bằng 0, ví dụ: 0912345678)!')
+      return
+    }
 
-    if (!cleanPhone || cleanPhone.length < 9) {
-      toast.error(`Học sinh ${row.student.full_name} chưa có số điện thoại Zalo hợp lệ!`)
+    try {
+      // Lưu số điện thoại vào Supabase cho học sinh
+      await supabase.from('students').update({ zalo: digits, parent_phone: digits }).eq('id', phoneEditModal.student.id)
+      // Cập nhật local state
+      const s = students.find((st: any) => st.id === phoneEditModal.student.id)
+      if (s) {
+        (s as any).zalo = digits
+        ;(s as any).parent_phone = digits
+      }
+      toast.success('Đã lưu số điện thoại Zalo thành công!')
+      const targetRow = phoneEditModal.row
+      setPhoneEditModal(null)
+      // Thực hiện gửi ngay
+      setTimeout(() => {
+        sendZaloDirect1Click(targetRow, digits)
+      }, 200)
+    } catch (err: any) {
+      toast.error('Lỗi khi lưu số điện thoại: ' + err.message)
+    }
+  }
+
+  // ── 1-CLICK DIRECT ZALO SEND FOR SINGLE STUDENT ──
+  const sendZaloDirect1Click = async (row: TuitionNotificationRow, overridePhone?: string) => {
+    const student = students.find((s: any) => s.id === row.student.id)
+    const rawPhone = overridePhone || (student as any)?.zalo || (student as any)?.parent_phone || ''
+    const cleanPhone = rawPhone.replace(/\D/g, '').replace(/^84/, '0')
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setPhoneEditModal({
+        student: student || row.student,
+        row,
+        phoneInput: cleanPhone || ''
+      })
       return
     }
 
@@ -1029,6 +1063,27 @@ export default function Tuition() {
                             <span className="text-xs bg-slate-100 text-slate-500 font-mono font-bold px-1.5 py-0.5 rounded border border-slate-200">
                               {row.student.student_code}
                             </span>
+                            {(() => {
+                              const st = students.find((s: any) => s.id === row.student.id) || row.student
+                              const p = ((st as any)?.zalo || (st as any)?.parent_phone || '').replace(/\D/g, '')
+                              return p ? (
+                                <button
+                                  onClick={() => setPhoneEditModal({ student: st, row, phoneInput: p })}
+                                  className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 cursor-pointer hover:underline ${p.length === 10 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-300 animate-pulse'}`}
+                                  title="Bấm để chỉnh sửa SĐT Zalo"
+                                >
+                                  📞 {p} {p.length !== 10 && '(thiếu số)'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setPhoneEditModal({ student: st, row, phoneInput: '' })}
+                                  className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100 flex items-center gap-1 cursor-pointer"
+                                  title="Bấm để thêm SĐT Zalo"
+                                >
+                                  ⚠️ Thêm SĐT Zalo
+                                </button>
+                              )
+                            })()}
                           </div>
                         </div>
                       </td>
@@ -1882,6 +1937,57 @@ export default function Tuition() {
         </div>
       )}
 
+      {/* Modal Nhập/Chỉnh sửa số điện thoại Zalo */}
+      {phoneEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-teal-100 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="p-2 bg-blue-100 text-blue-700 rounded-xl text-lg">📱</span>
+                <div>
+                  <h3 className="font-extrabold text-gray-800 text-base">Số điện thoại Zalo Phụ huynh</h3>
+                  <p className="text-xs text-gray-400 font-medium">Học sinh: <strong className="text-gray-700">{phoneEditModal.student.full_name}</strong></p>
+                </div>
+              </div>
+              <button onClick={() => setPhoneEditModal(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 block">Số điện thoại (đủ 10 chữ số) *</label>
+              <input
+                type="tel"
+                value={phoneEditModal.phoneInput}
+                onChange={e => setPhoneEditModal({ ...phoneEditModal, phoneInput: e.target.value })}
+                placeholder="VD: 0915991696..."
+                className="input border-blue-200 focus:border-blue-600 font-mono text-base font-bold text-blue-900 w-full"
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSavePhoneAndSend()
+                }}
+              />
+              <p className="text-[11px] text-gray-400">
+                * Số điện thoại sẽ được lưu vào hồ sơ học sinh và tự động dùng cho các lần gửi tiếp theo.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setPhoneEditModal(null)}
+                className="btn-outline border-slate-200 text-xs py-2.5 px-4 font-bold"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSavePhoneAndSend}
+                className="py-2.5 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-500/25 flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                Lưu & Gửi Zalo ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
