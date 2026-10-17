@@ -1,3 +1,4 @@
+import { uploadPdfToSupabase } from '@/services/supabaseService';
 // src/homework/CreateAssignmentModal.tsx
 // Modal Tạo & Giao bài tập về nhà 2 cột - Chuẩn Azota 100%
 
@@ -120,16 +121,29 @@ export default function CreateAssignmentModal({
       else if (nameLower.endsWith('.docx') || nameLower.endsWith('.doc')) type = 'docx';
       else if (nameLower.endsWith('.mp4') || nameLower.endsWith('.mov')) type = 'video';
 
-      // 1. Lưu file đính kèm
+      // 1. Lưu file đính kèm (tự động upload lên Supabase Storage nếu file lớn để chống tràn LocalStorage)
       const reader = new FileReader();
-      reader.onload = () => {
-        const url = reader.result as string;
+      reader.onload = async () => {
+        let finalUrl = reader.result as string;
+
+        // Nếu file > 200KB hoặc là file PDF, upload lên Supabase Storage bucket exam-files
+        if (file.size > 150 * 1024 || type === 'pdf') {
+          try {
+            const uploadRes = await uploadPdfToSupabase(finalUrl, file.name);
+            if (uploadRes && uploadRes.fileUrl) {
+              finalUrl = uploadRes.fileUrl;
+            }
+          } catch (uploadErr) {
+            console.warn('Không thể upload lên Supabase Storage, dùng dataURL dự phòng:', uploadErr);
+          }
+        }
+
         const newAttachment: HomeworkAttachment = {
           id: 'att_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
           name: file.name,
           size: file.size,
           type,
-          url,
+          url: finalUrl,
         };
         setAttachments(prev => [...prev, newAttachment]);
       };

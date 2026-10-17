@@ -88,6 +88,16 @@ export const parseTexToExam = async (
   addSection(part3Questions, 'PHẦN 3. Trả lời ngắn', 'Điền đáp án số vào ô trống', 'short_answer');
   addSection(part4Questions, 'PHẦN 4. Tự luận', 'Học sinh trình bày lời giải chi tiết', 'writing');
 
+  // FALLBACK DÀNH CHO FILE LATEX THƯỜNG (SOẠN BẰNG \textbf{Ví dụ 1.} / \textbf{Câu 1.} KHÔNG CÓ \begin{ex})
+  if (examData.questions.length === 0) {
+    log('⚡ Không có thẻ \begin{ex}, đang quét câu hỏi theo tiêu đề in đậm (Ví dụ, Câu, Bài)...');
+    const fallbackQuestions = parseTexFallback(processedContent, images);
+    if (fallbackQuestions.length > 0) {
+      addSection(fallbackQuestions, 'PHẦN 4. Tự luận & Ví dụ bài tập', 'Học sinh trình bày lời giải chi tiết', 'writing');
+      log(`✅ Phân tích xong (Fallback tiêu đề): ${fallbackQuestions.length} câu hỏi`);
+    }
+  }
+
   return examData;
 };
 
@@ -761,6 +771,99 @@ function getPartName(part: number): string {
     case 4: return 'Tự luận';
     default: return '';
   }
+}
+
+
+function parseTexFallback(content: string, images: ExtendedImageData[]): ParsedQuestion[] {
+  const docMatch = content.match(/\\begin\{document\}([\s\S]*?)(?:\\end\{document\}|$)/i);
+  const body = docMatch ? docMatch[1] : content;
+
+  // Pattern nhận diện các khối câu hỏi theo định dạng in đậm:
+  // \textbf{Ví dụ 1.} / \textbf{Ví dụ 1.1.} / \textbf{Câu 1.} / \textbf{Bài 1.} / \textbf{VD 1.}
+  const pattern = /\\textbf\{\s*(?:C(?:âu|au)|V(?:í\s*dụ|i\s*du)|VD|B(?:ài|ai)|D(?:ạng|ang))\s*([\d.]+)[.:]?\s*\}/gi;
+
+  const matches: RegExpExecArray[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(body)) !== null) {
+    matches.push(m);
+  }
+
+  if (matches.length === 0) return [];
+
+  const questions: ParsedQuestion[] = [];
+
+  for (let i = 0; i < matches.length; i++) {
+    const curMatch = matches[i];
+    const rawHeader = curMatch[0];
+    const labelText = rawHeader.replace(/\\textbf\{|\}/g, '').trim();
+    const start = curMatch.index + curMatch[0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : body.length;
+    let block = body.substring(start, end).trim();
+
+    // Tách lời giải nếu có \loigiai{...}
+    const sol = extractCommandGroup(block, '\\loigiai');
+    let contentNoSol = sol.cleaned;
+    let solution = sol.group ? processLatexSolution(sol.group, images) : '';
+
+    // Hoặc nếu có \textbf{Lời giải} / \textbf{Đáp án}
+    const inlineSolMatch = contentNoSol.match(/\\textbf\{(?:L(?:ời|oi)\s*gi(?:ải|ai)|Đáp\s*án)[^}]*\}([\s\S]*)$/i);
+    if (inlineSolMatch && inlineSolMatch.index !== undefined) {
+      solution = processLatexSolution(inlineSolMatch[1], images);
+      contentNoSol = contentNoSol.substring(0, inlineSolMatch.index).trim();
+    }
+
+    // Xử lý TikZ và định dạng LaTeX
+    const processedText = inlineTikzAsHtml(processLatexText(contentNoSol), images);
+    const fullQuestionHtml = `<strong>${labelText}</strong> ${processedText}`;
+
+    // Kiểm tra xem có \choice (trắc nghiệm) hay không
+    const choiceIndex = contentNoSol.search(/\\choice(?!TF)/);
+    if (choiceIndex !== -1) {
+      const choicesContent = contentNoSol.substring(choiceIndex);
+      const groups = parseBraceGroupsAfterCommand(choicesContent, '\\choice', 4);
+      const letters = ['A', 'B', 'C', 'D'];
+      const options: QuestionOption[] = [];
+      let correctAnswer: string | null = null;
+
+      for (let j = 0; j < groups.length && j < 4; j++) {
+        let choiceText = groups[j].trim();
+        const isCorrect = /\\True/.test(choiceText);
+        if (isCorrect) {
+          choiceText = choiceText.replace(/\\True\s*/g, '').trim();
+          correctAnswer = letters[j];
+        }
+        options.push({
+          letter: letters[j],
+          text: inlineTikzAsHtml(processLatexText(stripAllPlaceholders(choiceText)), images),
+          isCorrect,
+        });
+      }
+
+      questions.push({
+        number: i + 1,
+        part: 1,
+        type: 'multiple_choice',
+        text: fullQuestionHtml,
+        options,
+        correctAnswer,
+        solution,
+        images: [],
+      });
+    } else {
+      questions.push({
+        number: i + 1,
+        part: 4,
+        type: 'writing',
+        text: fullQuestionHtml,
+        options: [],
+        correctAnswer: null,
+        solution,
+        images: [],
+      });
+    }
+  }
+
+  return questions;
 }
 
 export const validateTexExamData = (data: ExamData): { valid: boolean; errors: string[] } => {

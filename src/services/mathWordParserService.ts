@@ -1326,6 +1326,27 @@ function parseAllQuestions(paragraphs: ParagraphData[], images: ImageData[], tab
     });
   }
 
+    // FALLBACK / PHẦN 4: Nếu không có câu trắc nghiệm nào hoặc có bài tập tự luận/ví dụ
+  if (examData.questions.length === 0) {
+    const part4Questions = parsePart4(paragraphs, 0, paragraphs.length, images);
+    if (part4Questions.length > 0) {
+      const section4Questions: Question[] = [];
+      for (const pq of part4Questions) {
+        const q = convertToQuestion(pq, globalIndex++);
+        section4Questions.push(q);
+        examData.questions.push(q);
+      }
+
+      examData.sections.push({
+        name: 'PHẦN 4. Tự luận & Bài tập ví dụ',
+        description: 'Học sinh trình bày lời giải chi tiết hoặc nộp vở bài làm',
+        points: '',
+        questions: section4Questions,
+        sectionType: 'writing'
+      });
+    }
+  }
+
   return examData;
 }
 
@@ -1472,7 +1493,7 @@ function parsePart1WithUnderline(
   let currentOptionIndex = -1;
   let startedOptions = false;
 
-  const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
+  const questionPattern = /^(?:C(?:âu|au)|V(?:í\s*dụ|i\s*du)|VD|B(?:ài|ai)|D(?:ạng|ang))\s*([\d.]+)\s*[.:]\s*(.*)/i;
   const answerPattern = /Ch(?:ọn|on)\s*([A-D])/i;
 
   for (let i = startIdx; i < endIdx; i++) {
@@ -1664,7 +1685,7 @@ function parsePart2(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   let currentStmtIndex = -1;
   let startedStatements = false;
 
-  const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
+  const questionPattern = /^(?:C(?:âu|au)|V(?:í\s*dụ|i\s*du)|VD|B(?:ài|ai)|D(?:ạng|ang))\s*([\d.]+)\s*[.:]\s*(.*)/i;
   const dungSaiAnswerPattern = /([a-d])\s*[\)\.]\s*(Đúng|Sai|Dung)/gi;
 
   for (let i = startIdx; i < endIdx; i++) {
@@ -1872,7 +1893,7 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
   let contentBuffer: string[] = [];
   let solutionBuffer: string[] = [];
 
-  const questionPattern = /^C(?:âu|au)\s*(\d+)\s*[.:]\s*(.*)/i;
+  const questionPattern = /^(?:C(?:âu|au)|V(?:í\s*dụ|i\s*du)|VD|B(?:ài|ai)|D(?:ạng|ang))\s*([\d.]+)\s*[.:]\s*(.*)/i;
   const answerPattern = /^[\*\s]*(?:Đ|D)áp\s*(?:án|an)[:\s]*(.+)/i;
 
   for (let i = startIdx; i < endIdx; i++) {
@@ -1978,6 +1999,136 @@ function parsePart3(paragraphs: ParagraphData[], startIdx: number, endIdx: numbe
 // ============================================================
 // HELPERS
 // ============================================================
+
+
+// ============================================================
+// PARSE PART 4: ESSAY / WRITING / VÍ DỤ TỰ LUẬN
+// ============================================================
+
+function parsePart4(
+  paragraphs: ParagraphData[],
+  startIdx: number,
+  endIdx: number,
+  images: ImageData[]
+): ParsedQuestion[] {
+  if (startIdx < 0 || endIdx <= startIdx || startIdx >= paragraphs.length) return [];
+
+  const questions: ParsedQuestion[] = [];
+  let currentQ: ParsedQuestion | null = null;
+  let collectingContent = false;
+  let contentBuffer: string[] = [];
+  let solutionBuffer: string[] = [];
+  let inSolution = false;
+
+  const questionPattern = /^(?:C(?:âu|au)|V(?:í\s*dụ|i\s*du)|VD|B(?:ài|ai)|D(?:ạng|ang))\s*([\d.]+)\s*[.:]\s*(.*)/i;
+  const solHeaderPattern = /^(?:L(?:ời|oi)\s*gi(?:ải|ai)|Đáp\s*án|Hướng\s*dẫn\s*giải|Ta\s*có:|Giải:)/i;
+  const solSectionPattern = /(?:ĐÁP\s*ÁN\s*VÀ\s*HƯỚNG\s*DẪN|HƯỚNG\s*DẪN\s*GIẢI\s*CHI\s*TIẾT|LỜI\s*GIẢI\s*CHI\s*TIẾT)/i;
+
+  let solSectionIdx = endIdx;
+  for (let i = startIdx; i < endIdx; i++) {
+    if (solSectionPattern.test(paragraphs[i].text)) {
+      solSectionIdx = i;
+      break;
+    }
+  }
+
+  const scanLimit = solSectionIdx < endIdx ? solSectionIdx : endIdx;
+
+  for (let i = startIdx; i < scanLimit; i++) {
+    const para = paragraphs[i];
+    const text = para.text;
+    const imageRIds = para.imageRIds;
+
+    if (!text && imageRIds.length === 0) continue;
+    if (/[-_\s]*HẾT[-_\s]*/i.test(text)) break;
+
+    const qMatch = text.match(questionPattern);
+    if (qMatch) {
+      if (currentQ) {
+        if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
+        if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join('<br/>').trim();
+        if (currentQ.text) questions.push(currentQ);
+      }
+
+      const qNum = questions.length + 1;
+      const rawHeader = text.substring(0, text.indexOf(qMatch[2])).trim();
+      const restText = qMatch[2].trim();
+
+      currentQ = {
+        number: qNum,
+        globalIndex: 0,
+        part: 4,
+        type: 'writing',
+        text: '',
+        options: [],
+        correctAnswer: null,
+        solution: '',
+        images: []
+      };
+
+      collectingContent = true;
+      inSolution = false;
+      contentBuffer = [rawHeader ? `<strong>${rawHeader}</strong> ${restText}` : restText];
+      solutionBuffer = [];
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
+      continue;
+    }
+
+    if (currentQ) {
+      if (solHeaderPattern.test(text)) {
+        inSolution = true;
+        collectingContent = false;
+        const cleanSol = text.replace(solHeaderPattern, '').replace(/^[.:\s]+/, '').trim();
+        if (cleanSol) solutionBuffer.push(cleanSol);
+        continue;
+      }
+
+      if (inSolution) {
+        if (text) solutionBuffer.push(text);
+      } else {
+        if (text) contentBuffer.push(text);
+      }
+      if (imageRIds.length > 0) attachImages(currentQ, imageRIds, images);
+    }
+  }
+
+  if (currentQ) {
+    if (contentBuffer.length > 0 && !currentQ.text) currentQ.text = contentBuffer.join('<br/>').trim();
+    if (solutionBuffer.length > 0) currentQ.solution = solutionBuffer.join('<br/>').trim();
+    if (currentQ.text) questions.push(currentQ);
+  }
+
+  // Tự động ghép lời giải từ phần "ĐÁP ÁN VÀ HƯỚNG DẪN GIẢI CHI TIẾT" ở cuối tài liệu
+  if (solSectionIdx < endIdx) {
+    const solMap: Record<string, string[]> = {};
+    let curSolKey = '';
+    for (let i = solSectionIdx + 1; i < endIdx; i++) {
+      const text = paragraphs[i].text;
+      if (!text) continue;
+      const m = text.match(questionPattern);
+      if (m) {
+        const headerKey = text.substring(0, text.indexOf(m[2])).trim().toLowerCase().replace(/[.:\s]+$/g, '');
+        curSolKey = headerKey;
+        solMap[curSolKey] = [m[2].trim()];
+      } else if (curSolKey) {
+        solMap[curSolKey].push(text);
+      }
+    }
+
+    for (const q of questions) {
+      if (!q.solution) {
+        for (const [key, lines] of Object.entries(solMap)) {
+          if (q.text.toLowerCase().includes(key)) {
+            q.solution = lines.join('<br/>').trim();
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return questions;
+}
 
 function attachImages(q: ParsedQuestion, rIds: string[], images: ImageData[]): void {
   for (const rId of rIds) {

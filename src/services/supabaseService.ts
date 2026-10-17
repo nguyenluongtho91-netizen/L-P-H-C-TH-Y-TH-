@@ -55,7 +55,7 @@ export const uploadPdfToSupabase = async (
   const uniqueFilePath = `pdfs/${sanitizedFileName}`;
 
   const { error } = await supabase.storage
-    .from('exams_pdf') 
+    .from('exam-files') 
     .upload(uniqueFilePath, fileBlob, {
       contentType: 'application/pdf',
       upsert: true
@@ -67,7 +67,7 @@ export const uploadPdfToSupabase = async (
   }
 
   const { data: publicUrlData } = supabase.storage
-    .from('exams_pdf')
+    .from('exam-files')
     .getPublicUrl(uniqueFilePath);
 
   console.log(`✅ Tải thành công: ${publicUrlData.publicUrl}`);
@@ -83,7 +83,7 @@ export const uploadPdfToSupabase = async (
 export const deletePdfFromSupabase = async (filePath: string): Promise<void> => {
   if (!filePath) return;
   try {
-    await supabase.storage.from('exams_pdf').remove([filePath]);
+    await supabase.storage.from('exam-files').remove([filePath]);
     console.log(`🗑️ Đã xóa file trên Supabase: ${filePath}`);
   } catch (err) {
     console.warn('Lỗi khi xóa file Supabase:', err);
