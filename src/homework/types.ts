@@ -19,7 +19,7 @@ export interface HomeworkAssignment {
   created_at: string;
   deadline: string; // ISO date-time string
   allow_late: boolean; // Cho phép nộp muộn (đánh dấu nhãn Nộp trễ)
-  require_login: boolean; // false = Học sinh chỉ cần chọn tên trong danh sách lớp (tính năng vàng Azota)
+  require_login: boolean; // Bắt buộc đăng nhập mã HS + mật khẩu
   view_score_rule: 'immediate' | 'graded_only' | 'hidden'; // Cấu hình xem điểm
   view_solution_rule: 'immediate' | 'after_deadline' | 'hidden'; // Cấu hình xem lời giải
   solution_text?: string;
@@ -44,6 +44,7 @@ export interface HomeworkSubmission {
   submitted_at: string;
   is_late: boolean;
   status: 'submitted' | 'graded' | 'resubmit_requested';
+  submission_mode?: 'photos_only' | 'online_form' | 'hybrid'; // Hình thức nộp: Chỉ chụp vở, làm trực tuyến, hoặc cả 2
   images: Array<{
     id: string;
     url: string;
@@ -54,10 +55,15 @@ export interface HomeworkSubmission {
     url: string;
     type: string;
   }>;
+  online_answers?: {
+    part1?: Record<number, string>; // Trắc nghiệm A, B, C, D
+    part2?: Record<number, Record<string, string>>; // Đúng / Sai a, b, c, d
+    part3?: Record<number, string>; // Trả lời ngắn
+  };
   student_note?: string;
   teacher_comment?: string;
   resubmit_reason?: string;
-  score?: number | null; // Điểm / 10.0
+  score?: number | null; // Điểm tổng / 10.0
   score_breakdown?: {
     trac_nghiem?: number;
     dung_sai?: number;

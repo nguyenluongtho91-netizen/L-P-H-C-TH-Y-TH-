@@ -1,12 +1,13 @@
 // src/homework/AssignmentTrackerView.tsx
-// Màn hình Giám sát nộp bài & Chấm điểm theo thời gian thực - Chuẩn Azota
+// Màn hình Giám sát nộp bài & Chấm điểm trên máy - Chuẩn Azota
 
 import React, { useState, useMemo } from 'react';
 import {
   ArrowLeft, Share2, Copy, QrCode, FileSpreadsheet, Send,
   CheckCircle2, Clock, AlertCircle, Search, Filter,
   GraduationCap, MessageCircle, ExternalLink, RefreshCw,
-  Eye, Edit3, X, Check, AlertTriangle, ChevronRight
+  Eye, Edit3, X, Check, AlertTriangle, ChevronRight,
+  Camera, FileText, Sparkles
 } from 'lucide-react';
 import { HomeworkAssignment, HomeworkSubmission, MissingStudentInfo } from './types';
 import {
@@ -48,7 +49,6 @@ export default function AssignmentTrackerView({
   const [searchQuery, setSearchQuery] = useState('');
   const [showZaloReminderModal, setShowZaloReminderModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [selectedStudentForPrompt, setSelectedStudentForPrompt] = useState<string | null>(null);
 
   // Tạo map tra cứu bài nộp theo student_id
   const submissionMap = useMemo(() => {
@@ -132,6 +132,11 @@ export default function AssignmentTrackerView({
     toast.success('Đã sao chép Link nộp bài cho học sinh!');
   };
 
+  // Mở trang nộp bài học sinh thử nghiệm
+  const handleOpenStudentPage = () => {
+    window.open(`${window.location.origin}/nop-bai/${assignment.id}`, '_blank');
+  };
+
   // Sao chép tin nhắn Zalo gửi cả lớp
   const handleCopyZaloShare = () => {
     const text = generateZaloShareMessage(assignment, assignment.class_names?.join(', ') || '');
@@ -204,6 +209,13 @@ export default function AssignmentTrackerView({
               <Copy className="w-4 h-4" /> Link nộp bài
             </button>
             <button
+              onClick={handleOpenStudentPage}
+              className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition"
+              title="Mở giao diện nộp bài học sinh trong tab mới"
+            >
+              <ExternalLink className="w-4 h-4" /> Xem trang học sinh
+            </button>
+            <button
               onClick={handleCopyZaloShare}
               className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm shadow-blue-200"
             >
@@ -230,7 +242,7 @@ export default function AssignmentTrackerView({
                   Có {missingCount} học sinh chưa nộp bài!
                 </span>
                 <p className="text-amber-700 text-[11px] mt-0.5">
-                  Thầy có thể gửi tin nhắn nhắc nhở trực tiếp vào nhóm Zalo lớp để phụ huynh đôn đốc các em.
+                  Thầy có thể bấm nút bên phải để sao chép danh sách các em chưa nộp gửi vào nhóm Zalo đôn đốc phụ huynh.
                 </p>
               </div>
             </div>
@@ -323,9 +335,9 @@ export default function AssignmentTrackerView({
                 <th className="py-3 px-4 w-12 text-center">STT</th>
                 <th className="py-3 px-4">Họ và tên</th>
                 <th className="py-3 px-4">Lớp</th>
+                <th className="py-3 px-4">Hình thức nộp</th>
                 <th className="py-3 px-4">Thời gian nộp</th>
                 <th className="py-3 px-4">Trạng thái</th>
-                <th className="py-3 px-4 text-center">Ảnh bài làm</th>
                 <th className="py-3 px-4 text-center">Điểm số</th>
                 <th className="py-3 px-4 text-right">Thao tác</th>
               </tr>
@@ -343,6 +355,10 @@ export default function AssignmentTrackerView({
                   const isSubmitted = !!sub;
                   const isGraded = sub?.status === 'graded';
                   const isLate = sub?.is_late ?? false;
+                  const hasImages = sub?.images && sub.images.length > 0;
+                  const hasOnlineAnswers = sub?.online_answers && (
+                    sub.online_answers.part1 || sub.online_answers.part2 || sub.online_answers.part3
+                  );
 
                   return (
                     <tr key={st.id} className="hover:bg-teal-50/30 transition">
@@ -358,6 +374,25 @@ export default function AssignmentTrackerView({
                       <td className="py-3.5 px-4 font-semibold text-slate-600">
                         {st.class_name || '—'}
                       </td>
+                      <td className="py-3.5 px-4">
+                        {isSubmitted ? (
+                          hasImages && hasOnlineAnswers ? (
+                            <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[11px] flex items-center gap-1 w-fit">
+                              <Sparkles className="w-3 h-3" /> Cả 2 ({sub.images.length} ảnh)
+                            </span>
+                          ) : hasImages ? (
+                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 font-bold text-[11px] flex items-center gap-1 w-fit">
+                              <Camera className="w-3 h-3 text-teal-600" /> Chụp vở ({sub.images.length} trang)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[11px] flex items-center gap-1 w-fit">
+                              <FileText className="w-3 h-3 text-blue-600" /> Trực tuyến
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600">
                         {sub?.submitted_at ? formatDateTimeVN(sub.submitted_at) : '—'}
                       </td>
@@ -369,22 +404,13 @@ export default function AssignmentTrackerView({
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                              Đã nộp đúng hạn
+                              Đúng hạn
                             </span>
                           )
                         ) : (
                           <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold">
-                            Chưa nộp bài
+                            Chưa nộp
                           </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        {sub?.images?.length ? (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[11px]">
-                            {sub.images.length} trang ảnh
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
@@ -404,7 +430,7 @@ export default function AssignmentTrackerView({
                               className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition"
                             >
                               <GraduationCap className="w-3.5 h-3.5" />
-                              {isGraded ? 'Chấm lại' : 'Chấm bài'}
+                              {isGraded ? 'Chấm lại trên máy' : 'Chấm bài trên máy'}
                             </button>
                           ) : (
                             <button
@@ -491,7 +517,6 @@ export default function AssignmentTrackerView({
 
             <p className="text-xs text-slate-500 font-medium">{assignment.title}</p>
 
-            {/* Tạo ảnh QR bằng QuickChart API */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 inline-block mx-auto">
               <img
                 src={`https://quickchart.io/qr?text=${encodeURIComponent(`${window.location.origin}/nop-bai/${assignment.id}`)}&size=200`}

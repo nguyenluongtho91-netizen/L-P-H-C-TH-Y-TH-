@@ -6,7 +6,8 @@ import {
   BookOpen, Plus, Search, Filter, Calendar, Clock,
   Share2, Copy, QrCode, Trash2, Edit3, CheckCircle2,
   AlertCircle, ChevronRight, GraduationCap, Users,
-  Sparkles, RefreshCw, Eye, ArrowUpRight, FileSpreadsheet
+  Sparkles, RefreshCw, Eye, ArrowUpRight, FileSpreadsheet,
+  MessageCircle, Send, Check
 } from 'lucide-react';
 import { HomeworkAssignment, HomeworkSubmission } from '@/homework/types';
 import {
@@ -120,7 +121,7 @@ export default function HomeworkMgmt() {
   const handleOpenGrading = (submission: HomeworkSubmission, studentName: string) => {
     setGradingSubmission({ submission, studentName });
     setGradingScore(submission.score !== null && submission.score !== undefined ? String(submission.score) : '8.0');
-    setGradingComment(submission.teacher_comment || 'Bài làm tốt, chú ý kiểm tra lại các bước tính toán.');
+    setGradingComment(submission.teacher_comment || 'Bài làm tốt, trình bày sạch sẽ.');
   };
 
   // Lưu kết quả chấm bài
@@ -146,6 +147,27 @@ export default function HomeworkMgmt() {
     }
   };
 
+  // Báo điểm qua Zalo
+  const handleSendZaloScore = () => {
+    if (!gradingSubmission) return;
+    const sub = gradingSubmission.submission;
+    const studentName = gradingSubmission.studentName;
+    const title = currentActiveAssignment?.title || 'Bài tập về nhà';
+    const msg = `Chào phụ huynh em ${studentName}.
+Thầy Thọ thông báo kết quả chấm bài tập: "${title}"
+- Họ tên học sinh: ${studentName}
+- Điểm bài tập: ${gradingScore} / 10.0
+- Lời phê của Thầy Thọ: ${gradingComment}
+
+Phụ huynh và em có thể xem bài làm đã chấm tại:
+${window.location.origin}/nop-bai/${currentActiveAssignment?.id}
+
+Thầy cảm ơn phụ huynh!`;
+
+    navigator.clipboard.writeText(msg);
+    toast.success(`Đã sao chép tin nhắn báo điểm Zalo cho em ${studentName}!`);
+  };
+
   // Tìm bài tập đang active
   const currentActiveAssignment = assignments.find(a => a.id === activeAssignmentId);
 
@@ -167,8 +189,8 @@ export default function HomeworkMgmt() {
     <div className="space-y-6 pb-12">
       {/* NẾU ĐANG CHẤM BÀI -> HIỂN THỊ MODAL CHẤM BÀI VỚI CANVAS ĐÚNG/SAI */}
       {gradingSubmission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[95vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[96vh]">
             {/* Header */}
             <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800 text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
@@ -177,11 +199,12 @@ export default function HomeworkMgmt() {
                 </div>
                 <div>
                   <h2 className="text-base font-black tracking-wide">
-                    CHẤM BÀI TỰ LUẬN TRỰC TIẾP TRÊN ẢNH
+                    CHẤM BÀI HỌC SINH TRỰC TIẾP TRÊN MÁY (THẦY THỌ)
                   </h2>
                   <p className="text-xs text-teal-100">
                     Học sinh: <span className="font-bold underline">{gradingSubmission.studentName}</span> • 
-                    Thời gian nộp: {formatDateTimeVN(gradingSubmission.submission.submitted_at)}
+                    Hình thức: <span className="font-semibold">{gradingSubmission.submission.submission_mode === 'online_form' ? 'Trực tuyến' : 'Chụp vở'}</span> • 
+                    Nộp lúc: {formatDateTimeVN(gradingSubmission.submission.submitted_at)}
                   </p>
                 </div>
               </div>
@@ -195,26 +218,93 @@ export default function HomeworkMgmt() {
 
             {/* Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Studio Canvas chấm ảnh */}
+              {/* Nếu học sinh có ghi chú */}
+              {gradingSubmission.submission.student_note && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                  <span className="font-bold">💬 Ghi chú của học sinh gửi Thầy: </span>
+                  {gradingSubmission.submission.student_note}
+                </div>
+              )}
+
+              {/* Nếu học sinh có làm trực tuyến */}
+              {gradingSubmission.submission.online_answers && (
+                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
+                  <div className="text-xs font-black uppercase text-blue-900 flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                    Đáp án học sinh làm trực tuyến:
+                  </div>
+
+                  {/* Phần 1 */}
+                  {gradingSubmission.submission.online_answers.part1 && (
+                    <div className="text-xs">
+                      <span className="font-bold text-slate-700">Phần I (Trắc nghiệm): </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {Object.entries(gradingSubmission.submission.online_answers.part1).map(([q, ans]) => (
+                          <span key={q} className="px-2 py-0.5 rounded bg-white border border-blue-200 text-slate-800 font-mono text-[11px]">
+                            Câu {q}: <strong className="text-blue-700">{ans}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phần 2 */}
+                  {gradingSubmission.submission.online_answers.part2 && (
+                    <div className="text-xs pt-1 border-t border-blue-200/60">
+                      <span className="font-bold text-slate-700">Phần II (Đúng/Sai): </span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {Object.entries(gradingSubmission.submission.online_answers.part2).map(([q, letters]: any) => (
+                          <div key={q} className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-[11px]">
+                            <strong>Câu {q}: </strong>
+                            {Object.entries(letters).map(([lt, val]) => (
+                              <span key={lt} className="ml-1 text-slate-700">
+                                {lt + ')'}{val === 'T' ? <span className="text-emerald-600 font-bold">Đ</span> : <span className="text-rose-600 font-bold">S</span>}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Phần 3 */}
+                  {gradingSubmission.submission.online_answers.part3 && (
+                    <div className="text-xs pt-1 border-t border-blue-200/60">
+                      <span className="font-bold text-slate-700">Phần III (Trả lời ngắn): </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {Object.entries(gradingSubmission.submission.online_answers.part3).map(([q, ans]) => (
+                          <span key={q} className="px-2 py-0.5 rounded bg-white border border-blue-200 text-slate-800 font-mono text-[11px]">
+                            Câu {q}: <strong className="text-emerald-700">{ans}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Studio Canvas chấm ảnh vở */}
               {gradingSubmission.submission.images && gradingSubmission.submission.images.length > 0 ? (
                 <div>
-                  <div className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    Bộ công cụ chạm chấm Đúng ✓, Sai ✗, Khoanh tròn ⭕ và Viết tay ✏️:
+                  <div className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      Chấm bài trên ảnh vở ({gradingSubmission.submission.images.length} trang) — Đúng ✓, Sai ✗, Khoanh tròn ⭕, Bút đỏ ✏️:
+                    </span>
                   </div>
                   <EssayImageAnnotator
-                    imageUrl={gradingSubmission.submission.images[0].url}
+                    images={gradingSubmission.submission.images.map(img => img.url)}
                     studentName={gradingSubmission.studentName}
-                    examTitle={currentActiveAssignment?.title || 'Bài tập về nhà'}
-                    studentId={gradingSubmission.submission.student_id}
-                    onSaveMarks={annotatedUrl => {
-                      toast.success('Đã lưu các nét chấm trên ảnh!');
-                    }}
+                    studentCode={gradingSubmission.submission.student_code}
+                    score={parseFloat(gradingScore) || 0}
+                    onScoreChange={val => setGradingScore(String(val))}
+                    feedback={gradingComment}
+                    onFeedbackChange={val => setGradingComment(val)}
                   />
                 </div>
               ) : (
                 <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                  Học sinh chưa đính kèm ảnh bài làm!
+                  Học sinh làm trực tuyến và không đính kèm ảnh vở ghi!
                 </div>
               )}
 
@@ -222,7 +312,7 @@ export default function HomeworkMgmt() {
               <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                    Điểm số (/10.0) <span className="text-rose-500">*</span>
+                    Tổng điểm (/10.0) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -231,7 +321,7 @@ export default function HomeworkMgmt() {
                     max="10"
                     value={gradingScore}
                     onChange={e => setGradingScore(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-lg font-black text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xl font-black text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -245,24 +335,53 @@ export default function HomeworkMgmt() {
                     placeholder="VD: Trình bày sạch đẹp, bài làm chính xác..."
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
+                  {/* Mẫu nhận xét nhanh */}
+                  <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                    <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">Mẫu nhanh:</span>
+                    {[
+                      'Bài làm rất tốt, trình bày sạch sẽ.',
+                      'Bài tốt, chú ý kiểm tra lại các bước tính toán.',
+                      'Cần chú ý điều kiện xác định và làm tròn số.',
+                      'Nộp bài muộn, lần sau làm sớm hơn nhé.',
+                    ].map(sug => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setGradingComment(sug)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-white hover:bg-teal-50 hover:text-teal-700 text-slate-600 border border-slate-200 whitespace-nowrap transition"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
               <button
-                onClick={() => setGradingSubmission(null)}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+                type="button"
+                onClick={handleSendZaloScore}
+                className="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-2 border border-blue-200 transition"
               >
-                Đóng
+                <MessageCircle className="w-4 h-4" /> 📢 Sao chép tin nhắn Zalo báo điểm
               </button>
-              <button
-                onClick={handleSaveGrading}
-                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-lg shadow-teal-600/30 transition flex items-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" /> LƯU KẾT QUẢ CHẤM ĐIỂM
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setGradingSubmission(null)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={handleSaveGrading}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white text-xs font-black shadow-lg shadow-teal-600/30 transition flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> LƯU KẾT QUẢ CHẤM ĐIỂM
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -297,7 +416,7 @@ export default function HomeworkMgmt() {
               </div>
               <h1 className="text-2xl font-black text-slate-800 mt-1">QUẢN LÝ BÀI TẬP VỀ NHÀ</h1>
               <p className="text-xs text-slate-500 font-medium">
-                Giao bài tập đa định dạng, đặt hạn nộp, tự động sinh link nộp bài Zalo và theo dõi tiến độ nộp bài
+                Giao bài tập đa định dạng, đặt hạn nộp, học sinh nhập mã HS + mật khẩu làm bài hoặc chụp vở, chấm bài trực tiếp trên máy
               </p>
             </div>
 
