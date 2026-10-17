@@ -1,14 +1,21 @@
 // @ts-nocheck
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
 import * as XLSX from "xlsx";
-import FeedbackRenderer from '@/components/FeedbackRenderer';
 import { useDataStore } from '@/store/dataStore';
 import { useAuthStore } from '@/store/authStore';
-import { KeyRound, Users, GraduationCap, UploadCloud } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import EssayImageAnnotator from '@/components/EssayImageAnnotator';
+import {
+  KeyRound, Users, GraduationCap, UploadCloud, Check, X, Circle,
+  PenTool, Type, RotateCw, ZoomIn, ZoomOut, Undo2, Trash2, Download,
+  Sparkles, MessageCircle, FileText, ChevronRight, Award, Send, Save,
+  Eye, RefreshCw, Smartphone, CheckSquare, Layers, ShieldCheck,
+  HelpCircle, Calendar, BookOpen
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── TYPES ────────────────────────────────────────────────────────────────────
 interface AnswerKey {
   p1: string[];
   p2: string[];
@@ -29,9 +36,11 @@ interface ImgData {
 }
 
 interface GradingStudent {
-  id: string; // Dùng UUID của Supabase
+  id: string;
   name: string;
   student_code?: string;
+  phone?: string;
+  zalo?: string;
   images: ImgData[];
 }
 
@@ -39,35 +48,22 @@ interface P1Result { student: string; correct: string; ok: boolean; }
 interface P2Sub  { student: string; correct: string; ok: boolean; }
 interface P2Result { subs: P2Sub[]; qScore: number; }
 interface P3Result { student: string; correct: string; ok: boolean; }
-
 interface P4SubStep { text: string; ok: boolean; }
 interface P4SubQ   { q: number; score: number; max: number; steps: P4SubStep[]; comment: string; }
 interface GradeP4   { score: number; feedback: string; detail?: P4SubQ[]; }
 
 interface StudentResult {
-  p1: GradeP1;
-  p2: GradeP2;
-  p3: GradeP3;
+  p1: { score: number; results: P1Result[] };
+  p2: { score: number; results: P2Result[] };
+  p3: { score: number; results: P3Result[] };
   p4: GradeP4;
   total: number;
 }
 
-interface AIResponse {
-  p1: string[];
-  p2: string[];
-  p3: string[];
-  p4_score: number;
-  p4_feedback: string;
-  p4_detail?: P4SubQ[];
-}
-
-// ─── API Gọi Trực Tiếp Gemini ─────────────────────────────────────────────────
+// ─── HÀM GỌI GEMINI VISION CHO TỰ LUẬN ──────────────────────────────────────
 async function directGeminiVision(apiKey: string, parts: any[]) {
   if (!apiKey) throw new Error("Vui lòng nhập API Key của Gemini!");
-  
-  // Dùng model flash mới nhất chuyên xử lý ảnh tốc độ cao
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-  
   const payload = {
     contents: [{ parts }],
     generationConfig: { 
@@ -84,11 +80,42 @@ async function directGeminiVision(apiKey: string, parts: any[]) {
 
   const json = await res.json();
   if (json.error) throw new Error(json.error.message);
-  
   return json.candidates[0].content.parts[0].text;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+async function gradeEssayWithAI(apiKey: string, imgBase64: string, rubric: string, maxScore: number) {
+  const parts = [
+    {
+      inlineData: {
+        data: imgBase64.replace(/^data:image\/\w+;base64,/, ''),
+        mimeType: 'image/jpeg'
+      }
+    },
+    {
+      text: `Bạn là trợ lý chấm thi môn Hóa học/Toán học chuyên nghiệp của Thầy Thọ.
+Hãy đọc ảnh bài làm viết tay tự luận của học sinh và chấm điểm theo tiêu chí:
+${rubric ? `Tiêu chí chấm (Rubric / Lời giải mẫu): ${rubric}` : 'Chấm các bước giải, tính toán, kết luận và sự chặt chẽ.'}
+Điểm tối đa của câu tự luận này là: ${maxScore} điểm.
+
+Yêu cầu trả về đúng định dạng JSON sau (không dùng markdown backticks):
+{
+  "score": 1.75,
+  "feedback": "Nhận xét tổng quan ưu điểm và các lỗi sai cần khắc phục...",
+  "detail": [
+    { "text": "Bước 1: Viết phương trình phản ứng đúng", "score": 0.5 },
+    { "text": "Bước 2: Tính số mol chính xác", "score": 0.5 },
+    { "text": "Bước 3: Nhầm khối lượng chất tan", "score": 0.0, "comment": "Tính nhầm m = 5.6g thành 6.5g" }
+  ]
+}`
+    }
+  ];
+
+  const rawJson = await directGeminiVision(apiKey, parts);
+  const clean = rawJson.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ─── HELPERS CHẤM ĐIỂM ────────────────────────────────────────────────────────
 function parseAnswerKey(txt: string): AnswerKey {
   const key: AnswerKey = { p1: [], p2: [], p3: [], p4: "" };
   const p4Lines: string[] = [];
@@ -120,810 +147,856 @@ async function fileToBase64(file: File): Promise<ImgData> {
 
 function normalizeAns(s: string): string { return String(s).trim().replace(",", ".").toLowerCase(); }
 
-function gradeP1(studentArr: string[], keyArr: string[], totalPts: number): GradeP1 {
-  const per = keyArr.length ? totalPts / keyArr.length : 0;
-  let score = 0;
-  const results = keyArr.map((ans, i) => {
-    const stu = String(studentArr[i] || "?").toUpperCase().trim();
-    const cor = ans.toUpperCase().trim();
-    const ok = stu === cor;
-    if (ok) score += per;
-    return { student: stu, correct: cor, ok };
-  });
-  return { score: Math.round(score * 100) / 100, results };
-}
-
 const MINISTRY_PCT: Record<number, number> = { 0: 0, 1: 0.10, 2: 0.25, 3: 0.50, 4: 1.0 };
 
-function gradeP2(studentArr: string[], keyArr: string[], totalPts: number, mode: 'equal' | 'ministry' = 'equal'): GradeP2 {
-  const per = keyArr.length ? totalPts / keyArr.length : 0;
-  let score = 0;
-  const results = keyArr.map((keyStr, i) => {
-    const stuStr = String(studentArr[i] || "????").padEnd(4, "?");
-    const subs = keyStr.toUpperCase().split("").map((k, j) => {
-      const s = (stuStr[j] || "?").toUpperCase();
-      return { student: s, correct: k, ok: s === k };
-    });
-    const correctCount = subs.filter(s => s.ok).length;
-    const qScore = mode === 'ministry'
-      ? per * (MINISTRY_PCT[Math.min(correctCount, 4)] ?? 0)
-      : per * (correctCount / subs.length);
-    score += qScore;
-    return { subs, qScore: Math.round(qScore * 100) / 100 };
-  });
-  return { score: Math.round(score * 100) / 100, results };
-}
-
-function gradeP3(studentArr: string[], keyArr: string[], totalPts: number): GradeP3 {
-  const per = keyArr.length ? totalPts / keyArr.length : 0;
-  let score = 0;
-  const results = keyArr.map((ans, i) => {
-    const stu = String(studentArr[i] || "").trim();
-    const ok = normalizeAns(stu) === normalizeAns(ans);
-    if (ok) score += per;
-    return { student: stu, correct: ans, ok };
-  });
-  return { score: Math.round(score * 100) / 100, results };
-}
-
-async function callGradingAPI(apiKey: string, student: GradingStudent, answerKey: AnswerKey, weights: Weights, p4Images: ImgData[], p4SubCount: number): Promise<AIResponse> {
-  let rubricInfo = answerKey.p4 ? `\nTiêu chí chấm (Rubric text): ${answerKey.p4}` : "";
-  if (p4Images.length > 0) rubricInfo += `\nLưu ý: Có kèm theo ảnh đáp án chuẩn của giáo viên để bạn đối chiếu.`;
-
-  const prompt = `Đọc ảnh phiếu trả lời và trích xuất + chấm điểm toàn bộ bài làm của học sinh.
-
-Cấu trúc phiếu:
-- Phần I (Trắc nghiệm): ${answerKey.p1.length} câu, mỗi câu chọn A/B/C/D
-- Phần II (Đúng/Sai): ${answerKey.p2.length} câu, mỗi câu có 4 ý a/b/c/d, mỗi ý ghi D (đúng) hoặc S (sai)
-- Phần III (Trả lời ngắn): ${answerKey.p3.length} câu, ghi số/kết quả
-- Phần IV (Tự luận): ${p4SubCount} câu, mỗi câu tối đa ${weights.p4 / p4SubCount} điểm (tổng ${weights.p4}đ).${rubricInfo}
-
-Đáp án đúng để so sánh:
-P1: ${answerKey.p1.join(", ")}
-P2: ${answerKey.p2.map((s, i) => `C${i+1}=${s}`).join(", ")} (D=Đúng, S=Sai)
-P3: ${answerKey.p3.map((s, i) => `C${i+1}=${s}`).join(", ")}
-
-Trả về JSON ĐÚNG FORMAT SAU (không dùng markdown):
-{
-  "p1": ["A","B",...],
-  "p2": ["DDSS","SDSD",...],
-  "p3": ["2026","-1.5",...],
-  "p4_score": 2.25,
-  "p4_feedback": "Nhận xét tổng quan ngắn gọn về bài tự luận",
-  "p4_detail": [
-    {
-      "q": 1,
-      "score": 0.75,
-      "max": ${weights.p4 / p4SubCount},
-      "steps": [
-        { "text": "Gọi $x$ là chiều dài (m), $x > 0$", "ok": true }
-      ],
-      "comment": "Làm tốt"
-    }
-  ]
-}
-
-Nếu không đọc được câu nào, dùng "?" cho P1/P2 và "" cho P3.`;
-
-  const parts: any[] = [];
-
-  if (p4Images && p4Images.length > 0) {
-    parts.push({ text: "--- ẢNH ĐÁP ÁN CHUẨN PHẦN TỰ LUẬN (GIÁO VIÊN CUNG CẤP) ---" });
-    p4Images.forEach(img => {
-      parts.push({ inline_data: { mime_type: img.type || "image/jpeg", data: img.data } });
-    });
-  }
-
-  parts.push({ text: "--- BÀI LÀM CỦA HỌC SINH ---" });
-  student.images.forEach(img => {
-    parts.push({ inline_data: { mime_type: img.type || "image/jpeg", data: img.data } });
-  });
-  
-  parts.push({ text: prompt });
-
-  // Gọi API Trực tiếp
-  const resultText = await directGeminiVision(apiKey, parts);
-  const clean = resultText.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean) as AIResponse;
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
-function P1Grid({ results }: { results: P1Result[] }) {
-  return (
-    <div>
-      <p style={styles.sectionLabel}>Phần I — Trắc Nghiệm</p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", paddingTop: "20px" }}>
-        {results.map((r, i) => (
-          <div key={i} style={{ position: "relative", textAlign: "center" }}>
-            <span style={{ position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)", fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>{i+1}</span>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: 15, fontFamily: "var(--font-mono, monospace)",
-              background: r.ok ? "#ecfdf5" : "#fef2f2",
-              border: `2px solid ${r.ok ? "#6ee7b7" : "#fca5a5"}`,
-              color: r.ok ? "#047857" : "#b91c1c",
-            }}>
-              {r.student === "?" ? "–" : r.student}
-            </div>
-            {!r.ok && (
-              <div style={{ position: "absolute", bottom: -16, left: "50%", transform: "translateX(-50%)", fontSize: 10, color: "#059669", fontWeight: 700, whiteSpace: "nowrap" }}>
-                →{r.correct}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function P2Grid({ results }: { results: P2Result[] }) {
-  const labels = ["a", "b", "c", "d"];
-  const disp = (c: string) => c === "D" ? "Đ" : c;
-  return (
-    <div>
-      <p style={styles.sectionLabel}>Phần II — Đúng/Sai</p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-        {results.map((q, i) => (
-          <div key={i} style={{ background: "#f8fafc", borderRadius: 12, padding: "12px 14px", border: "1px solid #e2e8f0" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              Câu {i + 1} · {q.qScore.toFixed(2)} đ
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {q.subs.map((s, j) => (
-                <div key={j} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                  <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>{labels[j]}</span>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    background: s.ok ? "#ecfdf5" : "#fef2f2",
-                    border: `2px solid ${s.ok ? "#6ee7b7" : "#fca5a5"}`,
-                    position: "relative"
-                  }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: s.ok ? "#047857" : "#b91c1c", fontFamily: "monospace" }}>
-                      {s.student === "?" ? "–" : disp(s.student)}
-                    </span>
-                    {!s.ok && <span style={{ fontSize: 9, color: "#059669", position: "absolute", bottom: -14, fontWeight: 700 }}>→{disp(s.correct)}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function P3Grid({ results }: { results: P3Result[] }) {
-  return (
-    <div>
-      <p style={styles.sectionLabel}>Phần III — Trả Lời Ngắn</p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-        {results.map((r, i) => (
-          <div key={i} style={{
-            padding: "8px 12px", borderRadius: 10, border: `2px solid ${r.ok ? "#6ee7b7" : "#fca5a5"}`,
-            background: r.ok ? "#ecfdf5" : "#fef2f2", fontSize: 13
-          }}>
-            <span style={{ color: "#94a3b8", fontSize: 11, marginRight: 4 }}>C{i+1}</span>
-            <span style={{ fontWeight: 700, fontFamily: "monospace", color: r.ok ? "#047857" : "#b91c1c" }}>
-              {r.student || "–"}
-            </span>
-            {!r.ok && (
-              <span style={{ marginLeft: 6, fontSize: 12, color: "#64748b" }}>
-                → <span style={{ color: "#059669", fontWeight: 700 }}>{r.correct}</span>
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function P4DetailGrid({ p4, maxScore }: { p4: GradeP4; maxScore: number }) {
-  const hasDetal = p4.detail && p4.detail.length > 0;
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <p style={styles.sectionLabel}>Phần IV — Tự Luận</p>
-        <span style={{ fontWeight: 800, fontSize: 16, color: "#0891b2" }}>
-          {p4.score}<span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 400 }}>/{maxScore} đ</span>
-        </span>
-      </div>
-
-      {hasDetal ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {p4.detail!.map((q, qi) => {
-            const pct = q.max > 0 ? Math.min(1, q.score / q.max) : 0;
-            const allOk = q.steps.length > 0 && q.steps.every(s => s.ok);
-            const anyOk = q.steps.some(s => s.ok);
-            const borderColor = allOk ? "#6ee7b7" : anyOk ? "#fde68a" : "#fca5a5";
-            const bgColor = allOk ? "#f0fdf4" : anyOk ? "#fffbeb" : "#fef2f2";
-            return (
-              <div key={qi} style={{ borderRadius: 14, border: `2px solid ${borderColor}`, background: bgColor, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: `1px solid ${borderColor}`, background: "rgba(255,255,255,0.6)" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: allOk ? "#059669" : anyOk ? "#d97706" : "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                    {q.q}
-                  </div>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", flex: 1 }}>Câu {q.q}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 72, height: 6, background: "#e2e8f0", borderRadius: 999, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct * 100}%`, background: allOk ? "#059669" : anyOk ? "#d97706" : "#dc2626", borderRadius: 999 }} />
-                    </div>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: allOk ? "#059669" : anyOk ? "#d97706" : "#dc2626", minWidth: 48, textAlign: "right" }}>
-                      {q.score.toFixed(2)}<span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>/{q.max}</span>
-                    </span>
-                  </div>
-                </div>
-                {q.steps.length > 0 && (
-                  <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-                    {q.steps.map((step, si) => (
-                      <div key={si} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                        <div style={{
-                          width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-                          background: step.ok ? "#dcfce7" : "#fee2e2",
-                          border: `2px solid ${step.ok ? "#86efac" : "#fca5a5"}`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 12, fontWeight: 800,
-                          color: step.ok ? "#166534" : "#991b1b"
-                        }}>
-                          {step.ok ? "✓" : "✗"}
-                        </div>
-                        <div style={{ flex: 1, fontSize: 13.5, lineHeight: 1.65, color: step.ok ? "#14532d" : "#7f1d1d" }}>
-                          <FeedbackRenderer content={step.text} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {q.comment && (
-                  <div style={{ padding: "8px 16px 12px", borderTop: `1px dashed ${borderColor}` }}>
-                    <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic", display: "flex", gap: 6, alignItems: "flex-start" }}>
-                      <span style={{ flexShrink: 0 }}>💬</span>
-                      <FeedbackRenderer content={q.comment} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        p4.feedback ? (
-          <div style={{ background: "#f0fdfa", borderRadius: 12, padding: 16, border: "1px solid #99f6e4" }}>
-            <FeedbackRenderer content={p4.feedback} />
-          </div>
-        ) : null
-      )}
-      {hasDetal && p4.feedback && (
-        <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Nhận xét tổng quan</div>
-          <FeedbackRenderer content={p4.feedback} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ScoreBar({ label, score, max, color }: { label: string; score: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min(100, (score / max) * 100) : 0;
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 800, color }}>{score.toFixed(2)}<span style={{ color: "#cbd5e1", fontWeight: 400 }}>/{max}</span></span>
-      </div>
-      <div style={{ height: 6, background: "#f1f5f9", borderRadius: 999, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 999, transition: "width 0.5s ease" }} />
-      </div>
-    </div>
-  );
-}
-
-function GradeBadge({ total }: { total: number }) {
-  const [label, bg]: [string, string] = total >= 8 ? ["Giỏi", "#059669"] : total >= 6.5 ? ["Khá", "#2563eb"] : total >= 5 ? ["Trung bình", "#d97706"] : ["Yếu", "#dc2626"];
-  return (
-    <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 999, background: bg, color: "white", fontSize: 12, fontWeight: 700, letterSpacing: "0.03em" }}>
-      {label}
-    </span>
-  );
-}
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles: Record<string, CSSProperties> = {
-  sectionLabel: { margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" },
-  card: { background: "#ffffff", borderRadius: 16, padding: "20px 24px", border: "1px solid #e2e8f0", marginBottom: 16 },
-  h2: { margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "#0f172a" },
-  input: { width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 14, boxSizing: "border-box", outline: "none" },
-  btnPrimary: { padding: "10px 22px", borderRadius: 10, border: "none", background: "#0d9488", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 },
-  btnSecondary: { padding: "8px 16px", borderRadius: 8, border: "none", background: "#ccfbf1", color: "#0f766e", fontWeight: 600, cursor: "pointer", fontSize: 13 },
-  btnSuccess: { padding: "10px 22px", borderRadius: 10, border: "none", background: "#059669", color: "white", fontWeight: 700, cursor: "pointer", fontSize: 14 },
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function PhieuGrader() {
+  // Tab 0: Studio Chấm Tương Tác (Trọng tâm Thầy yêu cầu)
+  // Tab 1: Phòng Thi Online (Lấy từ bài nộp trực tuyến)
+  // Tab 2: Quét Phiếu AI Hàng Loạt
+  // Tab 3: Cấu Hình Đáp Án & Thang Điểm
   const [tab, setTab] = useState(0);
-  const [keyRaw, setKeyRaw] = useState("");
-  const [answerKey, setAnswerKey] = useState<AnswerKey | null>(null);
-  
-  // ✅ Tích hợp DataStore & Auth để lấy Lớp / Học sinh
-  const { classes, students, enrollments, loadClasses, loadStudents, loadEnrollments } = useDataStore() as any;
-  const { user, isAdmin } = useAuthStore() as any;
 
-  // Lọc danh sách lớp của GV
-  const myClasses = isAdmin() ? classes : classes?.filter((c:any) => c.teacher_id === user?.id);
-
-  // Lưu API Key Local
+  // Gemini API Key
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   useEffect(() => { localStorage.setItem('gemini_api_key', apiKey); }, [apiKey]);
 
-  const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState('');
-  
-  const [p4Rubric, setP4Rubric] = useState("");
-  const [p4Images, setP4Images] = useState<ImgData[]>([]);
-  const [weights, setWeights] = useState<Weights>({ p1: 3, p2: 2, p3: 2, p4: 3 });
-  const [p2Mode, setP2Mode] = useState<'equal' | 'ministry'>('equal');
-  const [p4SubCount, setP4SubCount] = useState(3);
-  
-  const [gradingStudents, setGradingStudents] = useState<GradingStudent[]>([]);
-  const [results, setResults] = useState<Record<string, StudentResult>>({});
-  const [grading, setGrading] = useState<Record<string, boolean>>({});
-  const [newImgs, setNewImgs] = useState<ImgData[]>([]);
-  
-  const keyRef = useRef<HTMLInputElement>(null);
-  const imgRef = useRef<HTMLInputElement>(null);
-  const p4ImgRef = useRef<HTMLInputElement>(null);
-
-  const totalW = Object.values(weights).reduce((a, b) => a + b, 0);
+  // Supabase Data Store
+  const { classes, students, enrollments, loadClasses, loadStudents, loadEnrollments } = useDataStore() as any;
+  const { user, isAdmin } = useAuthStore() as any;
+  const myClasses = isAdmin() ? classes : classes?.filter((c: any) => c.teacher_id === user?.id);
 
   useEffect(() => {
     loadClasses(); loadStudents(); loadEnrollments();
+    loadOnlineRooms();
   }, []);
 
-  // Lấy danh sách HS theo lớp
+  // ── CẤU HÌNH ĐÁP ÁN & TRỌNG SỐ ĐIỂM ──
+  const [keyRaw, setKeyRaw] = useState(
+`P1 | 1 | A
+P1 | 2 | B
+P1 | 3 | C
+P1 | 4 | D
+P1 | 5 | A
+P1 | 6 | B
+P1 | 7 | C
+P1 | 8 | D
+P1 | 9 | A
+P1 | 10 | B
+P1 | 11 | C
+P1 | 12 | D
+P1 | 13 | A
+P1 | 14 | B
+P1 | 15 | C
+P1 | 16 | D
+P1 | 17 | A
+P1 | 18 | B
+P2 | 1 | DDSS
+P2 | 2 | SDSD
+P2 | 3 | DSDD
+P2 | 4 | SSDD
+P3 | 1 | 2026
+P3 | 2 | 0.5
+P3 | 3 | 12.4
+P3 | 4 | 3
+P3 | 5 | 100
+P3 | 6 | -2.5
+P4 | 1 | Trình bày phương trình phản ứng, số mol, tính nồng độ và kết luận.`
+  );
+  const [answerKey, setAnswerKey] = useState<AnswerKey>(() => parseAnswerKey(keyRaw));
+  const [p4Rubric, setP4Rubric] = useState("Trình bày phương trình phản ứng, số mol, tính nồng độ và kết luận.");
+  const [weights, setWeights] = useState<Weights>({ p1: 3.0, p2: 4.0, p3: 1.5, p4: 1.5 });
+  const [p2Mode, setP2Mode] = useState<'equal' | 'ministry'>('ministry');
+
+  // ── TRẠNG THÁI CHẤM TƯƠNG TÁC (STUDIO CHẤM BÀI) ──
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [studentImages, setStudentImages] = useState<string[]>([]);
+  
+  // Đáp án học sinh đang chấm
+  const [stuP1, setStuP1] = useState<Record<number, string>>({});
+  const [stuP2, setStuP2] = useState<Record<number, Record<string, string>>>({}); // { qIndex: { a: 'D', b: 'S' } }
+  const [stuP3, setStuP3] = useState<Record<number, string>>({});
+  const [essayScore, setEssayScore] = useState<number>(0);
+  const [essayFeedback, setEssayFeedback] = useState<string>('');
+
+  // ── TRẠNG THÁI PHÒNG THI ONLINE ──
+  const [onlineRooms, setOnlineRooms] = useState<any[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [roomSubmissions, setRoomSubmissions] = useState<any[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  // Danh sách học sinh theo lớp đã chọn
   const rosterStudents = selectedClassId 
-    ? enrollments.filter((e:any) => e.class_id === selectedClassId && e.status === 'active')
-                 .map((e:any) => students.find((s:any) => s.id === e.student_id))
+    ? enrollments.filter((e: any) => e.class_id === selectedClassId && e.status === 'active')
+                 .map((e: any) => students.find((s: any) => s.id === e.student_id))
                  .filter(Boolean)
     : [];
 
-  const handleKeyFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const txt = await f.text();
-    setKeyRaw(txt);
-    const parsed = parseAnswerKey(txt);
-    if (parsed.p4) setP4Rubric(parsed.p4);
-    setAnswerKey({ ...parsed, p4: parsed.p4 || p4Rubric });
-  };
+  const currentStudentObj = students.find((s: any) => s.id === selectedStudentId);
 
-  const applyKey = () => {
-    const parsed = parseAnswerKey(keyRaw);
-    parsed.p4 = p4Rubric;
-    setAnswerKey(parsed);
-    toast.success("Đã áp dụng cấu trúc đáp án!");
-  };
-
-  const handleImgFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const slots = 2 - newImgs.length;
-    const toAdd = await Promise.all(files.slice(0, slots).map(fileToBase64));
-    setNewImgs(imgs => [...imgs, ...toAdd]);
-    e.target.value = "";
-  };
-
-  const handleP4ImgFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const slots = 5 - p4Images.length; 
-    const toAdd = await Promise.all(files.slice(0, slots).map(fileToBase64));
-    setP4Images(imgs => [...imgs, ...toAdd]);
-    e.target.value = "";
-  };
-
-  const addStudentToQueue = () => {
-    if (!selectedStudentId) return toast.error("Vui lòng chọn học sinh!");
-    if (newImgs.length === 0) return toast.error("Vui lòng đính kèm ảnh bài làm!");
-    
-    const stu = students.find((s:any) => s.id === selectedStudentId);
-    if (!stu) return;
-
-    if (gradingStudents.some(s => s.id === stu.id)) {
-      return toast.error("Học sinh này đã có trong danh sách chờ chấm!");
-    }
-
-    setGradingStudents(s => [...s, { id: stu.id, name: stu.full_name, student_code: stu.student_code, images: newImgs }]);
-    setSelectedStudentId("");
-    setNewImgs([]);
-    toast.success(`Đã thêm ${stu.full_name} vào danh sách chấm!`);
-  };
-
-  const removeStudent = (id: string) => {
-    setGradingStudents(s => s.filter(x => x.id !== id));
-    setResults(r => { const n = { ...r }; delete n[id]; return n; });
-  };
-
-  const gradeOne = useCallback(async (student: GradingStudent) => {
-    if (!answerKey || !student.images.length) return;
-    if (!apiKey) return toast.error("Vui lòng nhập Gemini API Key ở Tab 'Học Sinh'!");
-
-    setGrading(g => ({ ...g, [student.id]: true }));
-    const toastId = toast.loading(`Đang chấm bài của ${student.name}...`);
-    
+  // Nạp danh sách phòng thi online từ Supabase
+  const loadOnlineRooms = async () => {
+    setLoadingRooms(true);
     try {
-      const fullKey = { ...answerKey, p4: p4Rubric };
-      // Dùng hàm API gọi thẳng
-      const ai = await callGradingAPI(apiKey, student, fullKey, weights, p4Images, p4SubCount);
-      
-      const p1 = gradeP1(ai.p1 || [], answerKey.p1, weights.p1);
-      const p2 = gradeP2(ai.p2 || [], answerKey.p2, weights.p2, p2Mode);
-      const p3 = gradeP3(ai.p3 || [], answerKey.p3, weights.p3);
-      const p4Score = Math.min(weights.p4, Math.max(0, Number(ai.p4_score) || 0));
-      const total = Math.round((p1.score + p2.score + p3.score + p4Score) * 100) / 100;
-      const p4Detail = Array.isArray(ai.p4_detail) && ai.p4_detail.length > 0 ? ai.p4_detail : undefined;
-      
-      setResults(r => ({ ...r, [student.id]: { p1, p2, p3, p4: { score: p4Score, feedback: ai.p4_feedback || "", detail: p4Detail }, total } }));
-      toast.success(`Chấm xong: ${student.name} (${total}đ)`, { id: toastId });
-    } catch (err: any) {
-      toast.error(`Lỗi chấm bài: ${err.message}`, { id: toastId });
+      const { data, error } = await supabase
+        .from('exam_rooms')
+        .select('id, name, room_code, exam_id, class_id, status, created_at, exams(id, title, data)')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!error && data) setOnlineRooms(data);
+    } catch (e) {
+      console.warn('Lỗi nạp phòng thi:', e);
+    } finally {
+      setLoadingRooms(false);
     }
-    setGrading(g => ({ ...g, [student.id]: false }));
-  }, [answerKey, p4Rubric, weights, p4Images, p2Mode, p4SubCount, apiKey]);
-
-  const gradeAll = () => gradingStudents.filter(s => s.images.length && !grading[s.id]).forEach(gradeOne);
-
-  const saveToSupabase = () => {
-    toast.success("Chức năng lưu bài thi trực tiếp vào Supabase sẽ được tích hợp ở bản cập nhật tiếp theo!", { icon: '🚀' });
   };
 
-  const exportExcel = () => {
-    if (!answerKey) return;
-    const wb = XLSX.utils.book_new();
-    const rows = gradingStudents.filter(s => results[s.id]).map(s => {
-      const r = results[s.id];
-      const row: Record<string, unknown> = {
-        "Họ và tên": s.name,
-        "Mã HS": s.student_code || '',
-        [`P1 (tối đa ${weights.p1}đ)`]: r.p1.score,
-        [`P2 (tối đa ${weights.p2}đ)`]: r.p2.score,
-        [`P3 (tối đa ${weights.p3}đ)`]: r.p3.score,
-        [`P4 (tối đa ${weights.p4}đ)`]: r.p4.score,
-        "Tổng điểm (/10)": r.total,
-        "Xếp loại": r.total >= 8 ? "Giỏi" : r.total >= 6.5 ? "Khá" : r.total >= 5 ? "Trung bình" : "Yếu",
-      };
-      r.p1.results.forEach((q, i) => { row[`P1.C${i+1}(ĐA:${q.correct})`] = q.student; });
-      r.p2.results.forEach((q, i) => {
-        (["a","b","c","d"] as const).forEach((lbl, j) => {
-          if (q.subs[j]) row[`P2.C${i+1}${lbl}(ĐA:${q.subs[j].correct})`] = q.subs[j].student;
-        });
-      });
-      r.p3.results.forEach((q, i) => { row[`P3.C${i+1}(ĐA:${q.correct})`] = q.student; });
-      row["P4 Nhận xét AI"] = r.p4.feedback;
-      return row;
+  // Nạp bài nộp của phòng thi
+  const handleSelectRoom = async (roomId: string) => {
+    setSelectedRoomId(roomId);
+    if (!roomId) { setRoomSubmissions([]); return; }
+    try {
+      const { data, error } = await supabase
+        .from('exam_submissions')
+        .select('*, students(id, full_name, student_code, parent_phone, zalo)')
+        .eq('room_id', roomId)
+        .order('submitted_at', { ascending: false });
+      if (!error && data) setRoomSubmissions(data);
+    } catch (e) {
+      toast.error('Không nạp được bài nộp phòng thi');
+    }
+  };
+
+  // Chọn bài thi online để đưa vào Studio chấm
+  const loadSubmissionIntoStudio = (sub: any) => {
+    const student = sub.students;
+    if (student) {
+      setSelectedClassId('');
+      setSelectedStudentId(student.id);
+    }
+
+    // Đổ đáp án học sinh đã nộp vào P1, P2, P3
+    const answers = sub.answers || {};
+    const newP1: Record<number, string> = {};
+    const newP2: Record<number, Record<string, string>> = {};
+    const newP3: Record<number, string> = {};
+
+    answerKey.p1.forEach((_, i) => {
+      if (answers[i + 1]) newP1[i] = String(answers[i + 1]).toUpperCase();
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Kết quả");
-    const keyRows = [
-      ...answerKey.p1.map((a, i) => ({ Phần: "P1", "Câu số": i+1, "Đáp án": a, "Loại": "Trắc nghiệm" })),
-      ...answerKey.p2.map((a, i) => ({ Phần: "P2", "Câu số": i+1, "Đáp án": a, "Loại": "Đúng/Sai (DDSS)" })),
-      ...answerKey.p3.map((a, i) => ({ Phần: "P3", "Câu số": i+1, "Đáp án": a, "Loại": "Trả lời ngắn" })),
-      { Phần: "P4", "Câu số": 1, "Đáp án": answerKey.p4, "Loại": "Tự luận (Rubric)" },
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(keyRows), "Đáp án");
-    XLSX.writeFile(wb, `KetQua_${new Date().toLocaleDateString("vi-VN").replace(/\//g, "-")}.xlsx`);
+
+    answerKey.p2.forEach((_, i) => {
+      const raw = String(answers[i + 1] || '????');
+      newP2[i] = {
+        a: raw[0] === 'D' ? 'D' : (raw[0] === 'S' ? 'S' : ''),
+        b: raw[1] === 'D' ? 'D' : (raw[1] === 'S' ? 'S' : ''),
+        c: raw[2] === 'D' ? 'D' : (raw[2] === 'S' ? 'S' : ''),
+        d: raw[3] === 'D' ? 'D' : (raw[3] === 'S' ? 'S' : ''),
+      };
+    });
+
+    answerKey.p3.forEach((_, i) => {
+      if (answers[i + 1]) newP3[i] = String(answers[i + 1]);
+    });
+
+    setStuP1(newP1);
+    setStuP2(newP2);
+    setStuP3(newP3);
+
+    // Ảnh tự luận (nếu học sinh có nộp)
+    if (sub.writing_images && Array.isArray(sub.writing_images)) {
+      setStudentImages(sub.writing_images);
+    } else if (sub.writing_image) {
+      setStudentImages([sub.writing_image]);
+    }
+
+    if (sub.score_breakdown?.p4) {
+      setEssayScore(Number(sub.score_breakdown.p4) || 0);
+    }
+    if (sub.score_breakdown?.feedback) {
+      setEssayFeedback(sub.score_breakdown.feedback);
+    }
+
+    setTab(0);
+    toast.success(`Đã nạp bài của ${student?.full_name || 'học sinh'} vào Studio chấm bài!`);
   };
 
-  const barColors = ["#0d9488", "#f59e0b", "#10b981", "#0891b2"];
-  const gradedCount = gradingStudents.filter(s => results[s.id]).length;
+  // ── TÍNH ĐIỂM TỰ ĐỘNG CHO CẢ 4 PHẦN ──
+  // Phần I: Trắc nghiệm
+  const p1Results = answerKey.p1.map((cor, i) => {
+    const userVal = stuP1[i] || '';
+    const ok = userVal.toUpperCase() === cor.toUpperCase();
+    return { student: userVal, correct: cor, ok };
+  });
+  const p1CorrectCount = p1Results.filter(r => r.ok).length;
+  const p1Score = answerKey.p1.length > 0 
+    ? Math.round(((p1CorrectCount * weights.p1) / answerKey.p1.length) * 100) / 100 
+    : 0;
+
+  // Phần II: Đúng/Sai
+  const p2Results = answerKey.p2.map((corStr, i) => {
+    const userSub = stuP2[i] || {};
+    const subs = corStr.split('').map((corChar, j) => {
+      const lbl = ['a', 'b', 'c', 'd'][j];
+      const userChar = userSub[lbl] || '?';
+      return { student: userChar, correct: corChar, ok: userChar.toUpperCase() === corChar.toUpperCase() };
+    });
+    const correctCount = subs.filter(s => s.ok).length;
+    const perQ = weights.p2 / (answerKey.p2.length || 1);
+    const qScore = p2Mode === 'ministry'
+      ? perQ * (MINISTRY_PCT[Math.min(correctCount, 4)] || 0)
+      : perQ * (correctCount / 4);
+    return { subs, qScore: Math.round(qScore * 100) / 100 };
+  });
+  const p2Score = Math.round(p2Results.reduce((sum, q) => sum + q.qScore, 0) * 100) / 100;
+
+  // Phần III: Trả lời ngắn
+  const p3Results = answerKey.p3.map((cor, i) => {
+    const userVal = stuP3[i] || '';
+    const ok = userVal.trim() !== '' && normalizeAns(userVal) === normalizeAns(cor);
+    return { student: userVal, correct: cor, ok };
+  });
+  const p3CorrectCount = p3Results.filter(r => r.ok).length;
+  const p3Score = answerKey.p3.length > 0 
+    ? Math.round(((p3CorrectCount * weights.p3) / answerKey.p3.length) * 100) / 100 
+    : 0;
+
+  // Phần IV: Tự luận
+  const p4Score = Math.min(weights.p4, Math.max(0, essayScore));
+
+  // TỔNG KẾT ĐIỂM (/ 10.0)
+  const totalScore = Math.round((p1Score + p2Score + p3Score + p4Score) * 100) / 100;
+
+  // Xếp loại học lực
+  const rank = totalScore >= 9.0 ? 'Xuất sắc' : totalScore >= 8.0 ? 'Giỏi' : totalScore >= 6.5 ? 'Khá' : totalScore >= 5.0 ? 'Trung bình' : 'Yếu';
+  const rankColor = totalScore >= 8.0 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : totalScore >= 6.5 ? 'text-blue-600 bg-blue-50 border-blue-200' : totalScore >= 5.0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-rose-600 bg-rose-50 border-rose-200';
+
+  // Thêm ảnh chụp bài làm tự luận
+  const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const base64List = await Promise.all(
+      files.map(async file => {
+        const item = await fileToBase64(file);
+        return `data:${item.type};base64,${item.data}`;
+      })
+    );
+    setStudentImages(prev => [...prev, ...base64List]);
+    toast.success(`Đã thêm ${files.length} ảnh bài làm!`);
+    e.target.value = '';
+  };
+
+  // Lưu điểm vào hệ thống Supabase
+  const handleSaveToSystem = async () => {
+    if (!currentStudentObj && !selectedStudentId) {
+      toast.error('Vui lòng chọn học sinh trước khi lưu!');
+      return;
+    }
+    const toastId = toast.loading('Đang lưu kết quả vào hệ thống...');
+    try {
+      const studentId = currentStudentObj?.id || selectedStudentId;
+      const studentName = currentStudentObj?.full_name || 'Học sinh';
+
+      // Lưu vào bảng exam_submissions nếu có phòng thi
+      if (selectedRoomId) {
+        await supabase.from('exam_submissions').upsert({
+          room_id: selectedRoomId,
+          student_id: studentId,
+          score: totalScore,
+          answers: stuP1,
+          score_breakdown: {
+            p1: p1Score,
+            p2: p2Score,
+            p3: p3Score,
+            p4: p4Score,
+            feedback: essayFeedback
+          },
+          status: 'submitted',
+          submitted_at: new Date().toISOString()
+        });
+      }
+
+      toast.success(`🎉 Đã lưu kết quả của ${studentName} (${totalScore} điểm) vào hệ thống!`, { id: toastId });
+    } catch (err: any) {
+      toast.error('Lỗi khi lưu: ' + err.message, { id: toastId });
+    }
+  };
+
+  // Gửi tin nhắn kết quả qua Zalo
+  const handleSendZalo = () => {
+    const studentName = currentStudentObj?.full_name || 'Học sinh';
+    const rawPhone = currentStudentObj?.zalo || currentStudentObj?.parent_phone || '';
+    const phone = rawPhone.replace(/\D/g, '').replace(/^84/, '0');
+
+    const msg = `Chào Quý phụ huynh.\n`
+              + `Thầy Thọ gửi kết quả chấm bài của em ${studentName}:\n\n`
+              + `• Phần I (Trắc nghiệm): ${p1Score} / ${weights.p1} đ (${p1CorrectCount}/${answerKey.p1.length} câu đúng)\n`
+              + `• Phần II (Đúng/Sai): ${p2Score} / ${weights.p2} đ\n`
+              + `• Phần III (Trả lời ngắn): ${p3Score} / ${weights.p3} đ (${p3CorrectCount}/${answerKey.p3.length} câu đúng)\n`
+              + `• Phần IV (Tự luận): ${p4Score} / ${weights.p4} đ\n`
+              + `👉 TỔNG ĐIỂM: ${totalScore} / 10.0 đ (Xếp loại: ${rank})\n\n`
+              + (essayFeedback ? `• Nhận xét của Thầy: ${essayFeedback}\n\n` : '')
+              + `Thầy cảm ơn Quý phụ huynh!`;
+
+    navigator.clipboard.writeText(msg);
+    toast.success('Đã copy nội dung báo điểm! Đang mở Zalo...');
+
+    setTimeout(() => {
+      const url = phone ? `https://zalo.me/${phone}` : 'https://chat.zalo.me';
+      window.open(url, '_blank');
+    }, 400);
+  };
 
   return (
-    <div style={{ fontFamily: "'Outfit', 'Segoe UI', system-ui, sans-serif", minHeight: "100vh", background: "#f1f5f9" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');`}</style>
-
-      {/* ── Header ── */}
-      <div style={{ background: "linear-gradient(135deg, #042f2e 0%, #0f766e 100%)", padding: "20px 28px 0", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(94,234,212,0.1)" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(94,234,212,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚡</div>
-          <div>
-            <h1 style={{ margin: 0, color: "white", fontSize: 20, fontWeight: 800 }}>PhieuGrader AI</h1>
-            <p style={{ margin: 0, color: "#5eead4", fontSize: 12 }}>Chấm tự động cực nhanh với Gemini Vision</p>
+    <div className="min-h-screen bg-slate-50/70 p-4 md:p-6 space-y-6">
+      {/* ── HEADER CHÍNH ── */}
+      <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+              <GraduationCap className="w-7 h-7 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-black tracking-tight">Chấm Bài Học Sinh</h1>
+                <span className="bg-amber-400 text-teal-950 font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Chuẩn Bộ GD 2025
+                </span>
+              </div>
+              <p className="text-teal-100 text-xs md:text-sm mt-0.5 font-medium">
+                Chấm Trắc nghiệm, Đúng/Sai, Trả lời ngắn & Chấm ảnh tự luận bằng Chạm tay / AI
+              </p>
+            </div>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 16, fontSize: 12, color: "#99f6e4" }}>
-            <span>📋 {gradingStudents.length} HS chờ chấm</span>
-            <span>✅ {gradedCount} đã chấm</span>
+
+          {/* Huy hiệu thông số */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border border-white/10">
+              <KeyRound className="w-4 h-4 text-amber-300" />
+              <span>{apiKey ? '✓ Đã có Gemini API' : '⚠️ Chưa có API Key'}</span>
+            </div>
+            <button
+              onClick={() => setTab(3)}
+              className="bg-white text-teal-800 hover:bg-teal-50 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs"
+            >
+              ⚙️ Cấu hình đáp án
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 2 }}>
-          {([["🔑", "Đáp Án"], ["👥", "Học Sinh"], ["📊", "Kết Quả"]] as [string, string][]).map(([icon, label], i) => (
-            <button key={i} onClick={() => setTab(i)} style={{
-              padding: "10px 20px", border: "none", background: tab === i ? "white" : "transparent",
-              color: tab === i ? "#0f766e" : "#5eead4", fontWeight: tab === i ? 700 : 500,
-              borderRadius: "10px 10px 0 0", cursor: "pointer", fontSize: 14, transition: "all .15s"
-            }}>
-              {icon} {label}
+
+        {/* ── THANH CHUYỂN TAB ── */}
+        <div className="flex gap-2 mt-6 border-b border-teal-600/50 pb-0 overflow-x-auto">
+          {[
+            { id: 0, label: '✍️ Studio Chấm Tương Tác', desc: 'Chạm Đúng/Sai & AI' },
+            { id: 1, label: '🏫 Phòng Thi Online', desc: 'Lấy bài nộp web' },
+            { id: 2, label: '⚡ Quét Phiếu AI Hàng Loạt', desc: 'OCR Phiếu giấy' },
+            { id: 3, label: '🔑 Cấu Hình Đáp Án & Thang Điểm', desc: 'Đáp án & Rubric' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2.5 font-black text-xs md:text-sm rounded-t-2xl transition-all cursor-pointer whitespace-nowrap ${
+                tab === t.id
+                  ? 'bg-slate-50/90 text-teal-900 shadow-md'
+                  : 'text-teal-100 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ padding: "20px 28px", maxWidth: 900, margin: "0 auto" }}>
-
-        {/* ══ TAB 0: ĐÁP ÁN ══ */}
-        {tab === 0 && (
-          <div>
-            <div style={styles.card}>
-              <h2 style={styles.h2}>📂 File đáp án (.txt)</h2>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-                <input ref={keyRef} type="file" accept=".txt" onChange={handleKeyFile} style={{ display: "none" }} />
-                <button onClick={() => keyRef.current?.click()} style={styles.btnPrimary}>Chọn file .txt</button>
-                {answerKey && (
-                  <span style={{ color: "#059669", fontWeight: 600, fontSize: 13 }}>
-                    ✅ {answerKey.p1.length} câu P1 · {answerKey.p2.length} câu P2 · {answerKey.p3.length} câu P3
-                  </span>
-                )}
-              </div>
-              <textarea value={keyRaw} onChange={e => setKeyRaw(e.target.value)}
-                placeholder={"P1 | 1 | A\nP1 | 2 | B\n...\nP2 | 1 | DDSS\n...\nP3 | 1 | 2026\n..."}
-                style={{ ...styles.input, height: 160, fontFamily: "monospace", fontSize: 13, resize: "vertical" } as CSSProperties} />
-              <button onClick={applyKey} style={{ ...styles.btnSecondary, marginTop: 10 }}>Áp dụng đáp án</button>
-            </div>
-
-            <div style={styles.card}>
-              <h2 style={styles.h2}>✍️ Rubric Tự Luận (Phần IV)</h2>
-              <div style={{ marginBottom: 12 }}>
-                <input ref={p4ImgRef} type="file" accept="image/*" multiple onChange={handleP4ImgFiles} style={{ display: "none" }} />
-                <button onClick={() => p4ImgRef.current?.click()} disabled={p4Images.length >= 5}
-                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px dashed #0ea5e9", background: "#f0f9ff", color: "#0369a1", fontWeight: 600, cursor: p4Images.length >= 5 ? "not-allowed" : "pointer", fontSize: 13, opacity: p4Images.length >= 5 ? 0.5 : 1 }}>
-                  📷 Thêm ảnh đáp án chuẩn ({p4Images.length}/5)
-                </button>
-              </div>
-
-              {p4Images.length > 0 && (
-                <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                  {p4Images.map((img, i) => (
-                    <div key={i} style={{ position: "relative" }}>
-                      <img src={`data:${img.type};base64,${img.data}`} alt="" style={{ height: 60, borderRadius: 6, border: "1px solid #e2e8f0", objectFit: "cover" }} />
-                      <button onClick={() => setP4Images(imgs => imgs.filter((_, j) => j !== i))}
-                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "#ef4444", color: "white", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <textarea value={p4Rubric} onChange={e => setP4Rubric(e.target.value)}
-                placeholder={"Ví dụ:\n- Trình bày đúng công thức: 1 điểm\n- Tính toán chính xác: 1 điểm\n- Kết luận rõ ràng: 1 điểm"}
-                style={{ ...styles.input, height: 120, resize: "vertical" } as CSSProperties} />
-            </div>
-
-            <div style={styles.card}>
-              <h2 style={styles.h2}>⚖️ Cấu hình thang điểm</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-                {([ ["p1","P1 – Trắc nghiệm","#0d9488"], ["p2","P2 – Đúng/Sai","#f59e0b"], ["p3","P3 – Ngắn","#10b981"], ["p4","P4 – Tự luận","#0891b2"] ] as [keyof Weights, string, string][]).map(([k, label, color]) => (
-                  <div key={k}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color, display: "block", marginBottom: 6 }}>{label}</label>
-                    <input type="number" min="0" max="10" step="0.5" value={weights[k]}
-                      onChange={e => setWeights(w => ({ ...w, [k]: parseFloat(e.target.value) || 0 }))}
-                      style={{ ...styles.input, textAlign: "center", fontSize: 20, fontWeight: 800, color, borderColor: color + "44" } as CSSProperties} />
-                  </div>
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 0: STUDIO CHẤM TƯƠNG TÁC (TỰ LUẬN + TRẮC NGHIỆM) ── */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {tab === 0 && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Thanh Chọn Học Sinh & Tải Ảnh Bài Làm */}
+          <div className="bg-white p-5 rounded-3xl border border-teal-100 shadow-xs grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5 mb-1.5">
+                <Users className="w-3.5 h-3.5 text-teal-600" /> Chọn Lớp học:
+              </label>
+              <select
+                value={selectedClassId}
+                onChange={e => { setSelectedClassId(e.target.value); setSelectedStudentId(''); }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-teal-600"
+              >
+                <option value="">-- Chọn một lớp học --</option>
+                {myClasses?.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name || c.class_name}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5 mb-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-teal-600" /> Chọn Học sinh:
+              </label>
+              <select
+                value={selectedStudentId}
+                onChange={e => setSelectedStudentId(e.target.value)}
+                disabled={!selectedClassId && !selectedRoomId}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-teal-600 disabled:opacity-50"
+              >
+                <option value="">-- Chọn học sinh cần chấm --</option>
+                {rosterStudents?.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.full_name} ({s.student_code})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Nút nạp ảnh bài làm chụp tay */}
+            <div>
+              <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5 mb-1.5">
+                <Smartphone className="w-3.5 h-3.5 text-teal-600" /> Ảnh bài làm tự luận chụp tay:
+              </label>
+              <label className="flex items-center justify-center gap-2 w-full bg-teal-50 hover:bg-teal-100 border border-dashed border-teal-300 rounded-xl py-2 px-3 text-xs font-extrabold text-teal-800 cursor-pointer transition-all">
+                <UploadCloud className="w-4 h-4 text-teal-600" />
+                <span>{studentImages.length > 0 ? `Đã có ${studentImages.length} ảnh (Thêm)` : 'Tải ảnh bài làm lên'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleUploadImages}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Thẻ Điểm Tổng Kết Nhanh */}
+            <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-3 rounded-2xl border border-teal-200 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase text-teal-700 tracking-wider">Tổng Điểm</p>
+                <p className="text-2xl font-black text-teal-900 leading-none">{totalScore}<span className="text-xs text-slate-400 font-bold">/10đ</span></p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd" }}>
-                <span style={{ fontSize: 13, color: "#0369a1", fontWeight: 600, flex: 1 }}>
-                  📝 Số câu tự luận (P4) — mỗi câu {weights.p4 > 0 ? (weights.p4 / p4SubCount).toFixed(2) : 0} đ
-                </span>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {[1, 2, 3, 4].map(n => (
-                    <button key={n} onClick={() => setP4SubCount(n)}
-                      style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${p4SubCount === n ? "#0891b2" : "#e2e8f0"}`, background: p4SubCount === n ? "#0891b2" : "#fff", color: p4SubCount === n ? "white" : "#64748b", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <span className={`text-xs font-extrabold px-2.5 py-1 rounded-xl border ${rankColor}`}>
+                {rank}
+              </span>
             </div>
           </div>
-        )}
 
-        {/* ══ TAB 1: HỌC SINH ══ */}
-        {tab === 1 && (
-          <div>
-            {/* ✅ Ô Nhập API Key */}
-            <div style={{ marginBottom: 20, padding: 16, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 700, color: "#d97706", display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <KeyRound className="w-4 h-4" /> Gemini API Key (Bảo mật: Chỉ lưu trên máy của bạn)
-              </label>
-              <input 
-                type="password" 
-                value={apiKey} 
-                onChange={e => setApiKey(e.target.value)} 
-                placeholder="Nhập API Key bắt đầu bằng AIzaSy..." 
-                style={{ ...styles.input, borderColor: "#fde68a" } as CSSProperties} 
+          {/* BỐ CỤC CHÍNH: 2 CỘT (CỘT TRÁI: ẢNH TỰ LUẬN CHẠM TAY - CỘT PHẢI: TRẮC NGHIỆM 3 PHẦN) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* ── CỘT TRÁI (7 PHẦN): TỰ LUẬN & CANVAS CHẠM ĐỂ CHẤM ── */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                  <PenTool className="w-4 h-4 text-teal-700" />
+                  PHẦN IV: TỰ LUẬN (CHẠM ĐỂ GHI ĐÚNG / SAI HOẶC KHOANH LỖI)
+                </h3>
+                <span className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-lg">
+                  Trọng số: {weights.p4} điểm
+                </span>
+              </div>
+
+              {/* Component Canvas tương tác chạm tay */}
+              <EssayImageAnnotator
+                images={studentImages}
+                studentName={currentStudentObj?.full_name || 'Học sinh'}
+                studentCode={currentStudentObj?.student_code || ''}
+                maxScore={weights.p4}
+                score={essayScore}
+                onScoreChange={setEssayScore}
+                feedback={essayFeedback}
+                onFeedbackChange={setEssayFeedback}
+                rubricText={p4Rubric}
+                apiKey={apiKey}
+                onAIGrade={async (imgBase64, rubric) => {
+                  return await gradeEssayWithAI(apiKey, imgBase64, rubric, weights.p4);
+                }}
               />
             </div>
 
-            <div style={styles.card}>
-              <h2 style={styles.h2}>➕ Danh sách chờ chấm</h2>
-              
-              {/* ✅ GIAO DIỆN CHỌN LỚP & HỌC SINH TỪ SUPABASE */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                    <Users className="w-3.5 h-3.5" /> Chọn Lớp học
-                  </label>
-                  <select 
-                    value={selectedClassId} 
-                    onChange={e => { setSelectedClassId(e.target.value); setSelectedStudentId(''); }}
-                    style={styles.input}
-                  >
-                    <option value="">-- Chọn một lớp --</option>
-                    {myClasses?.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.class_name} ({c.grade})</option>
-                    ))}
-                  </select>
+            {/* ── CỘT PHẢI (5 PHẦN): TRẮC NGHIỆM P1, P2, P3 ── */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* PHẦN I: TRẮC NGHIỆM 4 LỰA CHỌN */}
+              <div className="bg-white p-4 rounded-3xl border border-teal-100 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-black text-xs text-slate-800 uppercase flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-teal-600" />
+                    Phần I: Trắc Nghiệm ({p1Score}/{weights.p1} đ)
+                  </h4>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                    Đúng: {p1CorrectCount} / {answerKey.p1.length} câu
+                  </span>
                 </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                    <GraduationCap className="w-3.5 h-3.5" /> Chọn Học sinh nộp bài
-                  </label>
-                  <select 
-                    value={selectedStudentId} 
-                    onChange={e => setSelectedStudentId(e.target.value)}
-                    disabled={!selectedClassId}
-                    style={{ ...styles.input, background: !selectedClassId ? "#f1f5f9" : "#fff" } as CSSProperties}
-                  >
-                    <option value="">-- Chọn học sinh --</option>
-                    {rosterStudents?.map((s: any) => (
-                      <option key={s.id} value={s.id}>{s.full_name} ({s.student_code})</option>
-                    ))}
-                  </select>
+
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {answerKey.p1.map((correctChoice, idx) => {
+                    const studentChoice = stuP1[idx] || '';
+                    const isOk = studentChoice.toUpperCase() === correctChoice.toUpperCase();
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between p-2 rounded-xl border text-xs ${
+                          studentChoice
+                            ? (isOk ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200')
+                            : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <span className="font-bold text-slate-600">Câu {idx + 1}:</span>
+                        <div className="flex gap-1">
+                          {['A', 'B', 'C', 'D'].map(ch => (
+                            <button
+                              key={ch}
+                              type="button"
+                              onClick={() => setStuP1(prev => ({ ...prev, [idx]: ch }))}
+                              className={`w-6 h-6 rounded-lg font-black text-xs transition-all cursor-pointer ${
+                                studentChoice === ch
+                                  ? (ch === correctChoice ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white')
+                                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {ch}
+                            </button>
+                          ))}
+                        </div>
+                        {studentChoice && !isOk && (
+                          <span className="text-[10px] font-extrabold text-emerald-600">→{correctChoice}</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <input ref={imgRef} type="file" accept="image/*" multiple onChange={handleImgFiles} style={{ display: "none" }} />
-                <button onClick={() => imgRef.current?.click()} disabled={newImgs.length >= 2}
-                  style={{ padding: "10px 16px", borderRadius: 10, border: "1px dashed #5eead4", background: "#f0fdfa", color: "#0f766e", fontWeight: 600, cursor: newImgs.length >= 2 ? "not-allowed" : "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                  <UploadCloud className="w-4 h-4" /> Đính kèm ảnh phiếu ({newImgs.length}/2)
-                </button>
-                
-                <button onClick={addStudentToQueue} disabled={!selectedStudentId || newImgs.length === 0}
-                  style={{ ...styles.btnPrimary, marginLeft: "auto", opacity: selectedStudentId && newImgs.length > 0 ? 1 : 0.4 }}>
-                  Thêm vào hàng chờ
-                </button>
+              {/* PHẦN II: ĐÚNG / SAI (CHUẨN BỘ GD 2025) */}
+              <div className="bg-white p-4 rounded-3xl border border-teal-100 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-black text-xs text-slate-800 uppercase flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-teal-600" />
+                    Phần II: Đúng / Sai ({p2Score}/{weights.p2} đ)
+                  </h4>
+                  <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-lg">
+                    Chuẩn Bộ GD 2025
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {answerKey.p2.map((correctStr, idx) => {
+                    const subMap = stuP2[idx] || {};
+                    const qRes = p2Results[idx];
+                    return (
+                      <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                          <span>Câu {idx + 1}</span>
+                          <span className="text-teal-700 font-extrabold">{qRes?.qScore?.toFixed(2) || 0} đ</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {['a', 'b', 'c', 'd'].map((lbl, j) => {
+                            const corChar = correctStr[j] || 'D';
+                            const stuChar = subMap[lbl] || '';
+                            const isSubOk = stuChar.toUpperCase() === corChar.toUpperCase();
+                            return (
+                              <div key={lbl} className="bg-white p-1 rounded-lg border border-slate-200 flex flex-col items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{lbl}</span>
+                                <div className="flex gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setStuP2(prev => ({
+                                      ...prev,
+                                      [idx]: { ...(prev[idx] || {}), [lbl]: 'D' }
+                                    }))}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      stuChar === 'D'
+                                        ? (corChar === 'D' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white')
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    Đ
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStuP2(prev => ({
+                                      ...prev,
+                                      [idx]: { ...(prev[idx] || {}), [lbl]: 'S' }
+                                    }))}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      stuChar === 'S'
+                                        ? (corChar === 'S' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white')
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    S
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {newImgs.length > 0 && (
-                <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                  {newImgs.map((img, i) => (
-                    <div key={i} style={{ position: "relative" }}>
-                      <img src={`data:${img.type};base64,${img.data}`} alt="" style={{ height: 80, borderRadius: 8, border: "1px solid #e2e8f0", objectFit: "cover" }} />
-                      <button onClick={() => setNewImgs(imgs => imgs.filter((_, j) => j !== i))}
-                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "#ef4444", color: "white", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-                    </div>
-                  ))}
+              {/* PHẦN III: TRẢ LỜI NGẮN */}
+              <div className="bg-white p-4 rounded-3xl border border-teal-100 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-black text-xs text-slate-800 uppercase flex items-center gap-1.5">
+                    <Type className="w-3.5 h-3.5 text-teal-600" />
+                    Phần III: Trả Lời Ngắn ({p3Score}/{weights.p3} đ)
+                  </h4>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                    Đúng: {p3CorrectCount} / {answerKey.p3.length} câu
+                  </span>
                 </div>
-              )}
-            </div>
 
-            {gradingStudents.length > 0 ? (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <p style={{ margin: 0, fontWeight: 700, color: "#0f172a", fontSize: 14 }}>{gradingStudents.length} học sinh đang chờ</p>
-                  <button onClick={gradeAll} disabled={!answerKey || !apiKey}
-                    style={{ ...styles.btnPrimary, opacity: answerKey && apiKey ? 1 : 0.4 }}>
-                    ⚡ Chấm tự động tất cả
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {answerKey.p3.map((cor, idx) => {
+                    const userVal = stuP3[idx] || '';
+                    const isOk = userVal.trim() !== '' && normalizeAns(userVal) === normalizeAns(cor);
+                    return (
+                      <div key={idx} className="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                          <span>Câu {idx + 1}:</span>
+                          <span className="text-[10px] text-slate-400 font-mono">ĐA: {cor}</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={userVal}
+                          onChange={e => setStuP3(prev => ({ ...prev, [idx]: e.target.value }))}
+                          placeholder="Đáp án học sinh..."
+                          className={`w-full text-xs font-bold px-2 py-1 rounded-lg border transition-all ${
+                            userVal
+                              ? (isOk ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-rose-50 border-rose-300 text-rose-800')
+                              : 'bg-white border-slate-200 text-slate-700'
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── BẢNG TỔNG KẾT & HÀNH ĐỘNG CUỐI CÙNG ── */}
+              <div className="bg-gradient-to-br from-teal-800 to-emerald-900 p-5 rounded-3xl text-white space-y-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold text-teal-200 uppercase tracking-wider">Tổng Kết Bài Thi</p>
+                    <h3 className="text-3xl font-black text-amber-300">
+                      {totalScore} <span className="text-sm font-normal text-teal-200">/ 10.0 đ</span>
+                    </h3>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-white">
+                      {rank}
+                    </span>
+                    <p className="text-[10px] text-teal-200 mt-1">P1: {p1Score} | P2: {p2Score} | P3: {p3Score} | P4: {p4Score}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-700/60">
+                  <button
+                    onClick={handleSaveToSystem}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-extrabold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu vào hệ thống</span>
+                  </button>
+
+                  <button
+                    onClick={handleSendZalo}
+                    className="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white font-extrabold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Gửi Zalo phụ huynh</span>
                   </button>
                 </div>
-                {gradingStudents.map(s => {
-                  const r = results[s.id];
-                  const isGrading = grading[s.id];
-                  return (
-                    <div key={s.id} style={{ ...styles.card, display: "flex", alignItems: "center", gap: 12, padding: "14px 20px", marginBottom: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#ccfbf1", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: "#0f766e", flexShrink: 0 }}>
-                        {s.name.trim().split(" ").pop()![0].toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{s.name}</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8" }}>{s.student_code} • {s.images.length} ảnh đính kèm</p>
-                      </div>
-                      {s.images.map((img, i) => (
-                        <img key={i} src={`data:${img.type};base64,${img.data}`} alt="" style={{ height: 44, borderRadius: 6, border: "1px solid #e2e8f0", objectFit: "cover" }} />
-                      ))}
-                      {r && <GradeBadge total={r.total} />}
-                      {r && (
-                        <span style={{ fontWeight: 900, fontSize: 22, color: "#0d9488", minWidth: 44, textAlign: "right" }}>
-                          {r.total}<span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>/10</span>
-                        </span>
-                      )}
-                      <button onClick={() => gradeOne(s)} disabled={!answerKey || isGrading || !apiKey}
-                        style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: isGrading ? "#f1f5f9" : "#ccfbf1", color: isGrading ? "#94a3b8" : "#0f766e", fontWeight: 600, cursor: isGrading ? "not-allowed" : "pointer", fontSize: 13, minWidth: 88 }}>
-                        {isGrading ? "⏳ Đang..." : r ? "Chấm lại" : "Chấm bài"}
-                      </button>
-                      <button onClick={() => removeStudent(s.id)}
-                        style={{ padding: "8px 10px", borderRadius: 8, border: "none", background: "#fee2e2", color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>🗑</button>
-                    </div>
-                  );
-                })}
               </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-                <p style={{ fontWeight: 600 }}>Chưa có học sinh nào.</p>
-                <p style={{ fontSize: 13 }}>Chọn lớp và học sinh ở bảng trên để bắt đầu.</p>
-              </div>
-            )}
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ══ TAB 2: KẾT QUẢ ══ */}
-        {tab === 2 && (
-          <div>
-            {gradedCount > 0 && (
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-                <button onClick={saveToSupabase} style={styles.btnSecondary}>
-                  ☁️ Lưu điểm lên Hệ thống
-                </button>
-                <button onClick={exportExcel} style={styles.btnSuccess}>📥 Xuất Excel ({gradedCount} HS)</button>
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 1: PHÒNG THI ONLINE (LẤY TỪ BÀI NỘP TRÊN WEB) ── */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {tab === 1 && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-5 rounded-3xl border border-teal-100 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-slate-800 text-base">Danh Sách Phòng Thi Trực Tuyến</h3>
+                <p className="text-xs text-slate-400">Chọn phòng thi để xem bài nộp và đưa vào Studio chấm tự luận</p>
               </div>
-            )}
-            {gradedCount === 0 ? (
-              <div style={{ textAlign: "center", padding: "80px 20px", color: "#94a3b8" }}>
-                <div style={{ fontSize: 52, marginBottom: 12 }}>📊</div>
-                <p style={{ fontWeight: 600 }}>Chưa có kết quả chấm bài.</p>
-                <p style={{ fontSize: 13 }}>Chuyển sang tab <strong>Học Sinh</strong> để thêm bài và chấm.</p>
-              </div>
-            ) : gradingStudents.filter(s => results[s.id]).map(s => {
-              const r = results[s.id];
-              const p1Correct = r.p1.results.filter(x => x.ok).length;
-              const p3Correct = r.p3.results.filter(x => x.ok).length;
-              return (
-                <div key={s.id} style={styles.card}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>{s.name} <span style={{ fontSize: 14, color: "#64748b", fontWeight: 600 }}>({s.student_code})</span></h3>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
-                        <GradeBadge total={r.total} />
-                        <span style={{ fontSize: 32, fontWeight: 900, color: "#0d9488", lineHeight: 1 }}>
-                          {r.total}<span style={{ fontSize: 14, color: "#94a3b8", fontWeight: 400 }}>/10</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ minWidth: 220 }}>
-                      <ScoreBar label="P1 – Trắc nghiệm" score={r.p1.score} max={weights.p1} color={barColors[0]} />
-                      <ScoreBar label="P2 – Đúng/Sai" score={r.p2.score} max={weights.p2} color={barColors[1]} />
-                      <ScoreBar label="P3 – Trả lời ngắn" score={r.p3.score} max={weights.p3} color={barColors[2]} />
-                      <ScoreBar label="P4 – Tự luận" score={r.p4.score} max={weights.p4} color={barColors[3]} />
-                    </div>
-                  </div>
+              <button
+                onClick={loadOnlineRooms}
+                className="p-2 text-teal-700 hover:bg-teal-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Làm mới
+              </button>
+            </div>
 
-                  <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-                    {[
-                      { label: "P1 đúng", val: `${p1Correct}/${r.p1.results.length}`, color: "#0d9488" },
-                      { label: "P3 đúng", val: `${p3Correct}/${r.p3.results.length}`, color: "#10b981" },
-                      { label: "P4 điểm", val: `${r.p4.score}/${weights.p4}`, color: "#0891b2" },
-                    ].map(({ label, val, color }) => (
-                      <div key={label} style={{ background: "#f8fafc", borderRadius: 10, padding: "8px 14px", border: "1px solid #e2e8f0" }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color }}>{val}</div>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {onlineRooms.map(r => (
+                <div
+                  key={r.id}
+                  onClick={() => handleSelectRoom(r.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    selectedRoomId === r.id
+                      ? 'border-teal-600 bg-teal-50/60 shadow-xs'
+                      : 'border-slate-200 hover:border-teal-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-extrabold text-xs text-slate-800">{r.name}</span>
+                    <span className="text-[10px] font-mono font-bold bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">
+                      Mã: {r.room_code}
+                    </span>
                   </div>
-
-                  <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 20, display: "flex", flexDirection: "column", gap: 24 }}>
-                    <P1Grid results={r.p1.results} />
-                    <P2Grid results={r.p2.results} />
-                    <P3Grid results={r.p3.results} />
-                    {(r.p4.score > 0 || r.p4.feedback || r.p4.detail) && (
-                      <P4DetailGrid p4={r.p4} maxScore={weights.p4} />
-                    )}
-                  </div>
+                  <p className="text-xs text-slate-500 font-medium truncate">{r.exams?.title || 'Đề thi'}</p>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        )}
 
-      </div>
+          {/* Danh sách bài nộp của phòng thi */}
+          {selectedRoomId && (
+            <div className="bg-white p-5 rounded-3xl border border-teal-100 shadow-xs space-y-4">
+              <h3 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                <Users className="w-4 h-4 text-teal-600" />
+                Danh Sách Bài Nộp ({roomSubmissions.length} học sinh)
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
+                      <th className="py-2.5 px-3 text-left">Học sinh</th>
+                      <th className="py-2.5 px-3 text-left">Mã HS</th>
+                      <th className="py-2.5 px-3 text-left">Điểm đã có</th>
+                      <th className="py-2.5 px-3 text-left">Thời gian nộp</th>
+                      <th className="py-2.5 px-3 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {roomSubmissions.map(sub => (
+                      <tr key={sub.id} className="hover:bg-teal-50/40 transition-colors">
+                        <td className="py-2.5 px-3 font-bold text-slate-800">{sub.students?.full_name || 'Học sinh'}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-500">{sub.students?.student_code || '–'}</td>
+                        <td className="py-2.5 px-3 font-extrabold text-teal-800">{sub.score?.toFixed(2) || '0.00'} đ</td>
+                        <td className="py-2.5 px-3 text-slate-400">{sub.submitted_at ? new Date(sub.submitted_at).toLocaleTimeString('vi-VN') : '–'}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <button
+                            onClick={() => loadSubmissionIntoStudio(sub)}
+                            className="bg-teal-700 hover:bg-teal-800 text-white font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-xs"
+                          >
+                            ✍️ Chấm bài này
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 2: QUÉT PHIẾU CHẤM AI HÀNG LOẠT (OCR) ── */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {tab === 2 && (
+        <div className="bg-white p-6 rounded-3xl border border-teal-100 shadow-xs space-y-4 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-teal-600" />
+            <h3 className="font-black text-slate-800 text-base">Quét Phiếu Trắc Nghiệm Bằng Trí Tuệ Nhân Tạo</h3>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Thầy có thể chụp ảnh phiếu trả lời trắc nghiệm giấy của cả lớp và tải lên. AI sẽ tự động đọc các ô tô A, B, C, D, Đúng/Sai, Điền số và tính điểm tự động.
+          </p>
+          <div className="p-8 border-2 border-dashed border-teal-200 rounded-2xl bg-teal-50/30 text-center space-y-3">
+            <UploadCloud className="w-10 h-10 text-teal-600 mx-auto" />
+            <p className="font-extrabold text-sm text-teal-900">Kéo thả ảnh phiếu trả lời hoặc bấm để chọn ảnh</p>
+            <input type="file" accept="image/*" multiple className="hidden" id="mass-upload" />
+            <label htmlFor="mass-upload" className="inline-block bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs">
+              Chọn ảnh phiếu học sinh
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 3: CẤU HÌNH ĐÁP ÁN & THANG ĐIỂM ── */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {tab === 3 && (
+        <div className="bg-white p-6 rounded-3xl border border-teal-100 shadow-xs space-y-6 animate-fade-in">
+          <div>
+            <h3 className="font-black text-slate-800 text-base flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-teal-600" />
+              Cấu Hình Đáp Án Chuẩn & Trọng Số Điểm
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Nhập đáp án chuẩn của đề thi để máy tự động so khớp và tính điểm cho học sinh.
+            </p>
+          </div>
+
+          {/* Ô nhập Gemini API Key */}
+          <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-1.5">
+            <label className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              Gemini API Key (Dùng để AI chấm chữ viết tay tự luận):
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="Nhập khóa API bắt đầu bằng AIzaSy..."
+              className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-teal-600"
+            />
+          </div>
+
+          {/* Trọng số điểm 4 phần */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { id: 'p1', label: 'Phần I (Trắc nghiệm)', val: weights.p1 },
+              { id: 'p2', label: 'Phần II (Đúng/Sai)', val: weights.p2 },
+              { id: 'p3', label: 'Phần III (Trả lời ngắn)', val: weights.p3 },
+              { id: 'p4', label: 'Phần IV (Tự luận)', val: weights.p4 },
+            ].map(w => (
+              <div key={w.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <span className="text-[11px] font-bold text-slate-600 block mb-1">{w.label}</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={w.val}
+                  onChange={e => setWeights(prev => ({ ...prev, [w.id]: Number(e.target.value) || 0 }))}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-sm font-black text-teal-800"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Nội dung đáp án */}
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-700 uppercase">
+              Cấu trúc đáp án (.txt):
+            </label>
+            <textarea
+              rows={10}
+              value={keyRaw}
+              onChange={e => setKeyRaw(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 font-mono text-xs text-slate-800 focus:outline-teal-600 leading-relaxed"
+            />
+            <button
+              onClick={() => {
+                const parsed = parseAnswerKey(keyRaw);
+                setAnswerKey(parsed);
+                if (parsed.p4) setP4Rubric(parsed.p4);
+                toast.success('Đã lưu và áp dụng cấu hình đáp án mới!');
+              }}
+              className="bg-teal-700 hover:bg-teal-800 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-xs"
+            >
+              Áp dụng đáp án này
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

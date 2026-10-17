@@ -42,7 +42,7 @@ export default function Layout() {
         { path: '/create-worksheet',  icon: ClipboardList, label: 'Phiếu Bài Tập' },  // ← MỚI
         { path: '/0345833133',        icon: Video,         label: '🔴 Phòng Live 0345.833.133' },
         { path: '/exam-rooms',        icon: MonitorPlay,   label: 'Phòng thi' },
-        { path: '/phieu-grader',      icon: Zap,           label: 'Chấm Phiếu AI' },
+        { path: '/phieu-grader',      icon: GraduationCap, label: 'Chấm Bài Học Sinh' },
       ],
     },
     {
